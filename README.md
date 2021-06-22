@@ -1,11 +1,12 @@
-# cosmetic
+# Cosmetic
 
 The goal of this software is to check if a knot (in the three-sphere)
 or a manifold (typically hyperbolic) satisfies the cosmetic surgery
 conjecture.
 
 We work inside of SageMath (as of this writing, version 9.2).
-Here is an example of usage: 
+
+### Example of usage
 
 ```
 import snappy
@@ -32,5 +33,7 @@ remainder = cosmetic_knots.check_knots(remainder, slope_method = "All")
 ```
 
 Now remainder is empty - these six knots have no cosmetic surgery pairs.
+
+### In progress
 
 The code in cosmetic_mfds is currently being developed.
