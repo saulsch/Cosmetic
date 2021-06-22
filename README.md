@@ -1,7 +1,8 @@
 # cosmetic
 
-The goal of this software is to check if a knot (in the three-sphere) or a manifold
-(typically hyperbolic) satisfies the cosmetic surgery conjecture.
+The goal of this software is to check if a knot (in the three-sphere) 
+or a manifold (typically hyperbolic) satisfies the cosmetic surgery 
+conjecture.
 
 We work inside of SageMath (as of this writing, version 9.2).  
 Here is an example of usage: 
@@ -23,7 +24,8 @@ contain the following names:
 ```
 
 These six census knots do not come equipped	with diagrams, so are not
-dealt with by the more powerful	diagrammatic invariants.
+dealt with by	diagrammatic invariants.  Instead we can use hyperbolic 
+geometry to eliminate these knots.
 
 ```
 remainder = cosmetic_knots.check_knots(remainder, slope_method = "All")
