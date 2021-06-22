@@ -3,7 +3,7 @@
 The goal of this software is to check if a knot (in the three-sphere) or a manifold
 (typically hyperbolic) satisfies the cosmetic surgery conjecture.
 
-We work inside of SageMath (currently using version 9.2).  
+We work inside of SageMath (as of this writing, version 9.2).  
 Here is an example of usage: 
 
 ```
