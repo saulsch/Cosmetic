@@ -7,7 +7,6 @@ We work inside of SageMath (currently using version 9.2).
 Here is an example of usage: 
 
 ```
-from importlib import reload
 import snappy
 import cosmetic_knots
 
