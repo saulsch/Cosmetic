@@ -4,6 +4,8 @@ The goal of this software is to check if a knot (in the three-sphere)
 or a manifold (typically hyperbolic) satisfies the cosmetic surgery
 conjecture.
 
+### Prerequisites and installation
+
 We work inside of SageMath (as of this writing version 9.2).
 We assume that the user has snappy and regina installed inside of sage.  
 You can find installation instructions for those programs here: 
