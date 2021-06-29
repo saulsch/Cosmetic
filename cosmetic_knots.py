@@ -899,7 +899,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
 
 
 
-def check_knots(knots, slope_method, use_NiWu = True, use_HFK = True, tries=10, verbose=3, report=20):
+def check_knots(knots, slope_method = 'All', use_NiWu = True, use_HFK = True, tries=10, verbose=4, report=20):
     
     bad_uns = []
     for n, knot in enumerate(knots): 
