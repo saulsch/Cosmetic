@@ -10,8 +10,8 @@ We work inside of SageMath (as of this writing version 9.2).
 We assume that the user has snappy and regina installed inside of sage.  
 You can find installation instructions for those programs here: 
 
-https://doc.sagemath.org/html/en/installation/
-https://snappy.math.uic.edu/installing.html
+https://doc.sagemath.org/html/en/installation/ \
+https://snappy.math.uic.edu/installing.html \
 https://github.com/3-manifolds/regina_wheels
 
 To install Cosmetic via the command line type:
