@@ -474,7 +474,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             out = geom_tests.is_toroidal_wrapper(P, tries, verbose)
             outn = geom_tests.is_toroidal_wrapper(Pn, tries, verbose)
             if out[0] != outn[0]:
-                verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina, only one is toroidal'])
+                verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
             elif not out[0] or not outn[0]:
                 # One of the fillings is atoroidal
