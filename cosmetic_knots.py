@@ -473,7 +473,11 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             Pn.dehn_fill(sn)
             out = geom_tests.is_toroidal_wrapper(P, tries, verbose)
             outn = geom_tests.is_toroidal_wrapper(Pn, tries, verbose)
-            if not out[0] or not outn[0]:
+            if out[0] != outn[0]:
+                verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina, only one is toroidal'])
+                return None
+            elif not out[0] or not outn[0]:
+                # One of the fillings is atoroidal
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
                 return None
             else:
@@ -503,6 +507,10 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     Given a knot complement M, presumed to be hyperbolic and equipped with
     the homological framing, compute the systole and use it to build a list of short
     slopes. 
+    
+    References: Thm 1.10 of EffectiveBilipschitz, plus strengthened theorem (currently 
+    Thm 3.1) of the CosmeticByComputer paper.
+    
     The flag 'use_NiWu' decides whether we prune the list of geometrically short
     slopes using the Ni-Wu constraint that p divides (q^2 + 1).
     Reference: [Ni-Wu, "Cosmetic surgeries on knots in S3"]
@@ -525,7 +533,8 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
 
     # get the translation lengths and the normalisation factor and bounds on p and q
     verbose_print(verbose, 2, [name, 'systole is at least', sys])
-    norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
+    # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
+    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) # Thm:CosmeticOneCusp
     verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
     
 	# Build list of short slopes in the homological framing. Note that the list we
@@ -769,8 +778,12 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
     * Ni-Wu test (tau invariant)
     * Wang test (genus one knots)
     * HFK Hanselman test (exact genus and HFK thickness)
-    The tests are ordered according to speed. Note that the weak Hanselman test 
-    is very fast because we only compute cheap bounds on genus and thickness.
+
+    The tests are ordered according to speed, for a typical non-alternating knot. 
+    Note that if K is alternating, then computing HFK is super-fast because Szabo's
+    program is written in C and the invariant is little more than the Alexander
+    polynomial. Thus, for alternating knots, it is advisable to turn off the
+    non-HFK tests for speed.
     
     Returns a list of only those manifolds for which  these tests do not succeed. 
     The remaining knots would have to be checked using hyperbolic methods.
