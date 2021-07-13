@@ -185,36 +185,22 @@ def product(nums):
 
 # we will need the following:
 
-# u(z) = (3.3957/2) * (z^2 * (z^4 + 4*z^2 - 1)) / (z^2 + 1)^3
-# v(z) = u.integral(z)
-# u_int(z) = v(1) - v(z)
+# eccen = 3.3957
+# u(z) = (eccen/2) * (z**2 * (z**4 + 4*z**2 - 1)) / (z**2 + 1)**3
+# v(z) = (eccen/4) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2+1)**2 + arctan(z) - arctan(1.0) )
+# v(z) is the integral of u from z to 1.
 
-# pi_trunc = 3.141592653589
-
-# This is a linear approx to the inverse of the HK function
-# f(\hat{z}).  See page 1088 of "Shape of Dehn surgery space" by [HK].
-# This linear approximation is the secant line to the graph of f
-# defined by normalised lengths 10 and \infty.  The secant line is
-# below the graph of f because f is concave down.  See Atkinson-Futer
-# - "Orbifolds with high torsion" Lemma 5.9.
-
-# z_lin(L) = 1 + (4*pi_trunc^2) / (L^2 * slope)
-
-# By theorem 5.12 of [HK] "Shape of Dehn surgery space" the change in
-# volume is bounded above by u_int(z_lin(L)).  This estimate is only
-# valid when L \geq 10.
-
-# HK_vol_bound(L) = u_int(z_lin(L))
-
-# Check rounding to ensure that this is rigorous.  
 def HK_vol_bound(L):
     """
-    Given a normalised length L (which is at least 10), returns an
+    Given a normalised length L (which is at least 9.93), returns an
     upper bound on the change of volume when filling a slope of that
-    normalised length.
+    normalised length. 
+    Reference: Hodgson-Kerckhoff 'Shape of DS space', Thm 5.12.
+    Reference: our Theorem 2.7, which is a secant line approx to the above.
     """
-    assert L >= 10.0
-    return (2.54677500000000*(-14.6884304270819/L**2 + 1)**3 - 12.4693758003105/L**2 + 0.848925000000000) / ((-14.6884304270819/L**2 + 1)**4 + 2*(-14.6884304270819/L**2 + 1)**2 + 1) + 24.9387516006211/L**2 + 0.848925000000000*arctan(-14.6884304270819/L**2 + 1) - 1.51566913586201
+    assert L >= 9.93
+    z = 1 - (14.77)/L**2
+    return (3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
 # use bisection to invert.
@@ -226,9 +212,11 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
     about a normalised length, said length ensuring that the true
     difference (drilled minus filled) is at most diff_vol.
     """
-    if HK_vol_bound(10.1) <= diff_vol:
-        return RIF(10.1)
-    L = RIF(10.1)
+    
+    L = RIF(9.95)  # the lowest length we can return
+    
+    if HK_vol_bound(L) <= diff_vol:
+        return L
     while HK_vol_bound(L) > diff_vol:
         L = 2.0*L
     L_up = L
@@ -819,7 +807,8 @@ def check_cosmetic(M, tries, verbose):
         return [(name, None, None, 'systole fail')]
 
     if verbose > 2: print(name, 'systole is at least', sys)
-    norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
+    # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200))
+    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
     if verbose > 4: print(name, 'norm_len_cutoff', norm_len_cutoff)
     
     # Step one - fix the framing and gather the invariants that can
