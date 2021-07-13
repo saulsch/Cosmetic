@@ -802,6 +802,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         if verbose > 0 and n % report == 0:
             print('report', n, ':', Casson_ruled_out, 'ruled out by Casson invariant,', Hansel_quick_ruled_out, 'ruled out by quick genus-thickness test,', Jones_ruled_out, 'ruled out by Jones derivative,')
             print(Detcherry_ruled_out, 'ruled out by Jones 5th root of 1,', Tau_ruled_out, 'ruled out by tau invariant,', Wang_ruled_out, 'ruled out b/c genus=1,', Hansel_full_ruled_out, 'ruled out by HFK thickness and genus')
+            print('Last few difficult knots', bad_uns[-5:])
 
         # Be somewhat generous in what we accept
         name, M, K = name_manifold_and_link(knot, verbose=verbose)
