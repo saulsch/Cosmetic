@@ -7,8 +7,8 @@ conjecture.
 ### Prerequisites and installation
 
 We work inside of SageMath (as of this writing version 9.2).
-We assume that the user has snappy and regina installed inside of sage.  
-You can find installation instructions for those programs here: 
+We assume that the user has snappy and regina installed inside of sage.
+You can find installation instructions for those programs here:
 
 https://doc.sagemath.org/html/en/installation/  \
 https://snappy.math.uic.edu/installing.html  \
@@ -32,8 +32,8 @@ Cen = snappy.CensusKnots()
 remainder = cosmetic_knots.prune_using_invariants(Cen)
 ```
 
-With the default settings, this	will make a report every 100 knots.
-After dealing with all 1267 knots in the census, "remainder" should 
+With the default settings, this will make a report every 100 knots.
+After dealing with all 1267 knots in the census, "remainder" should
 contain the following names:
 
 ```
