@@ -87,7 +87,7 @@ def are_distinguished_lens_spaces(name0, name1, verbose = 3):
     p1, q1 = ints1
     if p0 != p1:
         verbose_print(verbose, 0, [name0, name1, "lens spaces with different homology"])
-        # threshold is low because we expect this to never happen.  [grin]
+        # verbose threshold is low because we expect this to never happen.  [grin]
         return True
     p = p0
     if ((q0 - q1) % p) == 0 or ((q0 + q1) % p) == 0 or ((q0 * q1) % p) == 1 or ((q0 * q1) % p) == -1 % p:
@@ -102,7 +102,7 @@ def is_sfs_over_s2_from_name(name):
     Given a regina name, if it is a SFS over S^2 (and not a lens
     space) return True and the coefficients.
     """
-    # Note that we don't count lens spaces as SFSs.  [grin]
+    # Note that we don't count lens spaces as SFSs. 
     if not "SFS [S2: (" == name[:10]:
         return (None, None)
     if "#" in name:
@@ -180,7 +180,7 @@ def product(nums):
     return prod
 
 
-# Volume drops
+# Volume differences under filling
 
 
 # we will need the following:
@@ -200,7 +200,7 @@ def HK_vol_bound(L):
     """
     assert L >= 9.93
     z = 1 - (14.77)/L**2
-    return (3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
+    return RIF(3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
 # use bisection to invert.
@@ -231,24 +231,21 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
             
 
 # Cusped manifolds with H_1(M) = Z can be ruled out via Boyer-Lines
-# criterion on Alexander polynomial
+# criterion on Casson invariant (second deriv of Alexander polynomial)
 
-def A_invt(M, verbose):
+def Casson_invt(M, verbose):
     P = M.alexander_polynomial()
-    if verbose > 10:
-        print(P, 'Alexander polynomial')
+    verbose_print(verbose, 10, [P, 'Alexander polynomial'])
     deg = P.degree()/2
     Rin = P.parent()  # the polynomial ring where P lives
     # Assume that P is a polynomial in one variable
     # normalize the polynomial so that positive and negative powers match and
     # so that it evaluates to 1 at 1
     Q = P/(Rin.gen()**deg * P(1))  
-    if verbose > 10:
-        print(Q, 'Normalized Alexander polynomial')
+    verbose_print(verbose, 10, [Q, 'Normalized Alexander polynomial'])
     assert Q(1) == 1
     A = Q.derivative().derivative()
-    if verbose > 10:
-        print(A, 'second derivative')
+    verbose_print(verbose, 10, [A, 'second derivative'])
     return A(1)/2
 
 # Homology
@@ -275,13 +272,11 @@ def check_cover_homology_fixed_deg(M, N, deg, verbose=10):
     M_homologies = set( str(K.homology()) for K in M.covers(deg))
     N_homologies = set( str(K.homology()) for K in N.covers(deg))
 
-    if verbose > 12:
-        print(M, 'degree', deg, M_homologies)
-        print(N, 'degree', deg, N_homologies)
+    verbose_print(verbose, 12, [M, 'degree', deg, M_homologies])
+    verbose_print(verbose, 12, [N, 'degree', deg, N_homologies])
 
     if M_homologies != N_homologies:
-        if verbose > 2:
-            print(M, N, 'distinguished by cover homology at degree', deg)
+        verbose_print(verbose, 2, [M, N, 'distinguished by cover homology at degree', deg])
         return True
     else:
         return False
@@ -303,8 +298,7 @@ def is_distinguished_by_covers(M, s, t, tries, verbose):
     Mt_covers = [len(Mt.covers(i)) for i in range(2, 6)]
 
     if Ms_covers != Mt_covers:
-        if verbose > 6:
-            print(M, s, t, "cover spectrum distinguishes")
+        verbose_print(verbose, 6, [M, s, t, 'cover spectrum distinguishes'])
         return True
 
     return False
@@ -324,15 +318,13 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
 
     if Ms.homology() != Mt.homology():
         # This was not supposed to happen, but does because half-lives-half-dies only works over Q. 
-        if verbose > 5:
-            print(Ms, Ms.homology(), ',', Mt, Mt.homology(), 'distinguished by homology groups')
+        verbose_print(verbose, 5, [Ms, Ms.homology(), ',', Mt, Mt.homology(), 'distinguished by homology groups'])
         return True
 
     order = order_of_torsion(Ms)
     if order == 1:
         # urk
-        if verbose > 5:
-            print(Ms, Mt, "are Z homology three-spheres. Cool!")
+        verbose_print(verbose, 5, [Ms, Mt, "are Z homology three-spheres. Cool!"])
         return False
     factors = list(factor(order))
     factors = [f[0] for f in factors] # strip the powers
@@ -376,16 +368,16 @@ def is_amphichiral(M):
 ### This function is not rigorous - also it is never called.  So we
 ### should delete this...
 def is_exceptional_due_to_volume(M, verbose):
-    if verbose > 12: print(M, 'entering is_exceptional_due_to_volume')
+    verbose_print(verbose, 12, [M, 'entering is_exceptional_due_to_volume'])
     if M.volume() < 0.9:
-        if verbose > 6: print(M, 'has volume too small...')
-        if verbose > 6: print(M.fundamental_group())
+        verbose_print(verbose, 6, [M, 'has volume too small...'])
+        verbose_print(verbose, 6, [M.fundamental_group()])
         return True
 
 
 def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2):
     '''
-    Given a manifold M (assumed to be one-cusped) we wish to construct
+    Given a manifold M (assumed to be one-cusped), we wish to construct
     and update the exceptions_table.  This is a database where the
     keys are slopes (here s).  The fields are useful data about
     exceptional fillings that we don't want to compute twice.  Remark:
@@ -394,8 +386,7 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
     '''
     # convention - no empty fields - aka no placeholders. 
 
-    if verbose > 12:
-        print(M, s, "entering exceptions table", field)
+    verbose_print(verbose, 12, [M, s, "entering exceptions table", field])
     
     allowed_fields = ["fund_gp", "name", "lens", "sfs_over_s2", "reducible", "toroidal"]
     assert field in allowed_fields
@@ -404,8 +395,7 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         exceptions_table[s] = {}
 
     if field in exceptions_table[s]:
-        if verbose > 10:
-            print(M, s, field, 'found in table')
+        verbose_print(verbose, 10, [M, s, field, 'found in table'])
         return exceptions_table[s][field]
     
     # We did not find the field, so we have to install and return it.
@@ -428,12 +418,10 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
             raise
         if name != None:
             exceptions_table[s]["name"] = name
-            if verbose > 10:
-                print(N, name, 'added to table')
+            verbose_print(verbose, 10, [N, name, 'added to table'])
             return name
         else:
-            if verbose > -1:
-                print(N, "could not compute name")
+            verbose_print(verbose, -1, [N, "could not compute name"])
             return None
 
     if field == "lens":
@@ -445,12 +433,10 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         is_lens, _ = out
         if is_lens: 
             exceptions_table[s]["lens"] = out
-            if verbose > 10:
-                print(N, name, 'lens coeffs added to table')
+            verbose_print(verbose, 10, [N, name, 'lens coeffs added to table'])
             return out
         else:
-            if verbose > 10:
-                print(N, name, 'no lens coeffs found')
+            verbose_print(verbose, 10, [N, name, 'no lens coeffs found'])
             return out
     
     if field == "sfs_over_s2":
@@ -462,28 +448,26 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         is_sfs_over_s2, _ = out
         if is_sfs_over_s2: 
             exceptions_table[s]["sfs_over_s2"] = out
-            if verbose > 10:
-                print(N, name, 'sfs coeffs added to table')
+            verbose_print(verbose, 10, [N, name, 'sfs coeffs added to table'])
             return out
         else:
-            if verbose > 10:
-                print(N, s, name, 'no sfs coeffs found')
+            verbose_print(verbose, 10, [N, s, name, 'no sfs coeffs found'])
             return out
         
     if field == "reducible":
         out = geom_tests.is_reducible_wrapper(N, tries, verbose)
         exceptions_table[s]["reducible"] = out
-        if verbose > 10:
-            print(N, out, 'reducibility')
+        verbose_print(verbose, 10, [N, out, 'reducibility'])
         return out
         
     if field == "toroidal":
         out = geom_tests.is_toroidal_wrapper(N, tries, verbose)
         exceptions_table[s]["toroidal"] = out
-        if verbose > 10:
-            print(N, out, 'toroidality')
+        verbose_print(verbose, 10, [N, out, 'toroidality'])
         return out
         
+        
+### Dave checked to here - 2021/07/15
 
 def fetch_volume(M, s, volumes_table, tries, verbose):
     '''
@@ -493,16 +477,13 @@ def fetch_volume(M, s, volumes_table, tries, verbose):
     if it is there; else, try to compute it, and then store in the table.
     Return the volume either way.
     '''
-    if verbose > 12:
-        print(M, s, "entering fetch_volume")
+    verbose_print(verbose, 12, [M, s, "entering fetch_volume"])
 
     if s in volumes_table:
-        if verbose > 10:
-            print(M, s, 'volume found in table')
+        verbose_print(verbose, 10, [M, s, 'volume found in table'])
         return volumes_table[s]
     else:
-        if verbose > 10:
-            print(M, s, 'trying to compute volume')
+        verbose_print(verbose, 10, [M, s, 'trying to compute volume'])
                 
         assert M.solution_type() == 'all tetrahedra positively oriented'
 
@@ -512,8 +493,7 @@ def fetch_volume(M, s, volumes_table, tries, verbose):
         # will need to wrap this in a try/except. 
         is_hyp, vol = dunfield.is_hyperbolic_with_volume(N, tries = tries, verbose = verbose)
         if not is_hyp:
-            if verbose > -1:
-                print(N, 'positive triangulation fail - putting untrusted volume in the table')
+            verbose_print(verbose, -1, [N, 'positive triangulation fail - putting untrusted volume in the table'])
             R = RealIntervalField(10) # downgrade the precision!
             volumes_table[s] = R(N.volume())
         else: 
@@ -521,16 +501,14 @@ def fetch_volume(M, s, volumes_table, tries, verbose):
 
     return volumes_table[s]
         
-        # if verbose > 10:
-        #     print(N, 'computing verified volume')
+        # verbose_print(verbose, 10, [N, 'computing verified volume'])
         # for i in range(tries):
         #     # for next time - we should be willing to take covers someplace here.  
         #     try:    
         #         volumes_table[s] = P.volume(verified = True, bits_prec=prec)
         #         return volumes_table[s]
         #     except RuntimeError: # hackedy-hack
-        #         if verbose > 5:
-        #             print(N, 'Volume computation failed at precision', prec)
+        #         verbose_print(verbose, 5, [N, 'Volume computation failed at precision', prec])
         #         prec = prec*2
         # # Now, all attempts to find volume have failed
         # print(N, 'putting untrusted volume in the table')
@@ -544,12 +522,12 @@ def is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verb
     try to determine if M(s) is hyperbolic or exceptional.  Returns
     True or False respectively, and returns None if we failed.
     '''
-    if verbose > 12: print(M, s, 'entering is_hyperbolic_filling')
+    verbose_print(verbose, 12, [M, s, 'entering is_hyperbolic_filling'])
     p, q = s
     # We don't recompute cusp_invariants because it is slow
     # m, l, _ = cusp_invariants(C)
     if abs(p*mer_hol + q*long_hol) > 6: # six-theorem
-        if verbose > 12: print(M, s, 'has length', abs(p*mer_hol + q*long_hol), 'hence the filling is hyperbolic by 6-theorem')
+        verbose_print(verbose, 10, [M, s, 'has length', abs(p*mer_hol + q*long_hol), 'hence the filling is hyperbolic by 6-theorem'])
         return True            
 
     N = M.copy()
@@ -591,19 +569,16 @@ def is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verb
         return False
 
     # We have failed.  Very sad.
-    if verbose > -1:
-        print(name, "think about adding this to the rules above!")
+    verbose_print(verbose, -1, [name, "Is_hyperbolic_filling failed. Think about how to handle it!"])
     return None
 
 
 # geometry -
 
 def systole(M, verbose = 2):
-    if verbose > 12:
-        print(M, "entering systole")
+    verbose_print(verbose, 12, [M, "entering systole"])
     spec = M.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
-    if verbose > 12:
-        print(M, "computed length spectrum")
+    verbose_print(verbose, 12, [M, "computed length spectrum"])
     if spec == []:
         return 0.15 # any systole larger than this gets ignored. 
     else:
@@ -618,12 +593,12 @@ def is_distinguished_by_hyp_invars(L, s, t, tries, verbose):
     fillings are hyperbolic), try to prove that L(s) is not
     orientation-preservingly homeomorphic to L(t).
     '''
-    if verbose > 12: print(L, s, t, 'entering is_distinguished_by_hyp_invars')
+    verbose_print(verbose, 12, [L, s, t, 'entering is_distinguished_by_hyp_invars'])
     M = L.copy()
     M = dunfield.find_positive_triangulation(M, tries) # We could ask for more - a positive triangulation with good shapes!
 
     if M == None:
-        if verbose > 6: print(L, 'positive triangulation fail')
+        verbose_print(verbose, 6, [L, 'positive triangulation fail'])
         return None
     
     M.chern_simons() # must initialise - see docs
@@ -635,7 +610,7 @@ def is_distinguished_by_hyp_invars(L, s, t, tries, verbose):
     N = dunfield.find_positive_triangulation(N, tries)
 
     if M == None or N == None:
-        if verbose > 6: print(L, s, t, 'positive triangulation fail')
+        verbose_print(verbose, 6, [L, s, t, 'positive triangulation fail'])
         return None
 
     prec = 40 # note the magic number 40.  Fix.
@@ -643,16 +618,14 @@ def is_distinguished_by_hyp_invars(L, s, t, tries, verbose):
         try:
             # Chern-Simons is not trustworthy...
             if abs(M.chern_simons() - N.chern_simons()) > 1.0/1000:
-                if verbose > 6:
-                    print(L, s, t, 'chern simons distinguishes')
+                verbose_print(verbose, 6, [L, s, t, 'chern simons distinguishes'])
                 return True
 
             prec = prec * 2
 	    # Volume is more trustworthy but of course slower
             if abs(M.volume(verified = True, bits_prec=prec) - N.volume(verified = True, bits_prec=prec)) > 4* (1/2)**prec:
                 # Hmm.  If we've just computed to high precision, we should update the table?
-                if verbose > 6:
-                    print(L, s, t, 'volume distinguishes at precision', prec)
+                verbose_print(verbose, 6, [L, s, t, 'volume distinguishes at precision', prec])
                 return True
 
             # "full rigor" isn't. 
@@ -664,20 +637,18 @@ def is_distinguished_by_hyp_invars(L, s, t, tries, verbose):
                 m = M_spec[0].length.real()
                 n = M_spec[0].length.real()
                 if abs(m - n) > 0.1: 
-                    if verbose > 0:
-                        print(L, s, t, "bottom of length spectrum distinguishes")
+                    verbose_print(verbose, 0, [L, s, t, "bottom of length spectrum distinguishes"])
                     return True
 
             M_multi = [a.multiplicity for a in M.length_spectrum(2, full_rigor=True)]
             N_multi = [a.multiplicity for a in N.length_spectrum(2, full_rigor=True)]
 
             if M_multi != N_multi:
-                if verbose > 0:
-                    print(L, s, t, "bottom of multiplicity spectrum distinguishes")
+                verbose_print(verbose, 0, [L, s, t, "bottom of multiplicity spectrum distinguishes"])
                 return True
             
         except Exception as e:
-            if verbose > 6: print(L, s, t, e)
+            verbose_print(verbose, 6, [L, s, t, e])
             M.randomize()
             N.randomize()
     
@@ -694,7 +665,7 @@ def is_distinguished_non_hyp(L, s, t, tries, verbose):
     3) Toroidality (via Regina)
     4) Number of covers of small degree
     '''
-    if verbose > 12: print(L, s, t, 'entering is_distinguished_non_hyp')
+    verbose_print(verbose, 12, [L, s, t, 'entering is_distinguished_non_hyp'])
     M = L.copy()
     N = L.copy()
     
@@ -714,7 +685,7 @@ def check_hyperbolic_slope_pair(M, s, t, tries, verbose):
     (possibly) return the reason why they might be.
     '''
 
-    if verbose > 24: print(M, s, 'entering check_hyperbolic_slope_pair')
+    verbose_print(verbose, 12, [M, s, 'entering check_hyperbolic_slope_pair'])
     name = M.name()
 
     for i in range(tries):
@@ -731,8 +702,7 @@ def check_cosmetic(M, tries, verbose):
     and t are possibly a cosmetic pair.
     '''
 
-    if verbose > 12:
-        print("entering check_cosmetic")
+    verbose_print(verbose, 12, [M, "entering check_cosmetic"])
     
     # Let's be liberal in what we accept
     if type(M) is snappy.Manifold:
@@ -751,10 +721,10 @@ def check_cosmetic(M, tries, verbose):
     h = M.homology()
     if h.betti_number() == 1 and h.rank() == 1:
         # M is the complement of a knot in an integer homology sphere
-        if A_invt(M, verbose) != 0:
+        if Casson_invt(M, verbose) != 0:
             # The second derivative of the Alexander polynomial at 1 is nonzero,
             # so M has no cosmetic surgeries by Boyer-Lines
-            if verbose > 2: print(M, 'has no cosmetic surgeries by Boyer-Lines')
+            verbose_print(verbose, 2, [M, 'has no cosmetic surgeries by Boyer-Lines'])
             return []
 
     # Before we try to think _too_ deeply, we check if the geometric
@@ -766,19 +736,18 @@ def check_cosmetic(M, tries, verbose):
         if is_torus_link_filling(M, verbose):
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
-            if verbose > 6: print(M, 'is a torus knot; no cosmetic surgeries by Ni-Wu')
+            verbose_print(verbose, 6, [M, 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             return []
         out = fundamental.is_toroidal_wrapper(M, tries, verbose)
         if out[0]: 
             # M is toroidal, so use the torus decomposition as the 'reason'
-            if verbose > 6: print(M, 'is toroidal')
+            verbose_print(verbose, 6, [M, 'is toroidal'])
             return [(name, None, None, 'toroidal mfd: ' + str(out[1]))]
         # 'How did I get here?' -- Talking Heads.
         if is_exceptional_due_to_volume(M, verbose):
-            if verbose > -1: print(M, 'non-rigorous volume is too small...')
+            verbose_print(verbose, -1, [M, 'non-rigorous volume is too small...'])
             return [(name, None, None, 'small volume')]
-        if verbose > 2:
-            print(M, 'bad solution type for unclear reasons...')
+        verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons...'])
         return [(name, None, None, 'bad solution type - strange!')]
                 
     # Ok, at this point we are probably hyperbolic.
@@ -803,13 +772,13 @@ def check_cosmetic(M, tries, verbose):
                 print(M, 'systole failed on attempt', i)
         
     if sys == None:
-        if verbose > 6: print(name, None, None, 'systole fail')
+        verbose_print(verbose, 6, [name, None, None, 'systole fail'])
         return [(name, None, None, 'systole fail')]
 
-    if verbose > 2: print(name, 'systole is at least', sys)
+    verbose_print(verbose, 2, [name, 'systole is at least', sys])
     # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200))
     norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
-    if verbose > 4: print(name, 'norm_len_cutoff', norm_len_cutoff)
+    verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
     
     # Step one - fix the framing and gather the invariants that can
     # be found rigorously.
@@ -823,8 +792,8 @@ def check_cosmetic(M, tries, verbose):
     l_hom = geom_tests.preferred_rep(M.homological_longitude())
     m_hom = geom_tests.shortest_complement(l_hom, mer_hol, long_hol)
     
-    if verbose > 4: print(name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol)
-    if verbose > 4: print(name, 'cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom)
+    verbose_print(verbose, 4, [name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol])
+    verbose_print(verbose, 6, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
     
     # Step two - gather the invariants of M that cannot currently be
     # found rigorously.
@@ -833,11 +802,11 @@ def check_cosmetic(M, tries, verbose):
     # len_cutoff, or we need to trap it in an interval.  Anyway. 
     
     len_cutoff = norm_len_cutoff * norm_fac
-    if verbose > 2: print(name, 'len_cutoff', len_cutoff)
+    verbose_print(verbose, 4, [name, 'len_cutoff', len_cutoff])
     a_max = int(ceil(len_cutoff/abs(mer_hol)).endpoints()[0])
     b_max = int(ceil(len_cutoff/abs(long_hol)).endpoints()[0])
-    if verbose > 4: print(name, 'maximal mer coeff', a_max, 'merid length', abs(mer_hol).endpoints()[0])
-    if verbose > 4: print(name, 'maximal long coeff', b_max, 'long length', abs(long_hol).endpoints()[0])
+    verbose_print(verbose, 6, [name, 'maximal mer coeff', a_max, 'merid length', abs(mer_hol).endpoints()[0]])
+    verbose_print(verbose, 6, [name, 'maximal long coeff', b_max, 'long length', abs(long_hol).endpoints()[0]])
 
     # Step three - get the short slopes
     
@@ -847,8 +816,8 @@ def check_cosmetic(M, tries, verbose):
             if gcd(a, b) == 1 and abs(a*mer_hol + b*long_hol) <= len_cutoff:    
                 short_slopes.append(geom_tests.preferred_rep((a, b)))
                 
-    if verbose > 2: print(name, len(short_slopes), 'short slopes found')
-    if verbose > 3: print(short_slopes)
+    verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
+    verbose_print(verbose, 6, short_slopes)
 
     slopes_by_homology = {}
     for s in short_slopes:
@@ -882,9 +851,9 @@ def check_cosmetic(M, tries, verbose):
             if hyp_type == None: 
                 add_to_dict_of_sets(slopes_bad, hom_hash, s)
 
-    if verbose > 3: print(name, 'hyp slopes', slopes_hyp)
-    if verbose > 3: print(name, 'non-hyp slopes', slopes_non_hyp)
-    if verbose > 3: print(name, 'bad slopes', slopes_bad)
+    verbose_print(verbose, 5, [name, 'hyp slopes', slopes_hyp])
+    verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
+    verbose_print(verbose, 5, [name, 'bad slopes', slopes_bad])
 
     # Step five - Compute the max of the volumes in
     # slopes_hyp[hom_hash] and use this to compute the larger set of
@@ -898,7 +867,7 @@ def check_cosmetic(M, tries, verbose):
             if vol > max_vol: max_vol = vol
         max_volumes[hom_hash] = max_vol
 
-    if verbose > 3: print(name, 'max volumes by homology', max_volumes)
+    verbose_print(verbose, 5, [name, 'max volumes by homology', max_volumes])
 
     # len_m_hom = abs(m_hom[0]*mer_hol + m_hom[1]*long_hol)
     len_l_hom = abs(l_hom[0]*mer_hol + l_hom[1]*long_hol)
@@ -1094,7 +1063,7 @@ def check_cosmetic(M, tries, verbose):
 
     return bad_uns
     
-def check_mfds(manifolds, tries, verbose, report = 10):
+def check_mfds(manifolds, tries=10, verbose=4, report=20):
     if verbose > 12:
         print("entering check_mfds")
     amphichiral_uns = []
@@ -1118,7 +1087,7 @@ def check_mfds(manifolds, tries, verbose, report = 10):
                     for line in uns:
                         print("not amph", line    )
                 bad_uns.extend(uns)
-        if n > 0 and n % report == 0:
-            print(n)
+        if n % report == 0: 
+            verbose_print(verbose, 0, ['report', n, amphichiral_uns, bad_uns])
     return amphichiral_uns, bad_uns
 

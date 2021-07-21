@@ -614,7 +614,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
         if geom_tests.is_torus_link_filling(M, verbose):
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
-            if verbose > 3: print(M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu')
+            verbose_print(verbose, 3, [M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             # Note: torus knots should get caught by the Casson_invt test above, so we should
             # not end up in this branch.
             return []
@@ -690,7 +690,8 @@ def collect_data_knots(knots, tries = 3, verbose = 3, report = 20):
     
     bad_uns = []
     for n, knot in enumerate(knots): 
-        if verbose > 0 and n % report == 0: print('report', n, bad_uns)
+        if n % report == 0:
+            verbose_print(verbose, 0, ['report', n, bad_uns])
         knot_output = collect_data_knot_cosmetic(knot, tries, verbose)
         if knot_output == []:
             # Nothing at all interesting about this example
@@ -816,7 +817,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
         if Casson:
             if C != 0:
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Boyer-Lines')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Boyer-Lines'])
                 Casson_ruled_out = Casson_ruled_out + 1
                 continue
 
@@ -834,19 +835,18 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # (namely, the Turaev genus of the diagram).
         if Hanselman_quick:
             g = genus_bound
-            if verbose > 6:
-                print(name, 'quick Hanselman test', th, 2*g*(g-2))
+            verbose_print(verbose, 6, [name, 'quick Hanselman test', th, 2*g*(g-2)])
             if th < 2*g*(g-2):
                 # The above inequality is never true when g=0,1,2, because th >= 0.
                 # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
                 # criterion in Hanselman's Theorem 2.
-                if verbose > 3: print(name, 'has no cosmetic surgeries by quick Hanselman test')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by quick Hanselman test'])
                 Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
                 continue
             # The following sub-test perhaps deserves its own 'quick Wang' flag
             if th == 0 and g == 1: 
                 # These must be alternating knots of genus exactly 1
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Wang for alternating knots')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang for alternating knots'])
                 Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
                 continue
 
@@ -858,7 +858,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         if Jones_deriv:
             J = jones_data[0]  # Third derivative at 1
             if J != None and J != 0:
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Ichihara-Wu')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Ichihara-Wu'])
                 Jones_ruled_out = Jones_ruled_out + 1
                 continue
         
@@ -866,10 +866,9 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # with previously computed upper bound on HFK thickness.
         if Jones_fifth:
             D = jones_data[1]  # V_K(zeta5)
-            if verbose > 6:
-                print(name, 'th(K) <=', th, ', V_K(zeta5) =', D)
+            verbose_print(verbose, 6, [name, 'th(K) <=', th, ', V_K(zeta5) =', D])
             if (th != None and th < 16) and (D != None and D != 1):
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Detcherry')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Detcherry'])
                 Detcherry_ruled_out = Detcherry_ruled_out + 1
                 continue
 
@@ -880,26 +879,25 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # Ni-Wu test, tau invariant
         if Tau_test:
             if tau != None and tau != 0:
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Ni-Wu')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Ni-Wu'])
                 Tau_ruled_out = Tau_ruled_out + 1
                 continue
             
         # Wang test, genus one knots
         if Wang:
             if g == 1:
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Wang')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang'])
                 Wang_ruled_out = Wang_ruled_out + 1
                 continue
 
         # Strong Hanselman test: use the real genus and thickness
         if Hanselman_HFK and th != None and g != None:
-            if verbose > 6:
-                print(name, 'Full Hanselman test', th, 2*g*(g-2))
+            verbose_print(verbose, 6, [name, 'Full Hanselman test', th, 2*g*(g-2)])
             if th < 2*g*(g-2):
                 # The above inequality is never true when g=0,1,2, because th >= 0.
                 # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
                 # criterion in Hanselman's Theorem 2.
-                if verbose > 3: print(name, 'has no cosmetic surgeries by Hanselman genus-thickness test')
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Hanselman genus-thickness test'])
                 Hansel_full_ruled_out = Hansel_full_ruled_out + 1
                 continue
 
@@ -919,6 +917,7 @@ def check_knots(knots, slope_method = 'All', use_NiWu = True, use_HFK = True, tr
     for n, knot in enumerate(knots): 
         out = check_knot_cosmetic(knot, slope_method, use_NiWu, use_HFK, tries, verbose)
         bad_uns.extend(out)
-        if verbose > 0 and n % report == 0: print('report', n, bad_uns)
+        if n % report == 0: 
+            verbose_print(verbose, 0, ['report', n, bad_uns])
     return bad_uns
 

@@ -111,18 +111,18 @@ def is_hyperbolic(manifold, tries = 10, verbose = 2):
     if verbose > 12:
         print("entering is_hyperbolic")
 
-    if verify_hyperbolic_basic(manifold, tries = tries):
+    if verify_hyperbolic_basic(manifold, tries = tries, verbose=verbose):
         if verbose > 12:
             print(manifold, "verify_hyperbolic_basic worked.")
         return True
     else:
-        for d in range(1, min(tries, 8)):
+        for d in range(2, min(tries, 8)):
             if verbose > 12:
                 print("trying cover of degree", d)
             for C in manifold.covers(d):
-                if verify_hyperbolic_basic(C, tries = tries):
+                if verify_hyperbolic_basic(C, tries = tries, verbose=verbose):
                     if verbose > 12:
-                        print(manifold, "covers plus verify_hyperbolic_basic worked.")
+                        print(manifold, C, "covers plus verify_hyperbolic_basic worked.")
                         print("covering degree is", d)
                     return True
     return False
@@ -139,7 +139,7 @@ def is_hyperbolic_with_volume(manifold, tries = 10, verbose = 2):
             print(manifold, "verify_hyperbolic_basic_with_volume worked.")
         return (is_hyp, vol)
     else:
-        for d in range(1, min(tries, 8)):
+        for d in range(2, min(tries, 8)):
             for C in manifold.covers(d):
                 if verbose > 12:
                     print("trying cover of degree", d)
