@@ -487,19 +487,6 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
 
 # geometry -
 
-def systole(M):
-    '''
-    Given a snappy Manifold M,
-    Tries to compute the systole of M, non-rigorously (for now).
-    We only care about systoles that are shorter than 0.15.
-    '''
-    
-    N = M.high_precision()
-    spec = N.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
-    if spec == []:
-        return 0.15 # any systole larger than this gets ignored. 
-    else:
-        return spec[0].length.real()
 
 
 def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
@@ -520,7 +507,7 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
 
     for i in range(2*tries):
         try:
-            sys = systole(M)
+            sys = geom_tests.systole(M, verbose=verbose)
             # This is too slow.  Can we gain some time by using low precision for most manifolds?
             break
         except:
