@@ -203,8 +203,7 @@ def HK_vol_bound(L):
     return RIF(3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
-# use bisection to invert.
-# Is this really fast enough?  I guess so...
+# use bisection to invert. This appears to be fast enough.
 
 def HK_vol_bound_inv(diff_vol, digits = 2):
     """
@@ -516,6 +515,7 @@ def fetch_volume(M, s, volumes_table, tries, verbose):
         # volumes_table[s] = R(N.volume())
         # return volumes_table[s]
 
+
 def is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verbose):
     '''
     Given a one-cusped manifold M (assumed hyperbolic) and a slope s,
@@ -573,86 +573,9 @@ def is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verb
     return None
 
 
-# geometry -
-
-def systole(M, verbose = 2):
-    verbose_print(verbose, 12, [M, "entering systole"])
-    spec = M.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
-    verbose_print(verbose, 12, [M, "computed length spectrum"])
-    if spec == []:
-        return 0.15 # any systole larger than this gets ignored. 
-    else:
-        return spec[0].length.real()
-
     
 # dealing with a pair of slopes
 
-def is_distinguished_by_hyp_invars(L, s, t, tries, verbose):
-    '''
-    Given a manifold L and two slopes (where we think that both
-    fillings are hyperbolic), try to prove that L(s) is not
-    orientation-preservingly homeomorphic to L(t).
-    '''
-    verbose_print(verbose, 12, [L, s, t, 'entering is_distinguished_by_hyp_invars'])
-    M = L.copy()
-    M = dunfield.find_positive_triangulation(M, tries) # We could ask for more - a positive triangulation with good shapes!
-
-    if M == None:
-        verbose_print(verbose, 6, [L, 'positive triangulation fail'])
-        return None
-    
-    M.chern_simons() # must initialise - see docs
-    N = M.copy()
-
-    M.dehn_fill(s)
-    N.dehn_fill(t)
-    M = dunfield.find_positive_triangulation(M, tries) 
-    N = dunfield.find_positive_triangulation(N, tries)
-
-    if M == None or N == None:
-        verbose_print(verbose, 6, [L, s, t, 'positive triangulation fail'])
-        return None
-
-    prec = 40 # note the magic number 40.  Fix.
-    for i in range(tries):
-        try:
-            # Chern-Simons is not trustworthy...
-            if abs(M.chern_simons() - N.chern_simons()) > 1.0/1000:
-                verbose_print(verbose, 6, [L, s, t, 'chern simons distinguishes'])
-                return True
-
-            prec = prec * 2
-	    # Volume is more trustworthy but of course slower
-            if abs(M.volume(verified = True, bits_prec=prec) - N.volume(verified = True, bits_prec=prec)) > 4* (1/2)**prec:
-                # Hmm.  If we've just computed to high precision, we should update the table?
-                verbose_print(verbose, 6, [L, s, t, 'volume distinguishes at precision', prec])
-                return True
-
-            # "full rigor" isn't. 
-            M_spec = M.length_spectrum(full_rigor=True)
-            N_spec = N.length_spectrum(full_rigor=True)
-
-            if len(M_spec) > 0 and len(N_spec) > 0:
-                # let's be careful to avoid handedness issues
-                m = M_spec[0].length.real()
-                n = M_spec[0].length.real()
-                if abs(m - n) > 0.1: 
-                    verbose_print(verbose, 0, [L, s, t, "bottom of length spectrum distinguishes"])
-                    return True
-
-            M_multi = [a.multiplicity for a in M.length_spectrum(2, full_rigor=True)]
-            N_multi = [a.multiplicity for a in N.length_spectrum(2, full_rigor=True)]
-
-            if M_multi != N_multi:
-                verbose_print(verbose, 0, [L, s, t, "bottom of multiplicity spectrum distinguishes"])
-                return True
-            
-        except Exception as e:
-            verbose_print(verbose, 6, [L, s, t, e])
-            M.randomize()
-            N.randomize()
-    
-    return None        
 
 
 def is_distinguished_non_hyp(L, s, t, tries, verbose):
@@ -676,23 +599,6 @@ def is_distinguished_non_hyp(L, s, t, tries, verbose):
     
     return None        
 
-
-def check_hyperbolic_slope_pair(M, s, t, tries, verbose):
-    '''               
-    Given a one-cusped manifold M and a pair of slopes s and t, which
-    are presumed to be hyperbolic, decides if they are possibly a
-    cosmetic pair.  If they are not, returns None -- if they are
-    (possibly) return the reason why they might be.
-    '''
-
-    verbose_print(verbose, 12, [M, s, 'entering check_hyperbolic_slope_pair'])
-    name = M.name()
-
-    for i in range(tries):
-        M = snappy.Manifold(name)
-        if is_distinguished_by_hyp_invars(M, s, t, i+1, verbose):
-            return None
-    return (name, s, t, 'Not distinguished by hyperbolic invariants')
 
 
 def check_cosmetic(M, tries, verbose):
@@ -764,7 +670,7 @@ def check_cosmetic(M, tries, verbose):
                 M = M.high_precision()
             for j in range(i):
                 M.randomize()
-            sys = systole(M, verbose = verbose)
+            sys = geom_tests.systole(M, verbose = verbose)
             break
         except:
             sys = None
@@ -1049,7 +955,7 @@ def check_cosmetic(M, tries, verbose):
                 if s_vol > t_vol or t_vol > s_vol:
                     if verbose > 6: print(M, s, t, 'verified volume distinguishes')
                     continue
-                if is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
+                if geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
                     continue
                 reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
                 if verbose > 2: print(reason)
