@@ -16,6 +16,8 @@ import regina
 import dunfield
 import fundamental
 
+from verbose import verbose_print
+
 # Math 
 
 from sage.functions.log import exp
@@ -34,7 +36,7 @@ def is_reducible_wrapper(M, tries, verbose):
     Returns a Boolean and the list of summands, if true.
     '''
     # Returns a Boolean and the list of pieces, if true                         
-    if verbose > 12: print(M, 'entering is_reducible_wrapper')
+    verbose_print(verbose, 12, [M, 'entering is_reducible_wrapper'])
     isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
     if len(isosigs) == 0:
         return (None, None)
@@ -42,13 +44,13 @@ def is_reducible_wrapper(M, tries, verbose):
     irred = T.isIrreducible()
     if irred:
         out = (False, None)
-        if verbose > 12: print(M, out, 'from is_reducible_wrapper')
+        verbose_print(verbose, 12, [M, out, 'from is_reducible_wrapper'])
         return out
     else:
         name = dunfield.regina_name(M)
         out = (True, dunfield.regina_name(M))
         assert "#" in name
-        if verbose > 12: print(M, out, 'from is_reducible_wrapper')
+        verbose_print(verbose, 12, [M, out, 'from is_reducible_wrapper'])
         return out
     
 
@@ -59,14 +61,22 @@ def is_toroidal_wrapper(M, tries, verbose):
     Returns a Boolean and the list of JSJ pieces, if true.
     '''
     
-    if verbose > 12:
-        print(M, 'entering is_toroidal_wrapper')
+    verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
     isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
-    if len(isosigs) == 0:
-        return (None, None) # we do not continue, because the normal surface theory may be too slow.                                                           
-    T = dunfield.to_regina(isosigs[0])
-    out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)                                                                      
-    if verbose > 12: print(M, out, 'from is_toroidal_wrapper')
+    L = len(isosigs)
+    if L == 0:
+        return (None, None) # we do not continue, because the normal surface theory may be too slow.
+    cap = min(L, tries)
+    for i in range(cap):                                     
+        try:
+            T = dunfield.to_regina(isosigs[i])
+            out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)                                                                      
+            if out[0] == True or out[0] == False:
+                break
+        except Exception as e:
+            verbose_print(verbose, 6, [M, isosigs[i], e])
+
+    verbose_print(verbose, 6, [M, out, 'from is_toroidal_wrapper'])
     return out
 
 
@@ -186,8 +196,7 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
     framing on a copy N to do its work, and returns slopes in the original coordinates.
     '''
 
-    if verbose > 12:
-        print(M, 'entering find_short_slopes')
+    verbose_print(verbose, 12, [M, 'entering find_short_slopes'])
 
     name = M.name()
     N = M.copy()
@@ -206,8 +215,8 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
     
     p_max = int(ceil(cutoff/abs(m)).endpoints()[0])
     q_max = int(ceil(cutoff/abs(l)).endpoints()[0])
-    if verbose > 10: print(name, 'maximal m coeff', p_max, 'merid length', abs(m).endpoints()[0])
-    if verbose > 10: print(name, 'maximal l coeff', q_max, 'long length', abs(l).endpoints()[0])
+    verbose_print(verbose, 10, [name, 'maximal m coeff', p_max, 'merid length', abs(m).endpoints()[0]])
+    verbose_print(verbose, 10, [name, 'maximal l coeff', q_max, 'long length', abs(l).endpoints()[0]])
 
     # get the short slopes in the geometric framing
     slopes = []
@@ -216,14 +225,36 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
             if gcd(p, q) == 1 and abs(p*m + q*l) <= cutoff:    
                 slopes.append((p,q))
                 
-    if verbose > 12: print('In geometric framing:', slopes)
+    verbose_print(verbose, 12, ['In geometric framing:', slopes])
 
     # convert the short slopes to the original framing
     slopes_converted = set( preferred_rep((alg_int(s, longitude), alg_int(meridian, s))) for s in slopes )
-    if verbose > 5: print(name, len(slopes_converted), 'slopes shorter than', cutoff)
-    if verbose > 10: print('In original framing:', slopes_converted)
+    verbose_print(verbose, 5, [name, len(slopes_converted), 'slopes shorter than', cutoff])
+    verbose_print(verbose, 10, ['In original framing:', slopes_converted])
     
     return slopes_converted
+
+
+# systole
+
+def systole(M, verbose = 3):
+    '''
+    Given a snappy Manifold M,
+    Tries to compute the systole of M, non-rigorously (for now).
+    We only care about systoles that are shorter than 0.15.
+    '''
+
+    name = M.name()
+    N = M.high_precision()
+    verbose_print(verbose, 12, [name, "entering systole"])
+    spec = N.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
+    verbose_print(verbose, 12, [name, "computed length spectrum"])
+    if spec == []:
+        return 0.15 # any systole larger than this gets ignored. 
+    else:
+        return spec[0].length.real()
+
+
 
 
 # Finding S3 slope
@@ -235,8 +266,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     S^3, if there is one.  We also return several booleans.
     '''
 
-    if verbose > 12:
-        print(M, 'entering get_S3_slope_hyp')
+    verbose_print(verbose, 12, [M, 'entering get_S3_slope_hyp'])
 
     is_knot = False
     geometrically_easy = True
@@ -251,7 +281,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     N.dehn_fill(r)
     exceptional, type_except = fundamental.is_exceptional_due_to_fundamental_group(N, tries, verbose)
     if type_except=='S3':
-        if verbose > 5: print('Lucky guess:', M, r, 'has trivial fundamental group')
+        verbose_print(verbose, 5, ['Lucky guess:', M, r, 'has trivial fundamental group'])
         is_knot = True
         return r, is_knot, geometrically_easy, regina_easy
 
@@ -259,8 +289,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     M = dunfield.find_positive_triangulation(M, tries, verbose)
     
     if M.solution_type() != 'all tetrahedra positively oriented':
-        if verbose > 10:
-            print('Bad triangulation:', M.name(), M.solution_type())
+        verbose_print(verbose, 10, ['Bad triangulation:', M.name(), M.solution_type()])
         geometrically_easy = False
             
     six_theorem_length = 6.01 # All exceptionals shorter than this
@@ -277,7 +306,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     for r in short_slopes_all:
 		# Compute homology via intersection number with longitude
         if abs(alg_int(long,r)) != 1:
-            if verbose > 10: print(M, r, 'ruled out by homology')
+            verbose_print(verbose, 10, [M, r, 'ruled out by homology'])
         else:
             short_slopes.append(r)
             
@@ -289,11 +318,11 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
         
         exceptional, type_except = fundamental.is_exceptional_due_to_fundamental_group(N, tries, verbose)
         if type_except=='S3':
-            if verbose > 5: print(M, r, 'has trivial fundamental group')
+            verbose_print(verbose, 5, [M, r, 'has trivial fundamental group'])
             is_knot = True
             return r, is_knot, geometrically_easy, regina_easy
         if type_except in ['S2 x S1', 'Free group', 'Lens', 'Has lens space summand']:
-            if verbose > 10: print(M, r, 'has nontrivial fundamental group')
+            verbose_print(verbose, 10, [M, r, 'has nontrivial fundamental group'])
             continue
             
         # There are other exceptional types where the group may or may not be trivial.
@@ -302,35 +331,35 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
         if verify_on and not(exceptional):
             structure_found = dunfield.is_hyperbolic(N, 2*tries, verbose) # Nathan randomises for us.
             if structure_found: 
-                if verbose > 10: print(M, r, 'hyperbolic structure found')
+                verbose_print(verbose, 10, [M, r, 'hyperbolic structure found'])
                 continue
 
         # Covers
         # Checking degree 5 and 7 seems to speed things up by 20%?
         if covers_on: 
-            if verbose > 20: print(M, r, 'Trying covers.')
+            verbose_print(verbose, 12, [M, r, 'Trying covers.'])
             cover_found = False
             # Degrees 5, 7, 11 are useful, but 11 is too slow.
             # Degrees 2, 3, 4, 6, 8, 9, and 10 appear to be useless.
             # The manfolds v2947 and t03548 are very unhappy - I think
             # when looking at covers of degree seven??
             for i in (5, 7):
-                if verbose > 20: print('searching in degree', i)
+                verbose_print(verbose, 12, ['searching in degree', i])
                 if N.covers(i, method = 'gap') != []: # much faster
                     cover_found = True
-                    if verbose > 10: print(M, r, 'has a cover of degree', i)
+                    verbose_print(verbose, 10, [M, r, 'has a cover of degree', i])
                     break
             if cover_found: continue
 
         # Easy Regina: try to find the name in a lookup table.
-        if verbose > 12: print('Trying Regina name search on', M, r)
+        verbose_print(verbose, 12, ['Trying Regina name search on', M, r])
         name = dunfield.regina_name(N)
         if name=='S3':
-            if verbose > 10: print(M, r, 'is recognized as S3 triangulation')
+            verbose_print(verbose, 10, [M, r, 'is recognized as S3 triangulation'])
             is_knot = True   
             return r, is_knot, geometrically_easy, regina_easy
         if name != None:
-            if verbose > 10: print(M, r, 'is recognized as', name)
+            verbose_print(verbose, 10, [M, r, 'is recognized as', name])
             continue
         
         short_slopes_hard.append(r)
@@ -341,14 +370,14 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
         N = M.copy()
         N.dehn_fill(r)
         if regina_on:
-            if verbose > 10: print('Using Regina sphere recognition on', M, r)
+            verbose_print(verbose, 10, ['Using Regina sphere recognition on', M, r])
             isosigs = dunfield.closed_isosigs(N, tries = 25, max_tets = 25)
             if len(isosigs) == 0:
                 continue  # Regina will not be of any use to us
             T = dunfield.to_regina(isosigs[0])
             out = T.isThreeSphere()
             if out: 
-                if verbose > 5: print('Regina sphere recognition succeeded on', M, r)
+                verbose_print(verbose, 0, ['Regina sphere recognition succeeded on', M, r])
                 # This has never printed.  As always, the fundamental group
                 # catches all three-spheres.  Why?
                 is_knot = True
@@ -399,7 +428,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     try to determine if M(s) is hyperbolic or exceptional.  Returns
     True or False respectively, and returns None if we failed.
     """
-    if verbose > 12: print(str(M), s, "entering is_hyperbolic_filling")
+    verbose_print(verbose, 12, [M, s, "entering is_hyperbolic_filling"])
     p, q = s
     # m, l, _ = cusp_invariants(M) [or geom_tests.cusp_invariants(M)]
     # Computing cusp_invariants(M) is slow, so we do not do it here.
@@ -426,6 +455,9 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             # if is_toroidal_wrapper(N, verbose)[0]:
             if is_toroidal_wrapper(N, tries, verbose)[0]:
                 return False 
+            if is_reducible_wrapper(N, tries, verbose)[0]:
+                return False 
+    return None
 
 
 # Dealing with a pair of slopes
@@ -437,7 +469,9 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     fillings are hyperbolic), try to prove that M(s) is not
     orientation-preservingly homeomorphic to M(t).
     '''
-    if verbose > 12: print(M.name(), s, t, 'entering is_distinguished_by_hyp_invars')
+    
+    name = M.name()
+    verbose_print(verbose, 12, [name, s, t, 'entering is_distinguished_by_hyp_invars'])
     Ms = M.copy()
     Mt = M.copy()
     
@@ -449,24 +483,69 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     Mt = dunfield.find_positive_triangulation(Mt, tries)
 
     if Ms == None or Mt == None:
-        if verbose > 6: print(M.name(), s, t, 'positive triangulation fail')
+        verbose_print(verbose, 6, [M, s, t, 'positive triangulation fail'])
         return None
     
     prec = 40 # note the magic number 40.  Fix.
     for i in range(tries):
+        prec = prec * 2
+
         try:
-            prec = prec * 2
-            Ms_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-            Mt_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+            # Try ordinary volume first
+            Ms_vol = Ms.volume(verified=True, bits_prec = prec)
+            Mt_vol = Mt.volume(verified=True, bits_prec = prec)
+
+            # Ms_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+            # Mt_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+
             if abs(Ms_vol - Mt_vol) > 4* (1/2)**prec:
-                if verbose > 6: print(M.name(), s, t, 'complex volume distinguishes at precision', prec)
+                verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
                 return True
             else:
-                if verbose > 6: print(M.name(), s, t, 'complex volumes very close at precision', prec)
+                verbose_print(verbose, 6, [M, s, t, 'volumes very close at precision', prec])
         except Exception as e:
-            if verbose > 6: print(M.name(), s, t, e)
-            # Are we sure we want to randomize? We already have a good triangulation...
-            Ms.randomize()
-            Mt.randomize()
+            verbose_print(verbose, 6, [M, s, t, e])
+            
+        try:
+            # Now, try complex volume, ie, Vol + i*CS
+            Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+            Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+
+            if abs(Ms_cpx_vol - Mt_cpx_vol) > 4* (1/2)**prec:
+                verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
+                return True
+            else:
+                verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
+        except Exception as e:
+            verbose_print(verbose, 6, [M, s, t, e])
+        
+            # Let us not randomize, since we already have a good triangulation...
+
+        '''
+        try:
+            # Now, try the bottom of the length spectrum.
+            # "full rigor" isn't. 
+            Ms_spec = Ms.length_spectrum(full_rigor=True)
+            Mt_spec = Mt.length_spectrum(full_rigor=True)
+
+            if len(Ms_spec) > 0 and len(Mt_spec) > 0:
+                # let's be careful to avoid handedness issues
+                ms = Ms_spec[0].length.real()
+                mt = Mt_spec[0].length.real()
+                if abs(ms - mt) > 0.1: 
+                    verbose_print(verbose, 0, [M, s, t, "bottom of length spectrum distinguishes"])
+                    return True
+
+            Ms_multi = [a.multiplicity for a in Ms.length_spectrum(2, full_rigor=True)]
+            Mt_multi = [a.multiplicity for a in Mt.length_spectrum(2, full_rigor=True)]
+
+            if Ms_multi != Mt_multi:
+                verbose_print(verbose, 0, [M, s, t, "bottom of multiplicity spectrum distinguishes"])
+                return True
+
+        except Exception as e:
+            verbose_print(verbose, 6, [M, s, t, e])
+        '''
+
 
     return None
