@@ -66,6 +66,7 @@ def is_toroidal_wrapper(M, tries, verbose):
     L = len(isosigs)
     if L == 0:
         return (None, None) # we do not continue, because the normal surface theory may be too slow.
+    out = None
     for i in range(min(L, tries)):                                     
         try:
             T = dunfield.to_regina(isosigs[i])
