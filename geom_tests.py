@@ -66,8 +66,7 @@ def is_toroidal_wrapper(M, tries, verbose):
     L = len(isosigs)
     if L == 0:
         return (None, None) # we do not continue, because the normal surface theory may be too slow.
-    cap = min(L, tries)
-    for i in range(cap):                                     
+    for i in range(min(L, tries)):                                     
         try:
             T = dunfield.to_regina(isosigs[i])
             out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)                                                                      
@@ -495,9 +494,6 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             Ms_vol = Ms.volume(verified=True, bits_prec = prec)
             Mt_vol = Mt.volume(verified=True, bits_prec = prec)
 
-            # Ms_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-            # Mt_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-
             if abs(Ms_vol - Mt_vol) > 4* (1/2)**prec:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
                 return True
@@ -521,10 +517,9 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         
             # Let us not randomize, since we already have a good triangulation...
 
-        '''
         try:
             # Now, try the bottom of the length spectrum.
-            # "full rigor" isn't. 
+            # Note: "full rigor" isn't. This is not rigorous.
             Ms_spec = Ms.length_spectrum(full_rigor=True)
             Mt_spec = Mt.length_spectrum(full_rigor=True)
 
@@ -545,7 +540,6 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
         except Exception as e:
             verbose_print(verbose, 6, [M, s, t, e])
-        '''
 
 
     return None
