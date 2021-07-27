@@ -222,7 +222,7 @@ def census_lookup(regina_tri):
     hit = hits.first()
     if hit is not None:
         name = hit.name()
-        match = re.search('(.*) : #\d+$', name)
+        match = re.search(r"(.*) : #\d+$", name)
         if match:
             return match.group(1)
         else:
@@ -367,7 +367,7 @@ def is_toroidal(regina_tri):
     """
     T = regina_tri
     assert T.isZeroEfficient()
-    surfaces = regina.NNormalSurfaceList.enumerate(T,
+    surfaces = regina.NormalSurfaces.enumerate(T,
                           regina.NS_QUAD, regina.NS_FUNDAMENTAL)
     for i in range(surfaces.size()):
         S = surfaces.surface(i)
@@ -404,7 +404,7 @@ def decompose_along_tori(regina_tri):
     T = regina_tri
     assert T.isZeroEfficient()
     essential_tori = []
-    surfaces = regina.NNormalSurfaceList.enumerate(T,
+    surfaces = regina.NormalSurfaces.enumerate(T,
                           regina.NS_QUAD, regina.NS_FUNDAMENTAL)
     for i in range(surfaces.size()):
         S = surfaces.surface(i)
