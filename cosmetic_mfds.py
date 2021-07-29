@@ -261,7 +261,7 @@ def order_of_torsion(M):
     return product(torsion_divs)
 
 
-def check_cover_homology_fixed_deg(M, N, deg, verbose=10):
+def check_cover_homology_fixed_deg(M, N, deg, verbose=5):
     """
     Given a pair of snappy manifolds, M and N, and a degree deg,
     build all covers of M and N of degree deg. Compute homology groups of each.
@@ -275,7 +275,7 @@ def check_cover_homology_fixed_deg(M, N, deg, verbose=10):
     verbose_print(verbose, 12, [N, 'degree', deg, N_homologies])
 
     if M_homologies != N_homologies:
-        verbose_print(verbose, 2, [M, N, 'distinguished by cover homology at degree', deg])
+        verbose_print(verbose, 6, [M, N, 'distinguished by cover homology at degree', deg])
         return True
     else:
         return False
@@ -678,10 +678,10 @@ def check_cosmetic(M, tries, verbose):
                 print(M, 'systole failed on attempt', i)
         
     if sys == None:
-        verbose_print(verbose, 6, [name, None, None, 'systole fail'])
+        verbose_print(verbose, 2, [name, None, None, 'systole fail'])
         return [(name, None, None, 'systole fail')]
 
-    verbose_print(verbose, 2, [name, 'systole is at least', sys])
+    verbose_print(verbose, 3, [name, 'systole is at least', sys])
     # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200))
     norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
     verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
@@ -699,7 +699,7 @@ def check_cosmetic(M, tries, verbose):
     m_hom = geom_tests.shortest_complement(l_hom, mer_hol, long_hol)
     
     verbose_print(verbose, 4, [name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol])
-    verbose_print(verbose, 6, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
+    verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
     
     # Step two - gather the invariants of M that cannot currently be
     # found rigorously.
@@ -708,7 +708,7 @@ def check_cosmetic(M, tries, verbose):
     # len_cutoff, or we need to trap it in an interval.  Anyway. 
     
     len_cutoff = norm_len_cutoff * norm_fac
-    verbose_print(verbose, 4, [name, 'len_cutoff', len_cutoff])
+    verbose_print(verbose, 5, [name, 'len_cutoff', len_cutoff])
     a_max = int(ceil(len_cutoff/abs(mer_hol)).endpoints()[0])
     b_max = int(ceil(len_cutoff/abs(long_hol)).endpoints()[0])
     verbose_print(verbose, 6, [name, 'maximal mer coeff', a_max, 'merid length', abs(mer_hol).endpoints()[0]])
@@ -723,7 +723,7 @@ def check_cosmetic(M, tries, verbose):
                 short_slopes.append(geom_tests.preferred_rep((a, b)))
                 
     verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
-    verbose_print(verbose, 6, short_slopes)
+    verbose_print(verbose, 5, short_slopes)
 
     slopes_by_homology = {}
     for s in short_slopes:
@@ -740,7 +740,7 @@ def check_cosmetic(M, tries, verbose):
         hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
         add_to_dict_of_sets(slopes_by_homology, hom_hash, s)
 
-    if verbose > 3: print(name, 'slopes_by_homology', slopes_by_homology)
+    verbose_print(verbose, 5, [name, 'slopes_by_homology', slopes_by_homology])
         
     # Step four - split slopes_by_homology into slopes_hyp, slopes_non_hyp, slopes_bad
 
@@ -757,9 +757,14 @@ def check_cosmetic(M, tries, verbose):
             if hyp_type == None: 
                 add_to_dict_of_sets(slopes_bad, hom_hash, s)
 
+    num_hyp_slopes = sum(len(slopes_hyp[hash]) for hash in slopes_hyp)
+    num_non_hyp_slopes = sum(len(slopes_non_hyp[hash]) for hash in slopes_non_hyp)
+    num_bad_slopes = sum(len(slopes_bad[hash]) for hash in slopes_bad)
+    verbose_print(verbose, 3, [name, num_hyp_slopes, 'hyperbolic', num_non_hyp_slopes, 'exceptional', num_bad_slopes, 'bad'])
     verbose_print(verbose, 5, [name, 'hyp slopes', slopes_hyp])
     verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
-    verbose_print(verbose, 5, [name, 'bad slopes', slopes_bad])
+    if len(slopes_bad) > 0:
+        verbose_print(verbose, 0, [name, 'bad slopes', slopes_bad])
 
     # Step five - Compute the max of the volumes in
     # slopes_hyp[hom_hash] and use this to compute the larger set of
@@ -835,11 +840,14 @@ def check_cosmetic(M, tries, verbose):
                     if verbose > 25: print('added one???')
         # Sanity check: slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
         for t in slopes_hyp[hom_hash]:
-            a, b = t
-            if not t in slopes_low_volume[hom_hash]:
-                print(name, hom_hash, t, 'hyp slope did not make it into slopes_low_volume')
+            assert t in slopes_low_volume[hom_hash]
 
-    if verbose > 3: print(name, '(somewhat-)low volume slopes', slopes_low_volume)
+    num_low_volume = sum(len(slopes_low_volume[hash]) for hash in slopes_low_volume)
+    verbose_print(verbose, 3, [name, num_low_volume, 'low volume slopes found'])
+    verbose_print(verbose, 5, [name, '(somewhat-)low volume slopes', slopes_low_volume])
+
+    # Temporary off-ramp
+    return []
 
     # Step six - check for cosmetic pairs in slopes_non_hyp[hom_hash].
     # Note that slopes_bad automatically gets recorded and reported.
@@ -848,8 +856,7 @@ def check_cosmetic(M, tries, verbose):
     for hom_hash in slopes_bad:
         for s in slopes_bad[hom_hash]:
             reason = (name, hom_hash, s, 'Could not verify hyperbolicity')
-            if verbose > 2:
-                print(reason)
+            verbose_print(verbose, 2, [reason])
             bad_uns.append(reason)
 
     for hom_hash in slopes_non_hyp:
@@ -879,7 +886,7 @@ def check_cosmetic(M, tries, verbose):
                     if are_distinguished_lens_spaces(s_name, t_name, verbose):
                         continue
                     else:
-                        if verbose > 2: print(reason)
+                        verbose_print(verbose, 2, [reason])
                         bad_uns.append(reason)
                         continue
 
@@ -893,7 +900,7 @@ def check_cosmetic(M, tries, verbose):
                     if are_distinguished_sfs_over_s2(s_name, t_name, verbose):
                         continue
                     else:
-                        if verbose > 2: print(reason)
+                        verbose_print(verbose, 2, [reason])
                         bad_uns.append(reason)
                         continue
 
@@ -924,7 +931,7 @@ def check_cosmetic(M, tries, verbose):
 
                 # or here
 
-                if verbose > 2: print(reason)
+                verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 
 
@@ -955,18 +962,18 @@ def check_cosmetic(M, tries, verbose):
                 if s_vol > t_vol or t_vol > s_vol:
                     if verbose > 6: print(M, s, t, 'verified volume distinguishes')
                     continue
-                if geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
+                distinguished, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose)
+                if distinguished and rigorous:
                     continue
-                reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
+                if distinguished and not rigorous:
+                    reason = (name, s, t, 'distinguished by non-rigorous length spectrum')
+                if not distinguished:
+                    reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
                 if verbose > 2: print(reason)
                 bad_uns.append(reason)
 
-    if verbose > 3: print(name, 'non-distinguished pairs', bad_uns)
-    if verbose > 3: print(name, 'non-hyp slopes', slopes_non_hyp)
-    if verbose > 3: print(name, 'bad slopes', slopes_bad)
-
-    # Step seven - deal with (unordered, distinct) pairs from slopes_non_hyp
-
+    verbose_print(verbose, 2, [name, 'non-distinguished pairs', bad_uns])
+    
     return bad_uns
     
 def check_mfds(manifolds, tries=10, verbose=4, report=20):
