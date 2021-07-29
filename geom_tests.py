@@ -67,6 +67,7 @@ def is_toroidal_wrapper(M, tries, verbose):
     if L == 0:
         return (None, None) # we do not continue, because the normal surface theory may be too slow.
     out = None
+    verbose_print(verbose, 25, isosigs)
     for i in range(min(L, tries)):                                     
         try:
             T = dunfield.to_regina(isosigs[i])
@@ -467,7 +468,11 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     '''
     Given a manifold M and two slopes (where we think that both
     fillings are hyperbolic), try to prove that M(s) is not
-    orientation-preservingly homeomorphic to M(t).
+    orientation-preservingly homeomorphic to M(t). 
+    Returns a tuple of booleans (distinguished, rigor)
+    distinguished is True if we can tell the manifolds apart.
+    rigor is True if we did so using rigorous verified invariants.
+
     '''
     
     name = M.name()
@@ -484,9 +489,10 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
     if Ms == None or Mt == None:
         verbose_print(verbose, 6, [M, s, t, 'positive triangulation fail'])
-        return None
+        return (None, None)
     
     prec = 40 # note the magic number 40.  Fix.
+    rigor = True
     for i in range(tries):
         prec = prec * 2
 
@@ -497,7 +503,7 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
             if abs(Ms_vol - Mt_vol) > 4* (1/2)**prec:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
-                return True
+                return (True, rigor)
             else:
                 verbose_print(verbose, 6, [M, s, t, 'volumes very close at precision', prec])
         except Exception as e:
@@ -510,7 +516,7 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
             if abs(Ms_cpx_vol - Mt_cpx_vol) > 4* (1/2)**prec:
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
-                return True
+                return (True, rigor)
             else:
                 verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
         except Exception as e:
@@ -518,6 +524,8 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         
             # Let us not randomize, since we already have a good triangulation...
 
+    rigor = False
+    for i in range(tries):
         try:
             # Now, try the bottom of the length spectrum.
             # Note: "full rigor" isn't. This is not rigorous.
@@ -530,17 +538,17 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
                 mt = Mt_spec[0].length.real()
                 if abs(ms - mt) > 0.1: 
                     verbose_print(verbose, 0, [M, s, t, "bottom of length spectrum distinguishes"])
-                    return True
+                    return (True, rigor)
 
             Ms_multi = [a.multiplicity for a in Ms.length_spectrum(2, full_rigor=True)]
             Mt_multi = [a.multiplicity for a in Mt.length_spectrum(2, full_rigor=True)]
 
             if Ms_multi != Mt_multi:
                 verbose_print(verbose, 0, [M, s, t, "bottom of multiplicity spectrum distinguishes"])
-                return True
+                return (True, rigor)
 
         except Exception as e:
             verbose_print(verbose, 6, [M, s, t, e])
 
 
-    return None
+    return (False, None)
