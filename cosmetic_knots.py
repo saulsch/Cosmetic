@@ -458,8 +458,11 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         for i in range(tries):
             # M = snappy.Manifold(name) - name is broken... 
             M = snappy.Manifold(M.triangulation_isosig())
-            if geom_tests.is_distinguished_by_hyp_invars(M, s, sn, i+1, verbose):
+            distinguished, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
+            if distinguished and rigorous:
                 return None
+            if distinguished and not rigorous:
+                return (name, s, sn, 'seem to have different length spectra')
         return (name, s, sn, 'complex_vol_fail')
     else:
         assert( not s_hyp and not sn_hyp ) 
