@@ -601,7 +601,7 @@ def is_distinguished_non_hyp(L, s, t, tries, verbose):
 
 
 
-def check_cosmetic(M, tries, verbose):
+def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     '''
     Given a one-cusped manifold M we equip it with a shortest framing
     and then return a list of tuples - (name, s, t, 'reason') where s
@@ -624,14 +624,15 @@ def check_cosmetic(M, tries, verbose):
         
     # If H_1(M) = Z, we can apply the Boyer-Lines criterion to rule out cosmetic surgeries
 
-    h = M.homology()
-    if h.betti_number() == 1 and h.rank() == 1:
-        # M is the complement of a knot in an integer homology sphere
-        if Casson_invt(M, verbose) != 0:
-            # The second derivative of the Alexander polynomial at 1 is nonzero,
-            # so M has no cosmetic surgeries by Boyer-Lines
-            verbose_print(verbose, 2, [M, 'has no cosmetic surgeries by Boyer-Lines'])
-            return []
+    if use_BoyerLines:
+        h = M.homology()
+        if h.betti_number() == 1 and h.rank() == 1:
+            # M is the complement of a knot in an integer homology sphere
+            if Casson_invt(M, verbose) != 0:
+                # The second derivative of the Alexander polynomial at 1 is nonzero,
+                # so M has no cosmetic surgeries by Boyer-Lines
+                verbose_print(verbose, 2, [M, 'has no cosmetic surgeries by Boyer-Lines'])
+                return []
 
     # Before we try to think _too_ deeply, we check if the geometric
     # structure is good enough.
@@ -661,6 +662,7 @@ def check_cosmetic(M, tries, verbose):
     # Step zero - Initialize. find the systole. 
 
     volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
+    M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
     exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
         
     for i in range(2*tries): # that looks like a magic number... 
@@ -701,27 +703,10 @@ def check_cosmetic(M, tries, verbose):
     verbose_print(verbose, 4, [name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol])
     verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
     
-    # Step two - gather the invariants of M that cannot currently be
-    # found rigorously.
-    
-    # To be correctly careful we need to either increase the
-    # len_cutoff, or we need to trap it in an interval.  Anyway. 
-    
-    len_cutoff = norm_len_cutoff * norm_fac
-    verbose_print(verbose, 5, [name, 'len_cutoff', len_cutoff])
-    a_max = int(ceil(len_cutoff/abs(mer_hol)).endpoints()[0])
-    b_max = int(ceil(len_cutoff/abs(long_hol)).endpoints()[0])
-    verbose_print(verbose, 6, [name, 'maximal mer coeff', a_max, 'merid length', abs(mer_hol).endpoints()[0]])
-    verbose_print(verbose, 6, [name, 'maximal long coeff', b_max, 'long length', abs(long_hol).endpoints()[0]])
-
-    # Step three - get the short slopes
-    
-    short_slopes = []
-    for a in range(0, a_max + 1): # do not need neg a as (a,b) = (-a,-b) is preserved by framing change
-        for b in range(-b_max, b_max + 1):
-            if gcd(a, b) == 1 and abs(a*mer_hol + b*long_hol) <= len_cutoff:    
-                short_slopes.append(geom_tests.preferred_rep((a, b)))
-                
+    # Step two - get the short slopes. Split them by homology
+           
+    short_slopes = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
+                    
     verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
     verbose_print(verbose, 5, short_slopes)
 
@@ -729,6 +714,7 @@ def check_cosmetic(M, tries, verbose):
     for s in short_slopes:
         p = abs(geom_tests.alg_int(s, l_hom))
         if p == 0:
+            verbose_print(verbose, 4, [name, 'removing homological longitude'])
             continue # the homological longitude is unique, so cannot be cosmetic
         N = M.copy()
         N.dehn_fill(s)
@@ -742,6 +728,8 @@ def check_cosmetic(M, tries, verbose):
 
     verbose_print(verbose, 5, [name, 'slopes_by_homology', slopes_by_homology])
         
+    # Step three - there is no step three.
+    
     # Step four - split slopes_by_homology into slopes_hyp, slopes_non_hyp, slopes_bad
 
     slopes_hyp = {}
@@ -772,11 +760,7 @@ def check_cosmetic(M, tries, verbose):
 
     max_volumes = {}
     for hom_hash in slopes_hyp:
-        max_vol = 0
-        for s in slopes_hyp[hom_hash]:
-            vol = fetch_volume(M, s, volumes_table, tries, verbose)            
-            if vol > max_vol: max_vol = vol
-        max_volumes[hom_hash] = max_vol
+        max_volumes[hom_hash] = max(fetch_volume(M, s, volumes_table, tries, verbose) for s in slopes_hyp[hom_hash])
 
     verbose_print(verbose, 5, [name, 'max volumes by homology', max_volumes])
 
@@ -786,14 +770,12 @@ def check_cosmetic(M, tries, verbose):
     for hom_hash in slopes_hyp:
         if verbose > 25:
             print('slopes hyp', slopes_hyp[hom_hash])
-        M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
-        if verbose > 25:
-            print('M_vol', M_vol)
+        # M_vol is the volume of the unfilled manifold M
         l_max = HK_vol_bound_inv(M_vol - max_volumes[hom_hash]) * norm_fac # length on cusp
         if verbose > 25:
             print('hom_hash, max_vol[hom_hash]', hom_hash, max_volumes[hom_hash])
-            print('l_max', l_max, HK_vol_bound_inv(M_vol - max_volumes[hom_hash]))
-            print('div ends', (l_max/norm_fac).endpoints(),)
+            print('l_max', l_max, 'l_max_normalized', HK_vol_bound_inv(M_vol - max_volumes[hom_hash]))
+            print('normalized length endpoints', (l_max/norm_fac).endpoints(),)
             print('norm_fac', norm_fac.endpoints())
             print('len_l_hom', len_l_hom)
 
@@ -837,7 +819,7 @@ def check_cosmetic(M, tries, verbose):
                 if verbose > 25: print('max_vol[hom_hash]', max_volumes[hom_hash])
                 if not t_vol > max_volumes[hom_hash]:   # We need the 'not' because we are comparing intervals
                     add_to_dict_of_sets(slopes_low_volume, hom_hash, t)
-                    if verbose > 25: print('added one???')
+                    if verbose > 25: print('added to slopes_low_volume')
         # Sanity check: slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
         for t in slopes_hyp[hom_hash]:
             assert t in slopes_low_volume[hom_hash]
@@ -847,7 +829,7 @@ def check_cosmetic(M, tries, verbose):
     verbose_print(verbose, 5, [name, '(somewhat-)low volume slopes', slopes_low_volume])
 
     # Temporary off-ramp
-    return []
+    # return []
 
     # Step six - check for cosmetic pairs in slopes_non_hyp[hom_hash].
     # Note that slopes_bad automatically gets recorded and reported.
@@ -972,11 +954,11 @@ def check_cosmetic(M, tries, verbose):
                 if verbose > 2: print(reason)
                 bad_uns.append(reason)
 
-    verbose_print(verbose, 2, [name, 'non-distinguished pairs', bad_uns])
+    verbose_print(verbose, 1, [name, 'non-distinguished pairs', bad_uns])
     
     return bad_uns
     
-def check_mfds(manifolds, tries=10, verbose=4, report=20):
+def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
     if verbose > 12:
         print("entering check_mfds")
     amphichiral_uns = []
@@ -987,7 +969,7 @@ def check_mfds(manifolds, tries=10, verbose=4, report=20):
         if type(M) == str:
             name = M
             M = snappy.Manifold(name)
-        uns = check_cosmetic(M, tries, verbose)
+        uns = check_cosmetic(M, use_BoyerLines, tries=tries, verbose=verbose)
         if is_amphichiral(M):
             if len(uns) > 0:
                 if verbose > -1: 
