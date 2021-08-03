@@ -8,11 +8,11 @@ import re
 import networkx as nx
 
 
-# Code from Dunfield's paper on exceptional slopes - some hacking has
-# taken place.  Taken from:
+# Code from Dunfield's paper on exceptional slopes from:
 
 # https://dataverse.harvard.edu/file.xhtml?persistentId=doi:10.7910/DVN/6WNVG0/0X6FYV&version=1.0
 
+# Some hacking has taken place.
 
 ################
 
