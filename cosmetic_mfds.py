@@ -645,7 +645,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
             verbose_print(verbose, 6, [M, 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             return []
-        out = geom_tests.is_toroidal_wrapper_light(M, tries, verbose)
+        out = geom_tests.is_toroidal_wrapper(M, tries, verbose)
         if out[0]: 
             # M is toroidal, so use the torus decomposition as the 'reason'
             verbose_print(verbose, 6, [M, 'is toroidal'])

@@ -432,6 +432,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         verbose_print(verbose, 6, [name, sn, 'could not determine type'])
     if s_hyp == None or sn_hyp == None:
         verbose_print(verbose, 6, [name, s, sn, 'one of them is not recognized as hyp or except'])
+        return (name, s, sn, 'one of them is not recognized as hyp or except')
 
     if (s_hyp and not sn_hyp) or (not s_hyp and sn_hyp):
         verbose_print(verbose, 6, [name, s, sn, 'only one is hyperbolic'])
@@ -463,7 +464,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
             elif not out[0] or not outn[0]:
-                # One of the fillings is atoroidal
+                # At least one of the fillings is atoroidal
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
                 return None
             else:
@@ -591,7 +592,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
             # Note: torus knots should get caught by the Casson_invt test above, so we should
             # not end up in this branch.
             return []
-        out = geom_tests.is_toroidal_wrapper_light(M, verbose)
+        out = geom_tests.is_toroidal_wrapper(M, verbose)
         if out[0]:
             # M is a satellite so use the torus decomposition as the 'reason'
             verbose_print(verbose, 3, [name, 'is toroidal'])

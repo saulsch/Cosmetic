@@ -54,21 +54,19 @@ def is_reducible_wrapper(M, tries, verbose):
         return out
     
 
-def is_toroidal_wrapper_light(M, verbose):
+def is_toroidal_wrapper(M, verbose):
     '''
-    Given a snappy manifold M, which could be cusped or not,
+    Given a snappy manifold M, which could be cusped or closed,
     uses Regina to decide whether M is toroidal.
-    Returns a Boolean and a list of JSJ pieces (if true).
+    Returns a Boolean and a list of two pieces (not necessarily minimal).
     '''
     
-    verbose_print(verbose, 12, [M.name(), 'entering is_toroidal_wrapper_light'])
-    verbose_print(verbose, 12, [M.num_tetrahedra(), "tetrahedra"])
-#    u = M.filled_triangulation()._to_string()
-#    T = regina.NTriangulation.fromSnapPea(u) 
-    T = regina.Triangulation3(M) 
+    verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
+    N = M.filled_triangulation() # this is harmless for a cusped manifold
+    T = regina.Triangulation3(N) 
     T.simplifyToLocalMinimum() # this makes it more likely to be zero-efficient
     out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)
-    verbose_print(verbose, 3, [M.name(), out, 'from is_toroidal_light'])
+    verbose_print(verbose, 6, [M, out, 'from is_toroidal_wrapper'])
     return out
 
 
@@ -478,6 +476,9 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
                 return False 
             if is_reducible_wrapper(N, tries, verbose)[0]:
                 return False 
+            name = dunfield.regina_name(N)
+            if name[:3] == 'SFS': # We trust the regina_name.
+                return False
     return None
 
 
