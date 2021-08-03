@@ -311,7 +311,7 @@ def identify_with_torus_boundary(regina_tri):
     to the input manifold.
     """
     
-    kind, name = None, None
+    kind, name = 'unknown', None
     
     P = regina_tri.clone()
     P.finiteToIdeal()

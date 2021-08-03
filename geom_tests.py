@@ -38,7 +38,7 @@ def is_reducible_wrapper(M, tries, verbose):
     # Returns a Boolean and the list of pieces, if true                         
     verbose_print(verbose, 12, [M, 'entering is_reducible_wrapper'])
     isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
-    if len(isosigs) == 0:
+    if isosigs == []:
         return (None, None)
     T = dunfield.to_regina(isosigs[0])
     irred = T.isIrreducible()
@@ -63,12 +63,11 @@ def is_toroidal_wrapper(M, tries, verbose):
     
     verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
     isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
-    L = len(isosigs)
-    if L == 0:
+    if isosigs == []:
         return (None, None) # we do not continue, because the normal surface theory may be too slow.
-    out = None
+    out = (None, None)
     verbose_print(verbose, 25, isosigs)
-    for i in range(min(L, tries)):                                     
+    for i in range(min(len(isosigs), tries)):                                     
         try:
             T = dunfield.to_regina(isosigs[i])
             out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)                                                                      
