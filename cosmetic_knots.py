@@ -386,23 +386,6 @@ def Hanselman_slopes(K, name, use_HFK=True, verbose=3):
     return slopes
 
 
-def is_toroidal_wrapper_cusped(M, verbose):
-    '''
-    Given a snappy manifold M, which could be cusped or not,
-    uses Regina to decide whether M is toroidal.
-    Returns a Boolean and a list of JSJ pieces (if true).
-    '''
-    
-    verbose_print(verbose, 12, [M.name(), 'entering is_toroidal_wrapper'])
-    verbose_print(verbose, 12, [M.num_tetrahedra(), "tetrahedra"])
-#    u = M.filled_triangulation()._to_string()
-#    T = regina.NTriangulation.fromSnapPea(u) 
-    T = regina.Triangulation3(M) 
-    T.simplifyToLocalMinimum() # this makes it more likely to be zero-efficient
-    out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)
-    verbose_print(verbose, 3, [M.name(), out, 'from is_toroidal_wrapper'])
-    return out
-
 
 ### 
 
@@ -484,8 +467,8 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
                 return None
             else:
-                verbose_print(verbose, 0, [name, s, sn, out, outn, 'toroidal manifolds -- give up'])
-                return (name, s, sn, 'toroidal manifolds -- give up')
+                verbose_print(verbose, 0, [name, s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
+                return (name, s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
 
 
 # geometry -
@@ -608,7 +591,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
             # Note: torus knots should get caught by the Casson_invt test above, so we should
             # not end up in this branch.
             return []
-        out = is_toroidal_wrapper_cusped(M, verbose)
+        out = geom_tests.is_toroidal_wrapper_light(M, verbose)
         if out[0]:
             # M is a satellite so use the torus decomposition as the 'reason'
             verbose_print(verbose, 3, [name, 'is toroidal'])

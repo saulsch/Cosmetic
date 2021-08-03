@@ -54,14 +54,36 @@ def is_reducible_wrapper(M, tries, verbose):
         return out
     
 
-def is_toroidal_wrapper(M, tries, verbose):
+def is_toroidal_wrapper_light(M, verbose):
+    '''
+    Given a snappy manifold M, which could be cusped or not,
+    uses Regina to decide whether M is toroidal.
+    Returns a Boolean and a list of JSJ pieces (if true).
+    '''
+    
+    verbose_print(verbose, 12, [M.name(), 'entering is_toroidal_wrapper_light'])
+    verbose_print(verbose, 12, [M.num_tetrahedra(), "tetrahedra"])
+#    u = M.filled_triangulation()._to_string()
+#    T = regina.NTriangulation.fromSnapPea(u) 
+    T = regina.Triangulation3(M) 
+    T.simplifyToLocalMinimum() # this makes it more likely to be zero-efficient
+    out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)
+    verbose_print(verbose, 3, [M.name(), out, 'from is_toroidal_light'])
+    return out
+
+
+
+def torus_decomp_wrapper(M, tries, verbose):
     '''
     Given a snappy Manifold M, presumed to be closed, uses
     Regina to decide whether M is toroidal.
-    Returns a Boolean and the list of JSJ pieces, if true.
+    Returns a Boolean and a list of pieces, if true.
+    
+    The list of pieces may not be the JSJ decomposition.
+    Compare docstring for dunfield.decompose_along_tori .
     '''
     
-    verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
+    verbose_print(verbose, 12, [M, 'entering torus_decomp_wrapper'])
     isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
     if isosigs == []:
         return (None, None) # we do not continue, because the normal surface theory may be too slow.
@@ -70,13 +92,13 @@ def is_toroidal_wrapper(M, tries, verbose):
     for i in range(min(len(isosigs), tries)):                                     
         try:
             T = dunfield.to_regina(isosigs[i])
-            out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)                                                                      
+            out = dunfield.decompose_along_tori(T)                                                                   
             if out[0] == True or out[0] == False:
                 break
         except Exception as e:
             verbose_print(verbose, 6, [M, isosigs[i], e])
 
-    verbose_print(verbose, 6, [M, out, 'from is_toroidal_wrapper'])
+    verbose_print(verbose, 6, [M, out, 'from torus_decomp_wrapper'])
     return out
 
 
@@ -452,8 +474,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if dunfield.is_hyperbolic(N, i+1, verbose): 
                 return True
         if i > 0: # gosh, this is a tricky one... so
-            # if is_toroidal_wrapper(N, verbose)[0]:
-            if is_toroidal_wrapper(N, tries, verbose)[0]:
+            if is_toroidal_wrapper_light(N, verbose)[0]:
                 return False 
             if is_reducible_wrapper(N, tries, verbose)[0]:
                 return False 

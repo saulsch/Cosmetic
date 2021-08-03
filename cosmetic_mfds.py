@@ -460,7 +460,7 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         return out
         
     if field == "toroidal":
-        out = geom_tests.is_toroidal_wrapper(N, tries, verbose)
+        out = geom_tests.torus_decomp_wrapper(N, tries, verbose)
         exceptions_table[s]["toroidal"] = out
         verbose_print(verbose, 10, [N, out, 'toroidality'])
         return out
@@ -640,12 +640,12 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     if not dunfield.verify_hyperbolic_basic(M, verbose = verbose):
         # M is probably not a hyperbolic manifold.  Let's do a few
         # quick tests to help ourselves later, and then give up.
-        if is_torus_link_filling(M, verbose):
+        if fundamental.is_torus_link_filling(M, verbose):
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
             verbose_print(verbose, 6, [M, 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             return []
-        out = fundamental.is_toroidal_wrapper(M, tries, verbose)
+        out = geom_tests.is_toroidal_wrapper_light(M, tries, verbose)
         if out[0]: 
             # M is toroidal, so use the torus decomposition as the 'reason'
             verbose_print(verbose, 6, [M, 'is toroidal'])
