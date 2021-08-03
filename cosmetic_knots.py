@@ -457,8 +457,8 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             Pn = M.copy()
             P.dehn_fill(s)
             Pn.dehn_fill(sn)
-            out = geom_tests.is_toroidal_wrapper(P, tries, verbose)
-            outn = geom_tests.is_toroidal_wrapper(Pn, tries, verbose)
+            out = geom_tests.torus_decomp_wrapper(P, tries, verbose)
+            outn = geom_tests.torus_decomp_wrapper(Pn, tries, verbose)
             if out[0] != outn[0]:
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
