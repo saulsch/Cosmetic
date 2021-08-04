@@ -351,14 +351,17 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
 # hyperbolic invariants
 
 
-def is_amphichiral(M):
+def is_amphichiral(M, tries, verbose):
     """
     Given an orientable hyperbolic cusped Snappy three-manifold,
     decides if it has an orientation reversing isometry.
     """
-    assert M.solution_type() == 'all tetrahedra positively oriented'
+    verbose_print(verbose, 12, [M, 'entering is_amphichiral'])
+
     assert M.is_orientable()
     assert M.num_cusps() > 0
+
+    M = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
 
     G = M.symmetry_group()
     return G.is_amphicheiral()
@@ -637,29 +640,36 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     # Before we try to think _too_ deeply, we check if the geometric
     # structure is good enough.
 
-    if not dunfield.verify_hyperbolic_basic(M, verbose = verbose):
-        # M is probably not a hyperbolic manifold.  Let's do a few
+    sol_type = M.solution_type()
+    
+    if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
+        # So M is probably not a hyperbolic knot.  Let's do a few
         # quick tests to help ourselves later, and then give up.
-        if fundamental.is_torus_link_filling(M, verbose):
+
+        if geom_tests.is_torus_link_filling(M, verbose):
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
-            verbose_print(verbose, 6, [M, 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
+            verbose_print(verbose, 3, [M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
+            # Note: torus knots should get caught by the Casson_invt test above, so we should
+            # not end up in this branch.
             return []
-        out = geom_tests.is_toroidal_wrapper(M, tries, verbose)
-        if out[0]: 
-            # M is toroidal, so use the torus decomposition as the 'reason'
-            verbose_print(verbose, 6, [M, 'is toroidal'])
+        out = geom_tests.is_toroidal_wrapper(M, verbose)
+        if out[0]:
+            # M is a satellite so use the torus decomposition as the 'reason'
+            verbose_print(verbose, 3, [name, 'is toroidal'])
             return [(name, None, None, 'toroidal mfd: ' + str(out[1]))]
-        # 'How did I get here?' -- Talking Heads.
-        if is_exceptional_due_to_volume(M, verbose):
-            verbose_print(verbose, -1, [M, 'non-rigorous volume is too small...'])
+        # Anything else is confusing
+        if is_exceptional_due_to_volume(M, verbose):   
+            verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
             return [(name, None, None, 'small volume')]
         verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons...'])
         return [(name, None, None, 'bad solution type - strange!')]
                 
     # Ok, at this point we are probably hyperbolic.
 
-    # Step zero - Initialize. find the systole. 
+    # Step zero - Install a good hyperbolic metric. Find the volume and systole. 
+
+    M = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
 
     volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
     M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
@@ -667,17 +677,16 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
         
     for i in range(2*tries): # that looks like a magic number... 
         try:
-            M = snappy.Manifold(name)
             if i % 2 == 1: 
-                M = M.high_precision()
+                N = M.high_precision()
             for j in range(i):
-                M.randomize()
+                N.randomize()
             sys = geom_tests.systole(M, verbose = verbose)
             break
         except:
             sys = None
             if verbose > 10:
-                print(M, 'systole failed on attempt', i)
+                print(N, 'systole failed on attempt', i)
         
     if sys == None:
         verbose_print(verbose, 2, [name, None, None, 'systole fail'])
@@ -692,7 +701,6 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     # be found rigorously.
 
     # Switch to low precision to save time now. 
-    M = snappy.Manifold(name)
     M.set_peripheral_curves('shortest')
     # C = M.cusp_neighborhood()
     # C.set_displacement(C.stopping_displacement())
@@ -908,6 +916,9 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
 
                 # more tests here
                     
+                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                    continue
+
                 if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
                     continue
 
@@ -939,17 +950,22 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                     continue
                 s_vol = fetch_volume(M, s, volumes_table, tries, verbose)
                 t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
-                if verbose > 12:
-                    print(M, s, t, s_vol, t_vol, 'volumes')
+                verbose_print(verbose, 12, [M, s, t, s_vol, t_vol, 'volumes'])
                 if s_vol > t_vol or t_vol > s_vol:
-                    if verbose > 6: print(M, s, t, 'verified volume distinguishes')
+                    verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes'])
                     continue
-                distinguished, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose)
-                if distinguished and rigorous:
+                looks_distinct, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose)
+                if looks_distinct and rigorous:
                     continue
-                if distinguished and not rigorous:
+                    
+                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                    continue
+                if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+                    continue
+                    
+                if looks_distinct and not rigorous:
                     reason = (name, s, t, 'distinguished by non-rigorous length spectrum')
-                if not distinguished:
+                if not looks_distinct:
                     reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
                 if verbose > 2: print(reason)
                 bad_uns.append(reason)
@@ -970,19 +986,20 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
             name = M
             M = snappy.Manifold(name)
         uns = check_cosmetic(M, use_BoyerLines, tries=tries, verbose=verbose)
-        if is_amphichiral(M):
-            if len(uns) > 0:
+        if len(uns) > 0:
+            if is_amphichiral(M, tries=tries, verbose=verbose):
                 if verbose > -1: 
                     for line in uns:
-                        print(" is amph", line    )
+                        print(" is amph", line)
                 amphichiral_uns.extend(uns)
-        else:
-            if len(uns) > 0:
+            else:
                 if verbose > -1: 
                     for line in uns:
-                        print("not amph", line    )
+                        print("not amph", line)
                 bad_uns.extend(uns)
         if n % report == 0: 
-            verbose_print(verbose, 0, ['report', n, amphichiral_uns, bad_uns])
+            verbose_print(verbose, 0, ['report', n])
+            verbose_print(verbose, 0, [amphichiral_uns])
+            verbose_print(verbose, 0, [bad_uns])
     return amphichiral_uns, bad_uns
 

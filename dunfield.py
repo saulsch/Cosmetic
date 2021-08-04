@@ -40,7 +40,7 @@ def find_positive_triangulation(manifold, tries = 3, verbose = 2):
         for d in M.dual_curves():
             X = M.drill(d)
             X = X.filled_triangulation()
-            X.dehn_fill((1,0))
+            X.dehn_fill((1,0),-1)
             for i in range(tries):
                 if all_positive(X):
                     return X
