@@ -167,7 +167,6 @@ def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     verbose_print(verbose, 12, [name_0, name_1, "could not distinguish."])
     return False
 
-
 def is_chiral_closed_mfd_from_name(name, verbose = 3):
     # https://math.stackexchange.com/questions/2843946/which-lens-spaces-are-chiral
     # "Example 3.22 and Lemma 3.23 in Hempel give q^2 + 1 = 0 (mod p)
@@ -192,8 +191,7 @@ def is_chiral_closed_mfd_from_name(name, verbose = 3):
             # We could look for another fiberwise bijection that reverses signs.
             # But this is not currently implemented
             return None
-    return None
-    
+    return None   
 
 # Math
 
@@ -1029,7 +1027,6 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
                     s = line[1]
                     t = line[2]
                     filled_name = line[3]
-                    filled_is_chiral = is_chiral_closed_mfd_from_name(filled_name)
                     if is_chiral_closed_mfd_from_name(filled_name) and geom_tests.preferred_rep(cob*vector(s)) == t:
                         # The slopes s and t are interchanged by symmetry, and the filled manifold is chiral
                         verbose_print(verbose, 2, ['chiral filling on amph manifold:', name, s, t, filled_name])
