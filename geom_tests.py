@@ -140,7 +140,7 @@ def preferred_rep(t):
     Find the preferred representative of a slope in QP^1.
     """
     a, b = t
-    out = t
+    out = (a,b)
     if a < 0 or (a == 0 and b < 0):
         out = (-a, -b)
     return out

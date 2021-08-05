@@ -35,6 +35,8 @@ from sage.functions.trig import arctan
 from sage.rings.real_mpfi import RealIntervalFieldElement
 from sage.rings.real_mpfi import RIF
 from sage.rings.real_mpfi import RealIntervalField
+from sage.misc.functional import det
+from sage.modules.free_module_element import vector
 
 
 # coding
@@ -117,6 +119,14 @@ def is_sfs_over_s2_from_name(name):
     return (True, coeffs)
 
 
+def euler_num(coeffs):
+    """
+    Given a vector of coefficients of singular fibers in a SFS,
+    computes the Euler number.
+    """
+    return sum( QQ((q, p)) for (p, q) in coeffs )
+
+
 def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     # Only tests for _un_oriented homeomorphism... urk
     bool_0, coeffs_0 = is_sfs_over_s2_from_name(name_0)
@@ -141,8 +151,8 @@ def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
         verbose_print(verbose, 12, [name_0, name_1, "base orbifolds are different"])
         return True
 
-    eul_num_0 = sum( QQ((q, p)) for (p, q) in coeffs_0 )
-    eul_num_1 = sum( QQ((q, p)) for (p, q) in coeffs_1 )
+    eul_num_0 = euler_num(coeffs_0)
+    eul_num_1 = euler_num(coeffs_1)
     
     if abs(eul_num_0) != abs(eul_num_1): 
         verbose_print(verbose, 12, [name_0, name_1, "euler numbers are different"])
@@ -158,7 +168,7 @@ def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     return False
 
 
-def has_orientation_reversing_symmetry_from_name(name, verbose = 3):
+def is_chiral_closed_mfd_from_name(name, verbose = 3):
     # https://math.stackexchange.com/questions/2843946/which-lens-spaces-are-chiral
     # "Example 3.22 and Lemma 3.23 in Hempel give q^2 + 1 = 0 (mod p)
     # as a necessary and sufficient condition for L(p,q) to admit an
@@ -166,8 +176,23 @@ def has_orientation_reversing_symmetry_from_name(name, verbose = 3):
     is_lens, ints = is_lens_space_from_name(name)
     if is_lens:
         p, q = ints
-        return ((q**2 + 1) % p) == 0
+        return ((q**2 + 1) % p) != 0
     # homework - add sfs's and JSJ's here as well. 
+    
+    is_sfs_over_s2, coeffs = is_sfs_over_s2_from_name(name)
+    if is_sfs_over_s2:
+        eul = euler_num(coeffs)
+        if eul != 0: 
+            return True
+        elif (len(coeffs) % 2 != 0) and ([2,1] not in coeffs) and ([2,-1] not in coeffs):
+            # Any orientation-reversing bijection of the singular fibers would have to fix
+            # a fiber of type [2,1] or [2,-1]. So, such a bijection cannot exist.
+            return True
+        else:
+            # We could look for another fiberwise bijection that reverses signs.
+            # But this is not currently implemented
+            return None
+    return None
     
 
 # Math
@@ -351,10 +376,13 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
 # hyperbolic invariants
 
 
-def is_amphichiral(M, tries, verbose):
+def is_amphichiral(M, tries=8, verbose=3):
     """
     Given an orientable hyperbolic cusped Snappy three-manifold,
     decides if it has an orientation reversing isometry.
+    
+    Returns a Boolean and (if amphichiral) an orientation-reversing
+    change of basis matrix for the cusp.
     """
     verbose_print(verbose, 12, [M, 'entering is_amphichiral'])
 
@@ -364,7 +392,19 @@ def is_amphichiral(M, tries, verbose):
     M = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
 
     G = M.symmetry_group()
-    return G.is_amphicheiral()
+    amph = G.is_amphicheiral()
+    
+    if not amph:
+        return (False, None)
+    
+    cob = None
+    for iso in G.isometries(): 
+         image = iso.cusp_images()[0] # Where the 0-th cusp goes
+         cob = iso.cusp_maps()[0]     # change of basis matrix
+         if image == 0 and det(cob) == -1:
+             break
+
+    return (amph, cob)
 
 
 ### This function is not rigorous - also it is never called.  So we
@@ -677,16 +717,14 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
         
     for i in range(2*tries): # that looks like a magic number... 
         try:
-            if i % 2 == 1: 
-                N = M.high_precision()
+            N = M.copy()
             for j in range(i):
                 N.randomize()
             sys = geom_tests.systole(M, verbose = verbose)
             break
         except:
             sys = None
-            if verbose > 10:
-                print(N, 'systole failed on attempt', i)
+            verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
         
     if sys == None:
         verbose_print(verbose, 2, [name, None, None, 'systole fail'])
@@ -776,8 +814,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     len_l_hom = abs(l_hom[0]*mer_hol + l_hom[1]*long_hol)
     slopes_low_volume = {}
     for hom_hash in slopes_hyp:
-        if verbose > 25:
-            print('slopes hyp', slopes_hyp[hom_hash])
+        verbose_print(verbose, 25, ['slopes hyp', slopes_hyp[hom_hash]])
         # M_vol is the volume of the unfilled manifold M
         l_max = HK_vol_bound_inv(M_vol - max_volumes[hom_hash]) * norm_fac # length on cusp
         if verbose > 25:
@@ -792,42 +829,42 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
         middle = geom_tests.a_shortest_lattice_point_on_line(point, l_hom, mer_hol, long_hol)
         lower = int( (-l_max / len_l_hom).floor().lower() )
         upper = int( (l_max / len_l_hom).ceil().upper() )
-        if verbose > 25: print('lower, upper', lower, upper)
+        verbose_print(verbose, 25, ['lower, upper', lower, upper])
         for k in range(lower, upper + 1):
-            if verbose > 25: print('k', k)
+            verbose_print(verbose, 25, ['k', k])
             # move along the line 
             a = middle[0] + k * l_hom[0] 
             b = middle[1] + k * l_hom[1]
             t = geom_tests.preferred_rep((a, b))
             a, b = t
-            if verbose > 25: print('t', t)
+            verbose_print(verbose, 25, ['t', t])
             if gcd(a, b) > 1:
-                if verbose > 25: print(name, hom_hash, k, t, 'excluded because gcd')
+                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because gcd'])
                 continue
             N = M.copy()
             N.dehn_fill(t)
             hom_gp_t = str(N.homology())
             if hom_gp_t != hom_gp:
-                if verbose > 25: print(name, hom_hash, k, t, 'excluded because wrong homology')
+                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because wrong homology'])
                 continue
             # now we now that (p, hom_gp_t) are correct, so we can use the dictionaries we built
             if hom_hash in slopes_non_hyp and t in slopes_non_hyp[hom_hash]:
-                if verbose > 25: print(name, hom_hash, k, t, 'excluded because non-hyp')
+                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because non-hyp'])
                 continue
             if hom_hash in slopes_bad and t in slopes_bad[hom_hash]:
-                if verbose > 25: print(name, hom_hash, k, t, 'excluded because bad')
+                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because bad'])
                 continue
             # Thus t is a hyperbolic filling, so 
             # First, check length
-            if verbose > 25: print('lengths', abs(a*mer_hol + b*long_hol), l_max)
+            verbose_print(verbose, 25, ['lengths', abs(a*mer_hol + b*long_hol), l_max])
             if abs(a*mer_hol + b*long_hol) <= l_max:
                 # Then, check the volume
                 t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
-                if verbose > 25: print('t_vol', t_vol)
-                if verbose > 25: print('max_vol[hom_hash]', max_volumes[hom_hash])
+                verbose_print(verbose, 25, ['t_vol', t_vol])
+                verbose_print(verbose, 25, ['max_vol[hom_hash]', max_volumes[hom_hash]])
                 if not t_vol > max_volumes[hom_hash]:   # We need the 'not' because we are comparing intervals
                     add_to_dict_of_sets(slopes_low_volume, hom_hash, t)
-                    if verbose > 25: print('added to slopes_low_volume')
+                    verbose_print(verbose, 25, ['added to slopes_low_volume'])
         # Sanity check: slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
         for t in slopes_hyp[hom_hash]:
             assert t in slopes_low_volume[hom_hash]
@@ -967,7 +1004,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                     reason = (name, s, t, 'distinguished by non-rigorous length spectrum')
                 if not looks_distinct:
                     reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
-                if verbose > 2: print(reason)
+                verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 
     verbose_print(verbose, 1, [name, 'non-distinguished pairs', bad_uns])
@@ -975,8 +1012,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     return bad_uns
     
 def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
-    if verbose > 12:
-        print("entering check_mfds")
+    verbose_print(verbose, 12, ["entering check_mfds"])
     amphichiral_uns = []
     bad_uns = []
     for n, M in enumerate(manifolds):
@@ -987,15 +1023,23 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
             M = snappy.Manifold(name)
         uns = check_cosmetic(M, use_BoyerLines, tries=tries, verbose=verbose)
         if len(uns) > 0:
-            if is_amphichiral(M, tries=tries, verbose=verbose):
-                if verbose > -1: 
-                    for line in uns:
-                        print(" is amph", line)
-                amphichiral_uns.extend(uns)
+            is_amph, cob = is_amphichiral(M, tries=tries, verbose=verbose)
+            if is_amph:
+                for line in uns:
+                    s = line[1]
+                    t = line[2]
+                    filled_name = line[3]
+                    filled_is_chiral = is_chiral_closed_mfd_from_name(filled_name)
+                    if is_chiral_closed_mfd_from_name(filled_name) and geom_tests.preferred_rep(cob*vector(s)) == t:
+                        # The slopes s and t are interchanged by symmetry, and the filled manifold is chiral
+                        verbose_print(verbose, 2, ['chiral filling on amph manifold:', name, s, t, filled_name])
+                        continue
+                    else:
+                        verbose_print(verbose, 0, ["undistinguished amphichiral filling", line])
+                        amphichiral_uns.append(line)
             else:
-                if verbose > -1: 
-                    for line in uns:
-                        print("not amph", line)
+                for line in uns:
+                    verbose_print(verbose, 0, ["not amph", line])
                 bad_uns.extend(uns)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
