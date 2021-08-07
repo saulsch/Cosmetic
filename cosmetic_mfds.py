@@ -793,6 +793,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     num_non_hyp_slopes = sum(len(slopes_non_hyp[hash]) for hash in slopes_non_hyp)
     num_bad_slopes = sum(len(slopes_bad[hash]) for hash in slopes_bad)
     verbose_print(verbose, 3, [name, num_hyp_slopes, 'hyperbolic', num_non_hyp_slopes, 'exceptional', num_bad_slopes, 'bad'])
+    verbose_print(verbose, 4, [name, len(slopes_hyp), 'homology buckets of hyperbolic slopes'])
     verbose_print(verbose, 5, [name, 'hyp slopes', slopes_hyp])
     verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
     if len(slopes_bad) > 0:
