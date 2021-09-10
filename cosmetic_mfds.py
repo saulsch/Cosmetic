@@ -78,26 +78,6 @@ def is_lens_space_from_name(name):
     return (True, ints)
 
 
-def are_distinguished_lens_spaces(name0, name1, verbose = 3):
-    # Only tests for _un_oriented homeomorphism... urk!
-    bool0, ints0 = is_lens_space_from_name(name0)
-    bool1, ints1 = is_lens_space_from_name(name1)
-    if not (bool0 and bool1):
-        verbose_print(verbose, 12, [name0, name1, "at least one is not a lens space"])
-        return False
-    p0, q0 = ints0
-    p1, q1 = ints1
-    if p0 != p1:
-        verbose_print(verbose, 0, [name0, name1, "lens spaces with different homology"])
-        # verbose threshold is low because we expect this to never happen.  [grin]
-        return True
-    p = p0
-    if ((q0 - q1) % p) == 0 or ((q0 + q1) % p) == 0 or ((q0 * q1) % p) == 1 or ((q0 * q1) % p) == -1 % p:
-        verbose_print(verbose, 12, [name0, name1, "homeomorphic lens spaces"])
-        return False
-    verbose_print(verbose, 12, [name0, name1, "non-homeomorphic lens spaces"])
-    return True
-
 
 def is_sfs_over_s2_from_name(name):
     """
@@ -119,16 +99,99 @@ def is_sfs_over_s2_from_name(name):
     return (True, coeffs)
 
 
-def euler_num(coeffs):
+def is_sfs_over_disk_from_name(name):
+    """
+    Given a regina name, if it is a SFS over D^2 (and not a solid torus),
+    return True and the coefficients. If not, or unsure, return (None, None).
+    """
+    
+    if not "SFS [D: (" == name[:9]:
+        return (None, None)
+    if "#" in name:
+        return (None, None)
+    if "U/m" in name:
+        return (None, None)
+    name = name[8:-1] # regina names...
+    coeffs = name.split(" ")
+    assert len(coeffs) > 1
+    coeffs = [coeff.strip("(") for coeff in coeffs]
+    coeffs = [coeff.strip(")") for coeff in coeffs]
+    coeffs = [coeff.split(",") for coeff in coeffs]
+    coeffs = [[int(p) for p in coeff] for coeff in coeffs]
+    return (True, coeffs)
+
+
+def is_graph_pair_from_name(name):
+    """
+    Given a regina name, test to see if it is a graph manifold with exactly two pieces,
+    each of which is SFS over a disk. If so, return True and the pieces.
+    According to Regina documentation, a True answer guarantees that the manifold is not
+    a SFS, because the gluing matrix does not send fibers to fibers.
+    If not, or unsure, return (None, None).
+    """
+    
+    if "#" in name:
+        return (None, None)
+    tori = name.count("U/m")
+    if tori != 1:
+        return (None, None)
+    A, B = name.split(", m =")[0].split(" U/m ")
+    A_bool, A_coeffs = is_sfs_over_disk_from_name(A)
+    B_bool, B_coeffs = is_sfs_over_disk_from_name(B)
+    if A_bool and B_bool:
+        return(True, [A, B])
+        
+    return (None, None)
+
+
+def are_distinguished_lens_spaces(name0, name1, verbose = 3):
+    '''
+    Given two Regina names, checks whether the two manifolds are lens spaces.
+    If yes, and the two are not homeomorphic, return True. If one is not
+    a lens space, or they are homeomorphic, return False.
+    This only tests for _un_oriented homeomorphism.
+    '''
+    
+    bool0, ints0 = is_lens_space_from_name(name0)
+    bool1, ints1 = is_lens_space_from_name(name1)
+    if not (bool0 and bool1):
+        verbose_print(verbose, 12, [name0, name1, "at least one is not a lens space"])
+        return False
+    p0, q0 = ints0
+    p1, q1 = ints1
+    if p0 != p1:
+        verbose_print(verbose, 0, [name0, name1, "lens spaces with different homology"])
+        # verbose threshold is low because we expect this to never happen.  [grin]
+        return True
+    p = p0
+    if ((q0 - q1) % p) == 0 or ((q0 + q1) % p) == 0 or ((q0 * q1) % p) == 1 or ((q0 * q1) % p) == -1 % p:
+        verbose_print(verbose, 12, [name0, name1, "homeomorphic lens spaces"])
+        return False
+    verbose_print(verbose, 12, [name0, name1, "non-homeomorphic lens spaces"])
+    return True
+
+def euler_num(coeffs, ModOne = False):
     """
     Given a vector of coefficients of singular fibers in a SFS,
     computes the Euler number.
+    If the ModOne flag is True, then reduce the Euler number modulo 1.
     """
-    return sum( QQ((q, p)) for (p, q) in coeffs )
+    eul = sum( QQ((q, p)) for (p, q) in coeffs )
+    if ModOne:
+        return eul - floor(eul)
+    else:
+        return eul
 
 
 def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
-    # Only tests for _un_oriented homeomorphism... urk
+    '''
+    Given two Regina names, checks whether the two manifolds are SFS over S2.
+    If yes, and the two are not homeomorphic, return True. 
+    If one is not a SFS over S2, or we are not sure whether they're homeomorphic, return False.
+    The tests applied here are not exhaustive.
+    This routine only tests for _un_oriented homeomorphism.
+    '''
+    
     bool_0, coeffs_0 = is_sfs_over_s2_from_name(name_0)
     bool_1, coeffs_1 = is_sfs_over_s2_from_name(name_1)
     coeffs_0.sort()
@@ -167,7 +230,106 @@ def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     verbose_print(verbose, 12, [name_0, name_1, "could not distinguish."])
     return False
 
-def is_chiral_closed_mfd_from_name(name, verbose = 3):
+
+def are_distinguished_sfs_over_disk(name_0, name_1, verbose = 3):
+    '''
+    Given two Regina names, checks whether the two manifolds are SFS over disk.
+    If yes, and the two are not homeomorphic, return True. 
+    If one is not a SFS over disk, or we are not sure whether they're homeomorphic, return False.
+    The tests applied here are not exhaustive.
+    This routine only tests for _un_oriented homeomorphism.
+    '''
+
+    bool_0, coeffs_0 = is_sfs_over_disk_from_name(name_0)
+    bool_1, coeffs_1 = is_sfs_over_disk_from_name(name_1)
+    coeffs_0.sort()
+    coeffs_1.sort()
+
+    if not (bool_0 and bool_1):
+        verbose_print(verbose, 12, [name_0, name_1, "at least one seems not to be a sfs over disk"])
+        # so give up
+        return False 
+
+    if len(coeffs_0) != len(coeffs_1):
+        verbose_print(verbose, 12, [name_0, name_1, "different number of singular fibers"])
+        return True
+
+    cone_pts_0 = [p for (p, q) in coeffs_0]
+    cone_pts_1 = [p for (p, q) in coeffs_1]
+    # homework - check that regina sorts the coefficients.
+
+    if cone_pts_0 != cone_pts_1: 
+        verbose_print(verbose, 12, [name_0, name_1, "base orbifolds are different"])
+        return True
+
+    euler_num_0 = euler_num(coeffs_0, ModOne = True)
+    euler_num_1 = euler_num(coeffs_1, ModOne = True) 
+    if (euler_num_0 != euler_num_1) and (euler_num_0 + euler_num_1 != 1): 
+        verbose_print(verbose, 12, [name_0, name_1, "euler numbers are different", euler_num_0, euler_num_1])
+        return True
+
+    # normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0].sort()
+    # normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1].sort()
+    # if normed_coeffs_0 != normed_coeffs_1: 
+    #    verbose_print(verbose, 12, [name_0, name_1, "distinguished by singular fibers"])
+    #    return True
+
+    verbose_print(verbose, 12, [name_0, name_1, "could not distinguish."])
+    return False
+
+
+def are_distinguished_graph_pairs(name_0, name_1, verbose = 3):
+    '''
+    Given two Regina names, checks whether the two manifolds are graph pairs.
+    If yes, and the two are not homeomorphic, return True. 
+    If one is not a graph pair, or we are not sure whether they're homeomorphic, return False.
+    According to Regina documentation, a graph pair is guaranteed to not be a SFS, so the list
+    of pieces is an invariant.
+    The tests applied here are not exhaustive.
+    This routine only tests for _un_oriented homeomorphism.
+    '''
+
+    bool_0, pieces_0 = is_graph_pair_from_name(name_0)
+    bool_1, pieces_1 = is_graph_pair_from_name(name_1)
+
+    if not (bool_0 and bool_1):
+        verbose_print(verbose, 12, [name_0, name_1, "at least one seems not to be a graph pair"])
+        # so give up
+        return False 
+
+    if are_distinguished_sfs_over_disk(pieces_0[0], pieces_1[0]) and are_distinguished_sfs_over_disk(pieces_0[0], pieces_1[1]):
+        verbose_print(verbose, 12, [pieces_0[0], 'is not a piece of', name_1])
+        return True
+
+    if are_distinguished_sfs_over_disk(pieces_0[1], pieces_1[0]) and are_distinguished_sfs_over_disk(pieces_0[1], pieces_1[1]):
+        verbose_print(verbose, 12, [pieces_0[1], 'is not a piece of', name_1])
+        return True
+
+    if are_distinguished_sfs_over_disk(pieces_1[0], pieces_0[0]) and are_distinguished_sfs_over_disk(pieces_1[0], pieces_0[1]):
+        verbose_print(verbose, 12, [pieces_1[0], 'is not a piece of', name_0])
+        return True
+
+    if are_distinguished_sfs_over_disk(pieces_1[1], pieces_0[0]) and are_distinguished_sfs_over_disk(pieces_1[1], pieces_0[1]):
+        verbose_print(verbose, 12, [pieces_1[1], 'is not a piece of', name_0])
+        return True
+
+    # We could also check the gluing matrices. We do not do this.
+
+    verbose_print(verbose, 12, [name_0, name_1, "could not distinguish."])
+    return False
+
+
+
+def is_chiral_graph_mfd_from_name(name, verbose = 3):
+    '''
+    Given the Regina name of a graph manifold M assembled from Seifert fibered pieces,
+    try a few tests to determine whether M is chiral. If chiral, return True.
+    If the simple tests do not succeed, return None.
+    This routine is only designed to catch the common cases -- it has no pretense
+    of being exhaustive.
+    '''
+
+    # Lens spaces
     # https://math.stackexchange.com/questions/2843946/which-lens-spaces-are-chiral
     # "Example 3.22 and Lemma 3.23 in Hempel give q^2 + 1 = 0 (mod p)
     # as a necessary and sufficient condition for L(p,q) to admit an
@@ -176,7 +338,6 @@ def is_chiral_closed_mfd_from_name(name, verbose = 3):
     if is_lens:
         p, q = ints
         return ((q**2 + 1) % p) != 0
-    # homework - add sfs's and JSJ's here as well. 
     
     is_sfs_over_s2, coeffs = is_sfs_over_s2_from_name(name)
     if is_sfs_over_s2:
@@ -191,6 +352,41 @@ def is_chiral_closed_mfd_from_name(name, verbose = 3):
             # We could look for another fiberwise bijection that reverses signs.
             # But this is not currently implemented
             return None
+
+    is_sfs_over_disk, coeffs = is_sfs_over_disk_from_name(name)
+    if is_sfs_over_disk:
+        eul = euler_num(coeffs, ModOne = True)
+        if eul !=0 and eul != QQ((1, 2)):
+            return True
+        elif (len(coeffs) % 2 != 0) and ([2,1] not in coeffs) and ([2,-1] not in coeffs):
+            # Any orientation-reversing bijection of the singular fibers would have to fix
+            # a fiber of type [2,1] or [2,-1]. So, such a bijection cannot exist.
+            return True
+        else:
+            # We could look for another fiberwise bijection that reverses signs.
+            # But this is not currently implemented
+            return None
+        
+    is_graph_pair, pieces = is_graph_pair_from_name(name)
+    if is_graph_pair:
+        name0, name1 = pieces
+        distinct = are_distinguished_sfs_over_disk(name0, name1)
+        if distinct:
+            # Any self-homeo would have to send each piece to itself.
+            verbose_print(verbose, 10, [name0, name1, 'are distinct pieces'])
+            return (is_chiral_graph_mfd_from_name(name0) or is_chiral_graph_mfd_from_name(name1))
+        else:
+            _, coeffs0 = is_sfs_over_disk_from_name(name0)
+            _, coeffs1 = is_sfs_over_disk_from_name(name1)
+            eul0 = euler_num(coeffs0, ModOne = True)
+            eul1 = euler_num(coeffs1, ModOne = True)
+            sum_of_eul = eul0 + eul1
+            verbose_print(verbose, 10, [name0, name1, 'homeomorphic pieces with Euler numbers summing to', sum_of_eul])
+            # to have an orientation-reversing homeo from piece0 to piece1, their euler
+            # numbers would have to be opposite (modulo 1).
+            return (sum_of_eul != 0 and sum_of_eul != 1)
+
+
     return None   
 
 # Math
@@ -507,7 +703,7 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         return out
         
         
-### Dave checked to here - 2021/07/15
+### Dave checked code to here - 2021/07/15
 
 def fetch_volume(M, s, volumes_table, tries, verbose):
     '''
@@ -900,6 +1096,8 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
 
                 reason = (name, s, t, s_name, t_name)
 
+                # TODO: simplify the logic in the next batch of tests
+
                 if s_name == t_name:
                     # give up
                     bad_uns.append(reason)
@@ -934,21 +1132,20 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                     t_red, _ = fetch_exceptional_data(M, t, exceptions_table, "reducible", tries, verbose)
                     if t_red:
                         continue
+                    t_tor, _ = fetch_exceptional_data(M, t, exceptions_table, "toroidal", tries, verbose)
+                    if t_tor:
+                        continue
                     
                 if t_lens or t_sfs:
                     s_red, _ = fetch_exceptional_data(M, s, exceptions_table, "reducible", tries, verbose)
                     if s_red:
                         continue                    
-                
-                if s_lens or s_sfs:
-                    t_tor, _ = fetch_exceptional_data(M, t, exceptions_table, "toroidal", tries, verbose)
-                    if t_tor:
-                        continue
-
-                if t_lens or t_sfs:
                     s_tor, _ = fetch_exceptional_data(M, s, exceptions_table, "toroidal", tries, verbose)
                     if s_tor:
                         continue
+
+                if are_distinguished_graph_pairs(s_name, t_name, verbose):
+                    continue
 
                 # more tests here
                     
@@ -1028,7 +1225,7 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
                     s = line[1]
                     t = line[2]
                     filled_name = line[3]
-                    if is_chiral_closed_mfd_from_name(filled_name) and geom_tests.preferred_rep(cob*vector(s)) == t:
+                    if is_chiral_graph_mfd_from_name(filled_name) and geom_tests.preferred_rep(cob*vector(s)) == t:
                         # The slopes s and t are interchanged by symmetry, and the filled manifold is chiral
                         verbose_print(verbose, 2, ['chiral filling on amph manifold:', name, s, t, filled_name])
                         continue
