@@ -130,4 +130,6 @@ dmypy.json
 
 # My ignores
 .DS_Store
+short_sys.sobj
+census_remain.rtf
 .gitignore

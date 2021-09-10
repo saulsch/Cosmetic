@@ -170,6 +170,7 @@ def are_distinguished_lens_spaces(name0, name1, verbose = 3):
     verbose_print(verbose, 12, [name0, name1, "non-homeomorphic lens spaces"])
     return True
 
+
 def euler_num(coeffs, ModOne = False):
     """
     Given a vector of coefficients of singular fibers in a SFS,
@@ -187,8 +188,7 @@ def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     '''
     Given two Regina names, checks whether the two manifolds are SFS over S2.
     If yes, and the two are not homeomorphic, return True. 
-    If one is not a SFS over S2, or we are not sure whether they're homeomorphic, return False.
-    The tests applied here are not exhaustive.
+    The tests applied here are not exhaustive, but a True answer is trustworthy.
     This routine only tests for _un_oriented homeomorphism.
     '''
     
@@ -235,8 +235,7 @@ def are_distinguished_sfs_over_disk(name_0, name_1, verbose = 3):
     '''
     Given two Regina names, checks whether the two manifolds are SFS over disk.
     If yes, and the two are not homeomorphic, return True. 
-    If one is not a SFS over disk, or we are not sure whether they're homeomorphic, return False.
-    The tests applied here are not exhaustive.
+    The tests applied here are not exhaustive, but a True answer is trustworthy.
     This routine only tests for _un_oriented homeomorphism.
     '''
 
@@ -282,10 +281,9 @@ def are_distinguished_graph_pairs(name_0, name_1, verbose = 3):
     '''
     Given two Regina names, checks whether the two manifolds are graph pairs.
     If yes, and the two are not homeomorphic, return True. 
-    If one is not a graph pair, or we are not sure whether they're homeomorphic, return False.
+    The tests applied here are not exhaustive, but a True answer is trustworthy.
     According to Regina documentation, a graph pair is guaranteed to not be a SFS, so the list
     of pieces is an invariant.
-    The tests applied here are not exhaustive.
     This routine only tests for _un_oriented homeomorphism.
     '''
 
@@ -325,8 +323,7 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
     Given the Regina name of a graph manifold M assembled from Seifert fibered pieces,
     try a few tests to determine whether M is chiral. If chiral, return True.
     If the simple tests do not succeed, return None.
-    This routine is only designed to catch the common cases -- it has no pretense
-    of being exhaustive.
+    The tests applied here are not exhaustive, but a True answer is trustworthy.
     '''
 
     # Lens spaces
@@ -382,7 +379,7 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
             eul1 = euler_num(coeffs1, ModOne = True)
             sum_of_eul = eul0 + eul1
             verbose_print(verbose, 10, [name0, name1, 'homeomorphic pieces with Euler numbers summing to', sum_of_eul])
-            # to have an orientation-reversing homeo from piece0 to piece1, their euler
+            # To have an orientation-reversing homeo from piece0 to piece1, their euler
             # numbers would have to be opposite (modulo 1).
             return (sum_of_eul != 0 and sum_of_eul != 1)
 
