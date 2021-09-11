@@ -58,6 +58,9 @@ def is_lens_space_from_name(name):
     Given a regina name, parses it enough to decide if it is a lens
     space and then extracts the coefficients.  
     """
+    if name == None:
+        return (None, None)
+        
     if name == "S3":
         return (True, [1, 0])
     if name == "RP3":
@@ -83,8 +86,9 @@ def is_sfs_over_s2_from_name(name):
     """
     Given a regina name, if it is a SFS over S^2 (and not a lens
     space) return True and the coefficients.
+    Note that we don't count lens spaces as SFSs. 
     """
-    # Note that we don't count lens spaces as SFSs. 
+    
     if not "SFS [S2: (" == name[:10]:
         return (None, None)
     if "#" in name:
@@ -111,6 +115,7 @@ def is_sfs_over_disk_from_name(name):
         return (None, None)
     if "U/m" in name:
         return (None, None)
+        
     name = name[8:-1] # regina names...
     coeffs = name.split(" ")
     assert len(coeffs) > 1
@@ -130,6 +135,8 @@ def is_graph_pair_from_name(name):
     If not, or unsure, return (None, None).
     """
     
+    if name == None:
+        return(None, None)
     if "#" in name:
         return (None, None)
     tori = name.count("U/m")
