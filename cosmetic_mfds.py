@@ -53,11 +53,13 @@ def add_to_dict_of_sets(dictionary, key, value):
 # Names - parsing regina names
 
 
-def is_lens_space_from_name(name):
+def is_lens_space_from_name(name, verbose=3):
     """
     Given a regina name, parses it enough to decide if it is a lens
     space and then extracts the coefficients.  
     """
+
+    verbose_print(verbose, 15, ["Entering is_lens_space_from_name"])
     if name == None:
         return (None, None)
         
@@ -67,6 +69,7 @@ def is_lens_space_from_name(name):
         return (True, [2, 1])
     if name == "S2 x S1":
         return (True, [0, 1])
+        
     # If "L(" appears in the string, then we have a lens space
     # summand.  If "#" does not appear, then we are just a lens space,
     # so we will win.
@@ -78,10 +81,78 @@ def is_lens_space_from_name(name):
     parts = [part.strip("(") for part in parts]
     parts = [part.strip(")") for part in parts]
     ints = [int(part) for part in parts]
+    
+    verbose_print(verbose, 10, ['Found lens space data:', ints])
     return (True, ints)
 
 
 
+def is_closed_sfs_from_name(name, verbose=3):
+    """
+    Given a regina name, decides whether it is a closed
+    SFS, where the base is one of S2, RP2, T (torus),
+    or KB (Klein bottle).
+    Returns a triple (Bool, base, coefficients).
+    *** Warning ***: lens spaces are treated as having base "Lens",
+    not as SFS over S2 with two singular fibers.
+    RP3 # RP3 is not recognized as a SFS, and is treated as reducible.
+    If M is not recognized as a closed SFS in this way, return
+    (None, None, None).
+    """
+    
+    verbose_print(verbose, 15, ["Entering is_closed_sfs_from_name"])
+    
+    is_lens, lens_coeffs = is_lens_space_from_name(name, verbose=verbose)
+    if is_lens:
+        return (True, "Lens", lens_coeffs)
+
+    if not "SFS" == name[:3]:
+        return (None, None, None)
+    if "#" in name:
+        return (None, None, None)
+    if "U/" in name:
+        return (None, None, None)
+    
+    
+    found = None
+    if "SFS [S2: " == name[:9]:
+        found = True
+        base = "S2"
+        name = name[9:-1]
+        coeffs = name.split(" ")
+        assert len(coeffs) > 2
+    if "SFS [RP2/n2: " == name[:13]:
+        found = True
+        base = "RP2"
+        name = name[13:-1]
+        coeffs = name.split(" ")
+        assert len(coeffs) > 1
+        # This disallows RP3 # RP3 as a SFS over RP2.
+    if "SFS [T: " == name[:8]:
+        found = True
+        base = "T"
+        name = name[8:-1]
+        coeffs = name.split(" ")
+    if "SFS [KB/n2: " == name[:12]:
+        found = True
+        base = "KB"
+        name = name[12:-1]
+        coeffs = name.split(" ")
+    # We do not search for bases of higher complexity.
+    
+    if not found:
+        return (None, None, None)
+
+    coeffs = [coeff.strip("(") for coeff in coeffs]
+    coeffs = [coeff.strip(")") for coeff in coeffs]
+    coeffs = [coeff.split(",") for coeff in coeffs]
+    coeffs = [[int(p) for p in coeff] for coeff in coeffs]
+    verbose_print(verbose, 10, ["found SFS structure:", base, coeffs])
+    return (found, base, coeffs)
+
+
+### Deprecate this -- should be subsumed by is_closed_sfs_from_name
+### At this point, this is only called by deprecated are_distinguished_sfs_over_s2.
 def is_sfs_over_s2_from_name(name):
     """
     Given a regina name, if it is a SFS over S^2 (and not a lens
@@ -103,17 +174,23 @@ def is_sfs_over_s2_from_name(name):
     return (True, coeffs)
 
 
-def is_sfs_over_disk_from_name(name):
+def is_sfs_over_disk_from_name(name, verbose=3):
     """
     Given a regina name, if it is a SFS over D^2 (and not a solid torus),
     return True and the coefficients. If not, or unsure, return (None, None).
     """
-    
+
+    verbose_print(verbose, 15, ["Entering is_sfs_over_disk_from_name"])
+
+    if name == "SFS [M/n2: ]":
+        # This manifold is Seifert fibered in two ways; the other is over a disk.
+        return is_sfs_over_disk_from_name("SFS [D: (2,1) (2,1)]", verbose=verbose)    
     if not "SFS [D: (" == name[:9]:
         return (None, None)
     if "#" in name:
         return (None, None)
-    if "U/m" in name:
+    if "U/" in name:
+        # This handles pseudo-names with a "U/?" gluing
         return (None, None)
         
     name = name[8:-1] # regina names...
@@ -123,6 +200,7 @@ def is_sfs_over_disk_from_name(name):
     coeffs = [coeff.strip(")") for coeff in coeffs]
     coeffs = [coeff.split(",") for coeff in coeffs]
     coeffs = [[int(p) for p in coeff] for coeff in coeffs]
+    verbose_print(verbose, 10, ["Found SFS structure over disk:", coeffs])
     return (True, coeffs)
 
 
@@ -139,9 +217,15 @@ def is_graph_pair_from_name(name):
         return(None, None)
     if "#" in name:
         return (None, None)
-    tori = name.count("U/m")
+    if "U/m" not in name:
+        # This also rules out graph loops of the form "SFS [A: (2,1)] / [ 0,-1 | -1,0 ]"
+        return (None, None)
+
+    tori = name.count("U/")
+    # This counts all gluing tori, including "U/?" gluings in pseudo-name
     if tori != 1:
         return (None, None)
+        
     A, B = name.split(", m =")[0].split(" U/m ")
     A_bool, A_coeffs = is_sfs_over_disk_from_name(A)
     B_bool, B_coeffs = is_sfs_over_disk_from_name(B)
@@ -159,18 +243,21 @@ def are_distinguished_lens_spaces(name0, name1, verbose = 3):
     This only tests for _un_oriented homeomorphism.
     '''
     
-    bool0, ints0 = is_lens_space_from_name(name0)
-    bool1, ints1 = is_lens_space_from_name(name1)
+    verbose_print(verbose, 15, ["Entering are_distinguished_lens_spaces"])
+    bool0, ints0 = is_lens_space_from_name(name0, verbose=verbose)
+    bool1, ints1 = is_lens_space_from_name(name1, verbose=verbose)
     if not (bool0 and bool1):
         verbose_print(verbose, 12, [name0, name1, "at least one is not a lens space"])
         return False
     p0, q0 = ints0
     p1, q1 = ints1
     if p0 != p1:
-        verbose_print(verbose, 0, [name0, name1, "lens spaces with different homology"])
-        # verbose threshold is low because we expect this to never happen.  [grin]
+        verbose_print(verbose, 4, [name0, name1, "lens spaces with different homology"])
         return True
     p = p0
+    if p == 0:
+        verbose_print(verbose, 12, [name0, name1, "homeomorphic lens spaces"])
+        return False
     if ((q0 - q1) % p) == 0 or ((q0 + q1) % p) == 0 or ((q0 * q1) % p) == 1 or ((q0 * q1) % p) == -1 % p:
         verbose_print(verbose, 12, [name0, name1, "homeomorphic lens spaces"])
         return False
@@ -191,6 +278,69 @@ def euler_num(coeffs, ModOne = False):
         return eul
 
 
+def are_distinguished_closed_sfs(name_0, name_1, verbose = 3):
+    '''
+    Given two Regina names, checks whether the two manifolds are SFS over S2,
+    RP2, Torus, or Klein Bottle.
+    If yes, and the two are not homeomorphic, return True. 
+    Lens spaces are allowed, and are handled separately from others over S2.
+    The tests applied here are not exhaustive, but a True answer is trustworthy.
+    This routine only tests for _un_oriented homeomorphism.
+    '''
+
+    verbose_print(verbose, 15, ["Entering are_distinguished_closed_sfs"])
+    
+    bool_0, base_0, coeffs_0 = is_closed_sfs_from_name(name_0, verbose=verbose)
+    bool_1, base_1, coeffs_1 = is_closed_sfs_from_name(name_1, verbose=verbose)
+    
+    if not (bool_0 and bool_1):
+        verbose_print(verbose, 12, [name_0, name_1, "at least one seems not to be a known closed SFS"])
+        # so give up
+        return False
+        
+    if base_0 != base_1:
+        verbose_print(verbose, 12, [name_0, name_1, "different base orbifolds"])
+        return True
+        
+    if base_0 == "Lens" and base_1 == "Lens":
+        return are_distinguished_lens_spaces(name_0, name_1, verbose = verbose)
+        
+    # At this point, we know that both are SFS over the same base, and neither is a lens space.
+   
+    coeffs_0.sort()
+    coeffs_1.sort()
+
+    if len(coeffs_0) != len(coeffs_1):
+        verbose_print(verbose, 12, [name_0, name_1, "different number of singular fibers"])
+        return True
+
+    cone_pts_0 = [p for (p, q) in coeffs_0]
+    cone_pts_1 = [p for (p, q) in coeffs_1]
+    # homework - check that regina sorts the coefficients.
+
+    if cone_pts_0 != cone_pts_1: 
+        verbose_print(verbose, 12, [name_0, name_1, "base orbifolds have different cone points"])
+        return True
+
+    eul_num_0 = euler_num(coeffs_0)
+    eul_num_1 = euler_num(coeffs_1)
+    
+    if abs(eul_num_0) != abs(eul_num_1): 
+        verbose_print(verbose, 12, [name_0, name_1, "Euler numbers are different"])
+        return True
+
+    # normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0].sort()
+    # normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1].sort()
+    # if normed_coeffs_0 != normed_coeffs_1: 
+    #    verbose_print(verbose, 12, [name_0, name_1, "distinguished by singular fibers"])
+    #    return True
+
+    verbose_print(verbose, 12, [name_0, name_1, "could not distinguish."])
+    return False
+
+
+### Deprecate this -- should be replaced by are_distinguished_closed_sfs
+### At this point, it is never called.
 def are_distinguished_sfs_over_s2(name_0, name_1, verbose = 3):
     '''
     Given two Regina names, checks whether the two manifolds are SFS over S2.
@@ -341,10 +491,15 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
     is_lens, ints = is_lens_space_from_name(name)
     if is_lens:
         p, q = ints
-        return ((q**2 + 1) % p) != 0
+        if p == 0:
+            return False
+        else:
+            return ((q**2 + 1) % p) != 0
     
-    is_sfs_over_s2, coeffs = is_sfs_over_s2_from_name(name)
-    if is_sfs_over_s2:
+    is_closed_sfs, base, coeffs = is_closed_sfs_from_name(name)
+    if is_closed_sfs:
+        # We know this is not a lens space, so Euler number is an invariant.
+            
         eul = euler_num(coeffs)
         if eul != 0: 
             return True
@@ -390,6 +545,13 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
             # numbers would have to be opposite (modulo 1).
             return (sum_of_eul != 0 and sum_of_eul != 1)
 
+    if '#' in name:
+        pieces = name.split(" # ")
+        if len(pieces) == 2:
+            name0, name1 = pieces
+            if are_distinguished_closed_sfs(name0, name1, verbose = verbose):
+                verbose_print(verbose, 10, [name0, name1, 'are distinct pieces'])
+                return (is_chiral_graph_mfd_from_name(name0) or is_chiral_graph_mfd_from_name(name1))
 
     return None   
 
@@ -628,7 +790,8 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
 
     verbose_print(verbose, 12, [M, s, "entering exceptions table", field])
     
-    allowed_fields = ["fund_gp", "name", "lens", "sfs_over_s2", "reducible", "toroidal"]
+    allowed_fields = ["fund_gp", "name", "atoroidal_sfs", "reducible", "toroidal"]
+    # The field "lens" used to be allowed, but it is no more.
     assert field in allowed_fields
     
     if not s in exceptions_table:
@@ -661,38 +824,48 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
             verbose_print(verbose, 10, [N, name, 'added to table'])
             return name
         else:
-            verbose_print(verbose, -1, [N, "could not compute name"])
-            return None
+            # try to see if N is a toroidal mixed manifold
+            is_tor, pieces = fetch_exceptional_data(M, s, exceptions_table, "toroidal", tries, verbose)
+            if is_tor:
+                # Convert the list of JSJ pieces into a pseudo-name
+                piece_names = [p[1] for p in pieces]
+                name = ' U/? '.join(sorted(piece_names))
+                exceptions_table[s]["name"] = name
+                verbose_print(verbose, 10, [N, name, 'pseudo-name added to table'])
+                return name
+            else:
+                verbose_print(verbose, -1, [N, "could not compute name"])
+                return None
 
-    if field == "lens":
-        name = fetch_exceptional_data(M, s, exceptions_table, "name", tries, verbose)
-        if name == None:
-            return (None, None)
-
-        out = is_lens_space_from_name(name)
-        is_lens, _ = out
-        if is_lens: 
-            exceptions_table[s]["lens"] = out
-            verbose_print(verbose, 10, [N, name, 'lens coeffs added to table'])
-            return out
-        else:
-            verbose_print(verbose, 10, [N, name, 'no lens coeffs found'])
-            return out
+#     if field == "lens":
+#         name = fetch_exceptional_data(M, s, exceptions_table, "name", tries, verbose)
+#         if name == None:
+#             return (None, None)
+# 
+#         out = is_lens_space_from_name(name)
+#         is_lens, _ = out
+#         if is_lens: 
+#             exceptions_table[s]["lens"] = out
+#             verbose_print(verbose, 10, [N, name, 'lens coeffs added to table'])
+#             return out
+#         else:
+#             verbose_print(verbose, 10, [N, name, 'no lens coeffs found'])
+#             return out
     
-    if field == "sfs_over_s2":
+    if field == "atoroidal_sfs":
         name = fetch_exceptional_data(M, s, exceptions_table, "name", tries, verbose)
         if name == None:
             return (None, None)
 
-        out = is_sfs_over_s2_from_name(name)
-        is_sfs_over_s2, _ = out
-        if is_sfs_over_s2: 
-            exceptions_table[s]["sfs_over_s2"] = out
-            verbose_print(verbose, 10, [N, name, 'sfs coeffs added to table'])
+        out = is_closed_sfs_from_name(name)
+        is_sfs = out[0]
+        if is_sfs and out[1] in ["Lens", "S2"]: 
+            exceptions_table[s]["atoroidal_sfs"] = out
+            verbose_print(verbose, 10, [N, name, 'Atoroidal sfs coeffs added to table'])
             return out
         else:
-            verbose_print(verbose, 10, [N, s, name, 'no sfs coeffs found'])
-            return out
+            verbose_print(verbose, 10, [N, s, name, "Not recognized as atoroidal SFS"])
+            return (None, out[1], out[2])
         
     if field == "reducible":
         out = geom_tests.is_reducible_wrapper(N, tries, verbose)
@@ -1072,10 +1245,8 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     verbose_print(verbose, 3, [name, num_low_volume, 'low volume slopes found'])
     verbose_print(verbose, 5, [name, '(somewhat-)low volume slopes', slopes_low_volume])
 
-    # Temporary off-ramp
-    # return []
 
-    # Step six - check for cosmetic pairs in slopes_non_hyp[hom_hash].
+    # Step six - check for (non-hyperbolic) cosmetic pairs in slopes_non_hyp[hom_hash].
     # Note that slopes_bad automatically gets recorded and reported.
 
     bad_uns = []
@@ -1099,40 +1270,15 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                 t_name = fetch_exceptional_data(M, t, exceptions_table, "name", tries, verbose)
 
                 reason = (name, s, t, s_name, t_name)
-
-                # TODO: simplify the logic in the next batch of tests
-
-                if s_name == t_name:
-                    # give up
-                    bad_uns.append(reason)
-                    continue
+                verbose_print(verbose, 10, ["comparing", s_name, "to", t_name])
                 
-                s_lens, _ = fetch_exceptional_data(M, s, exceptions_table, "lens", tries, verbose)
-                t_lens, _ = fetch_exceptional_data(M, t, exceptions_table, "lens", tries, verbose)
-
-                if s_lens and t_lens:
-                    if are_distinguished_lens_spaces(s_name, t_name, verbose):
-                        continue
-                    else:
-                        verbose_print(verbose, 2, [reason])
-                        bad_uns.append(reason)
-                        continue
-
-                s_sfs, _ = fetch_exceptional_data(M, s, exceptions_table, "sfs_over_s2", tries, verbose)
-                t_sfs, _ = fetch_exceptional_data(M, t, exceptions_table, "sfs_over_s2", tries, verbose)
-
-                if (s_lens and t_sfs) or (s_sfs and t_lens):
+                if are_distinguished_closed_sfs(s_name, t_name, verbose):
                     continue
+ 
+                s_ator_sfs, _, _ = fetch_exceptional_data(M, t, exceptions_table, "atoroidal_sfs", tries, verbose)
+                t_ator_sfs, _, _ = fetch_exceptional_data(M, t, exceptions_table, "atoroidal_sfs", tries, verbose)
 
-                if s_sfs and t_sfs:
-                    if are_distinguished_sfs_over_s2(s_name, t_name, verbose):
-                        continue
-                    else:
-                        verbose_print(verbose, 2, [reason])
-                        bad_uns.append(reason)
-                        continue
-
-                if s_lens or s_sfs:
+                if s_ator_sfs:
                     t_red, _ = fetch_exceptional_data(M, t, exceptions_table, "reducible", tries, verbose)
                     if t_red:
                         continue
@@ -1140,13 +1286,65 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                     if t_tor:
                         continue
                     
-                if t_lens or t_sfs:
+                if t_ator_sfs:
                     s_red, _ = fetch_exceptional_data(M, s, exceptions_table, "reducible", tries, verbose)
                     if s_red:
                         continue                    
                     s_tor, _ = fetch_exceptional_data(M, s, exceptions_table, "toroidal", tries, verbose)
                     if s_tor:
                         continue
+                
+
+#                 # The next batch of tests are all handled by the above simpler block.
+#                 if s_name == t_name:
+#                     # give up
+#                     bad_uns.append(reason)
+#                     continue
+#                 
+#                 s_lens, _ = fetch_exceptional_data(M, s, exceptions_table, "lens", tries, verbose)
+#                 t_lens, _ = fetch_exceptional_data(M, t, exceptions_table, "lens", tries, verbose)
+# 
+#                 if s_lens and t_lens:
+#                     if are_distinguished_lens_spaces(s_name, t_name, verbose):
+#                         continue
+#                     else:
+#                         verbose_print(verbose, 2, [reason])
+#                         bad_uns.append(reason)
+#                         continue
+# 
+#                 s_sfs, _ = fetch_exceptional_data(M, s, exceptions_table, "sfs_over_s2", tries, verbose)
+#                 t_sfs, _ = fetch_exceptional_data(M, t, exceptions_table, "sfs_over_s2", tries, verbose)
+# 
+#                 if (s_lens and t_sfs) or (s_sfs and t_lens):
+#                     continue
+# 
+#                 if s_sfs and t_sfs:
+#                     if are_distinguished_sfs_over_s2(s_name, t_name, verbose):
+#                         continue
+#                     else:
+#                         verbose_print(verbose, 2, [reason])
+#                         bad_uns.append(reason)
+#                         continue
+# 
+#                 if s_lens or s_sfs:
+#                     t_red, _ = fetch_exceptional_data(M, t, exceptions_table, "reducible", tries, verbose)
+#                     if t_red:
+#                         continue
+#                     t_tor, _ = fetch_exceptional_data(M, t, exceptions_table, "toroidal", tries, verbose)
+#                     if t_tor:
+#                         # Note: M(s) might be a toroidal SFS over S2. This is an issue.
+#                         continue
+#                     
+#                 if t_lens or t_sfs:
+#                     s_red, _ = fetch_exceptional_data(M, s, exceptions_table, "reducible", tries, verbose)
+#                     if s_red:
+#                         continue                    
+#                     s_tor, _ = fetch_exceptional_data(M, s, exceptions_table, "toroidal", tries, verbose)
+#                     if s_tor:
+#                         # Note: M(t) might be a toroidal SFS over S2. This is an issue.
+#                         continue
+
+
 
                 if are_distinguished_graph_pairs(s_name, t_name, verbose):
                     continue
