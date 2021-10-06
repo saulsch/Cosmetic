@@ -345,6 +345,9 @@ def identify_with_torus_boundary(regina_tri):
             name = P.isoSig()
     return kind, name
 
+
+
+
 def is_toroidal(regina_tri):
     """
     Checks for essential tori and returns the pieces of the
@@ -419,6 +422,7 @@ def decompose_along_tori(regina_tri):
             if all(not C.hasCompressingDisc() for C in pieces):
                 essential_tori.append(S)
 
+    num_tori = len(essential_tori)
     if len(essential_tori) == 0:
         return False, None
     
@@ -443,9 +447,75 @@ def decompose_along_tori(regina_tri):
     X.intelligentSimplify()
     X.splitIntoComponents()
     ids = [identify_with_torus_boundary(C) for C in list(children(X))]
+    # Count products. If this is less than the number of tori that we cut along,
+    # then at least one torus is not boundary-parallel
+    num_products = len([i for i in ids if i[1] in ('SFS [A: (1,1)]', 'A x S1')])
+    toroidal = (num_products < num_tori)
+    
     # Remove products
     ids = [i for i in ids if i[1] not in ('SFS [A: (1,1)]', 'A x S1')]
-    return (True, sorted(ids))
+    
+    return (toroidal, sorted(ids))
+
+
+def identify_with_bdy_from_isosig(iso):
+    """
+    Given the isosig of an ideal triangulation, use the combined 
+    power of Regina and SnapPy to try to give a name to the input 
+    manifold. Decompose along tori, if necessary.
+    """
+    
+    kind, name = "unknown", None
+
+    # First, throw away the second part of a complicated name
+    parts = iso.split("_")
+    iso = parts[0]
+    
+    P = to_regina(iso)
+    P.intelligentSimplify()
+    M = snappy.Manifold(iso)
+    M.simplify()
+    if appears_hyperbolic(M):
+        for i in range(100):
+            if M.solution_type() == 'all tetrahedra positively oriented':
+                break
+            M.randomize()
+        
+        if not M.verify_hyperbolicity(bits_prec=100):
+            raise RuntimeError('Cannot prove hyperbolicity for ' +
+                               M.triangulation_isosig())
+        kind = 'hyperbolic'
+        ids = M.identify()
+        if ids:
+            name = ids[0].name()
+            return kind, name
+    else:
+        match = standard_lookup(P)
+        if match is None:
+            P.idealToFinite()
+            P.intelligentSimplify()
+            match = standard_lookup(P)
+        if match is not None:
+            kind = match.__class__.__name__
+            name = str(match)
+            return kind, name
+        if match is None:
+            toroidal, pieces = decompose_along_tori(P)
+            if toroidal:
+                kind = 'toroidal'
+                name = str(pieces)
+            else:
+                # If atoroidal, there should be only one piece
+                assert len(pieces) == 1
+                kind = pieces[0][0]
+                name = pieces[0][1]
+            return kind, name
+
+    # At this point, we have failed. Return the only data available.
+    name = P.isoSig()
+    return kind, name
+    
+
 
 def regina_name(closed_snappy_manifold, tries = 100, max_tets = 25):
     """
