@@ -135,23 +135,8 @@ def fix_framing(M):
 
 # Alexander polynomial and related invariants
 
-
-def Casson_invt(M, verbose=3):
-    """
-    Computes Casson invariant, aka second derivative of Alexander polynomial at 1.
-    """
-    P = M.alexander_polynomial()
-    verbose_print(verbose, 10, [M.name(), 'Alexander polynomial', P])
-    deg = P.degree()/2
-    Rin = P.parent()  # the polynomial ring where P lives
-    # normalize the polynomial so that positive and negative powers match and
-    # so that it evaluates to 1 at 1
-    Q = P/(Rin.gen()**deg * P(1))  
-    verbose_print(verbose, 10, [Q, 'Normalized Alexander polynomial'])
-    assert Q(1) == 1
-    A = Q.derivative().derivative()
-    verbose_print(verbose, 10, [A, 'second derivative'])
-    return A(1)/2
+# Casson_invt function used to be here; compare cosmetic_mfds.Casson_invt.
+# The Casson invariant is now computed in Alexander_tests.
 
 def genus_lower_bound(M, verbose=3):
     """
@@ -184,7 +169,6 @@ def Alexander_tests(M, verbose=3):
 
 # Jones polynomial and related invariants
 
-
 def Jones_tests(K, name, verbose=3):
     """
     Given a snappy link K and its name (for bookkeeping), 
@@ -194,18 +178,16 @@ def Jones_tests(K, name, verbose=3):
     Both are relevant to obstructing cosmetic surgeries.
     """
     
-    # K = link_from_manifold(M, verbose)
     if K == None:
         return None, None
-        # return 0,1 # This will be treated as a failed test
     V = K.jones_polynomial(new_convention=False)
     # The 'new_convention=False' ensures we get classical Jones polynomial
-    verbose_print(verbose, 10, [V, "Jones polynomial"])
+    verbose_print(verbose, 10, [name, V, "Jones polynomial"])
     Q = V.derivative().derivative().derivative()
     
     w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
     # Alternative, more complicated expression below:
-    # w = UniversalCyclotomicField().gen(5) # so w = exp(2*Pi*I/5)
+    # w = UniversalCyclotomicField().gen(5) 
 
     verbose_print(verbose, 10, [Q(1), "Jones third derivative at 1"])
     verbose_print(verbose, 10, [V(w), "Jones poly evaluated at exp(2*Pi*I/5)"])
@@ -251,7 +233,7 @@ def merge(lsts):
 
 def turaev_genus(pd_code):
     '''
-    Accept the PD code of a (connected), return the genus of the associated 
+    Given the PD code of a (connected) diagram, return the genus of the associated 
     Turaev surface. This is an upper bound on the Turaev genus of the link.
     Written by Adam Lowrance
     '''
@@ -346,13 +328,14 @@ def HFK_tests(K, name, verbose=3):
     return tau, genus, thickness 
     # We should also return epsilon
 
+
 def Hanselman_slopes(K, name, use_HFK=True, verbose=3):
     """
     Given a snappy knot K and its name (for bookkeeping)
     use Hanselman's Theorem 2 to compute a list of (possibly)
     cosmetic slopes to check. Return the list.
     
-    The flag HFK_test determines whether we compute the knot
+    The flag use_HFK determines whether we compute the knot
     Floer homology of K or simply rely on bounds coming from
     the Alexander polynomial and Turaev genus.
     """
@@ -412,7 +395,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
     References:
     [Ni-Wu, "Cosmetic surgeries on knots in S3"]
     [Ravelomanana, "Exceptional Cosmetic surgeries on S3"]
-    [Fuer-Purcell-Schleimer, "Effective Bilipschitz Bounds on Drilling and Filling"] 
+    [Futer-Purcell-Schleimer, "Effective Bilipschitz Bounds on Drilling and Filling"] 
     '''
     verbose_print(verbose, 12, [M.name(), s, 'entering check_knot_cosmetic_slope'])
 
@@ -440,8 +423,8 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
     elif (s_hyp and sn_hyp):
         verbose_print(verbose, 6, [name, s, sn, 'both hyperbolic'])
         for i in range(tries):
-            # M = snappy.Manifold(name) - name is broken... 
             M = snappy.Manifold(M.triangulation_isosig())
+            # Why do we replace M here??? 
             distinguished, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
             if distinguished and rigorous:
                 return None
@@ -471,8 +454,6 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
                 verbose_print(verbose, 0, [name, s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
                 return (name, s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
 
-
-# geometry -
 
 
 
@@ -508,35 +489,35 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     # get the translation lengths and the normalisation factor and bounds on p and q
     verbose_print(verbose, 2, [name, 'systole is at least', sys])
     # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
-    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) # Thm:CosmeticOneCusp
+    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
     verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
     
 	# Build list of short slopes in the homological framing. Note that the list we
 	# receive from find_short_slopes is already in preferred_rep form.
-    hom_slopes_all = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
-    verbose_print(verbose, 4, [name, len(hom_slopes_all), 'short slopes found'])
-    verbose_print(verbose, 10, [hom_slopes_all])
+    short_slopes_all = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
+    verbose_print(verbose, 4, [name, len(short_slopes_all), 'short slopes found'])
+    verbose_print(verbose, 10, [short_slopes_all])
 
     # remove duplicate slopes, meridian, and longitude.
     # If use_NiWu==True, also remove all slopes that fail the Ni-Wu test.
-    hom_slopes = set()
-    for s in hom_slopes_all:
+    short_slopes = set()
+    for s in short_slopes_all:
         p = s[0]
         q = s[1]
         if p == 0 or q ==0: 
             # No need to check (0,1) or (1,0) slopes - they cannot be cosmetic
             # by Gordon-Luecke and homology.
-
             continue
-        if use_NiWu == True and (q**2 + 1) % p:  # Ni-Wu say p divides (q^2 + 1) in all cosmetics
+        if use_NiWu == True and (q**2 + 1) % p:  
+            # Ni-Wu say p divides (q^2 + 1) in all cosmetics
             continue
-        if geom_tests.preferred_rep((s[0], -s[1])) not in hom_slopes:
+        if geom_tests.preferred_rep((s[0], -s[1])) not in short_slopes:
             # That is, we have not yet added the negative of this slope
             verbose_print(verbose, 10, [name, s, 'adding to list of short slopes to check'])
-            hom_slopes.add(geom_tests.preferred_rep(s))
-    verbose_print(verbose, 2, [name, len(hom_slopes), 'short slopes left after pruning'])
-    verbose_print(verbose, 4, [hom_slopes])
-    return hom_slopes
+            short_slopes.add(geom_tests.preferred_rep(s))
+    verbose_print(verbose, 2, [name, len(short_slopes), 'short slopes left after pruning'])
+    verbose_print(verbose, 4, [short_slopes])
+    return short_slopes
 
 
 
@@ -607,18 +588,12 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     # Ok, at this point we are probably hyperbolic. Install a good hyperbolic metric.
     
     M = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
-
-    # Get high precision data to compute systole and other invariants
-    # M = snappy.ManifoldHP(name) - names are broken for census knots with nine tets. 
-    # M = M.high_precision()
-    # The high precision version of M is loaded locally in the systole routine.
     
     m, l, norm_fac = geom_tests.cusp_invariants(M)
     verbose_print(verbose, 5, [name, 'cusp_stuff', 'merid', m, 'long', l, 'norm_fac', norm_fac])
 
     if slope_method=='FPS' or slope_method=='All':
         short_slopes = systole_short_slopes(M, use_NiWu, tries, verbose)
-
     
     if hom_slopes == None and short_slopes == None:
         verbose_print(verbose, 3, [name, 'could not get list of slopes using '+slope_method])
@@ -760,7 +735,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
     polynomial. Thus, for alternating knots, it is advisable to turn off the
     non-HFK tests for speed.
     
-    Returns a list of only those manifolds for which  these tests do not succeed. 
+    Returns a list of only those knots for which  these tests do not succeed. 
     The remaining knots would have to be checked using hyperbolic methods.
     '''
 
@@ -801,7 +776,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
             if th == None:
                 th = 1000 # some outrageously large value
         
-        # Apply the weak Hanselman test. In the inequality below, namely
+        # Apply the quick Hanselman test. The inequality below, namely
         # 'th < 2*g*(g-2)', becomes harder to satisfy when th goes up and
         # g goes down.
         # Consequently, it is safe to substitute a cheap lower bound on genus
@@ -842,6 +817,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
             D = jones_data[1]  # V_K(zeta5)
             verbose_print(verbose, 6, [name, 'th(K) <=', th, ', V_K(zeta5) =', D])
             if (th != None and th < 16) and (D != None and D != 1):
+                # See the proof of Corollary 1.5 in Detcherry's paper.
                 verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Detcherry'])
                 Detcherry_ruled_out = Detcherry_ruled_out + 1
                 continue
@@ -864,7 +840,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
                 Wang_ruled_out = Wang_ruled_out + 1
                 continue
 
-        # Strong Hanselman test: use the real genus and thickness
+        # Hanselman HFK test: use the real genus and thickness
         if Hanselman_HFK and th != None and g != None:
             verbose_print(verbose, 6, [name, 'Full Hanselman test', th, 2*g*(g-2)])
             if th < 2*g*(g-2):
