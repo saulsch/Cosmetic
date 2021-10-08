@@ -243,7 +243,7 @@ def closed_isosigs(snappy_manifold, tries = 20, max_tets = 50):
     True
     """
     M = snappy.Manifold(snappy_manifold)
-    assert M.cusp_info('complete?') == [False]
+    assert set(M.cusp_info('complete?')) == {False}
     surgery_descriptions = [M.copy()]
 
     try:
@@ -423,7 +423,7 @@ def decompose_along_tori(regina_tri):
                 essential_tori.append(S)
 
     num_tori = len(essential_tori)
-    if len(essential_tori) == 0:
+    if num_tori == 0:
         return False, None
     
     D = nx.Graph()
