@@ -121,7 +121,7 @@ def is_closed_sfs_from_name(name, verbose=3):
     Returns a tuple (found, geometry, base, coeffs).
     * found is True or None.
     * geometry is one of ["Lens", "Elliptic", "S2 x R", "Nil", "Euclidean", "PSL2R", "H2 x R"].
-    * base is the base orbifold
+    * base is the total space of the base orbifold
     * coeffs is a tuple of integer coefficients for singular fibers
     
     We artificially split out lens spaces from other elliptic manifolds,
@@ -850,7 +850,7 @@ def fetch_exceptional_data(M, s, exceptions_table, field, tries = 3, verbose = 2
         elif is_sfs and base == "S2" and (len(coeffs) <= 3):
             exceptions_table[s]["atoroidal_sfs"] = out
             verbose_print(verbose, 10, [N, name, 'Atoroidal sfs coeffs added to table'])
-            return (True, geom, base, coeffs)        
+            return out        
         else:
             verbose_print(verbose, 10, [N, s, name, "Not recognized as atoroidal SFS"])
             return (None, geom, base, coeffs)
@@ -1249,7 +1249,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                 if "#" in s_name or "#" in t_name:
                     if abs(geom_tests.alg_int(s,t)) > 1:
                         # Gordon and Luecke proved distance between reducible fillings must be 1.
-                        verbose_print(verbose, 2, [s_name, t_name, "distinguished by Gordon-Luecke theorem on distabce between reducible fillings"])
+                        verbose_print(verbose, 2, [s_name, t_name, "distinguished by Gordon-Luecke theorem on distance between reducible fillings"])
                         continue
                 s_lens, _ = is_lens_space_from_name(s_name, verbose)
                 t_lens, _ = is_lens_space_from_name(t_name, verbose)
