@@ -74,7 +74,7 @@ def is_milley_relation(rel):
     return False
     
 
-def is_futer_relation(rel):
+def is_four_syllable_relation(rel):
     # a^p b^q a^r b^s
 
     syls = get_syls(rel)
@@ -116,12 +116,12 @@ def is_milley_group_quotient(G, verbose):
         return True
 
 
-def is_futer_group_quotient(G, verbose):
+def is_four_syllable_group_quotient(G, verbose):
     gens = G.generators()
     rels = G.relators()
 
-    if len(gens) == 2 and any(is_futer_relation(rel) for rel in rels):
-        if verbose > 12: print(str(G), 'has futer relation')
+    if len(gens) == 2 and any(is_four_syllable_relation(rel) for rel in rels):
+        if verbose > 12: print(str(G), 'has four_syllable relation')
         return True
 
 
@@ -137,10 +137,10 @@ def is_milley_manifold_filling(M, verbose):
     return is_milley_group_quotient(G, verbose)
 
 
-def is_futer_manifold_filling(M, verbose):
-    if verbose > 12: print(M, 'entering is_futer_manifold_filling')
+def is_four_syllable_manifold_filling(M, verbose):
+    if verbose > 12: print(M, 'entering is_four_syllable_manifold_filling')
     G = M.fundamental_group()
-    return is_futer_group_quotient(G, verbose)
+    return is_four_syllable_group_quotient(G, verbose)
 
 
 def has_cyclic_free_factor(G, verbose):
@@ -201,9 +201,9 @@ def is_exceptional_due_to_fundamental_group(N, tries, verbose):
             if verbose > 6: print(N, 'is Milley manifold filling')
             return (True, 'Milley manifold filling')
 
-        if is_futer_manifold_filling(N, verbose):
-            if verbose > -2: print(N, 'is Futer manifold filling')
-            return (True, 'Futer manifold filling')
+        if is_four_syllable_manifold_filling(N, verbose):
+            if verbose > -2: print(N, 'is four-syllable manifold')
+            return (True, 'four-syllable manifold')
 
         N.randomize()
 
