@@ -114,6 +114,33 @@ def name_manifold_and_link(in_obj, verbose=3):
     return name, M, K
 
 
+def name_and_link(in_obj, verbose=3):
+    """
+    Given in_obj, which is either a snappy Manifold, a spherogram Link, or
+    a string containing a name, return all three objects: the name,
+    the manifold, and the link.
+    """
+        
+    if type(in_obj) is snappy.Manifold:
+        M = in_obj
+        name = M.name()
+        K = link_from_manifold(M, verbose)
+        verbose_print(verbose, 10, [name, 'Received as manifold'])
+    if type(in_obj) is spherogram.links.invariants.Link:
+        K = in_obj
+        name = K.DT_code(DT_alpha=True)
+        verbose_print(verbose, 10, [name, 'Received as link'])
+    if type(in_obj) == str:
+        name = in_obj
+        verbose_print(verbose, 10, [name, 'Received as string'])
+        if name[:2] == 'DT' or name[:2] == 'dt':  # We received a DT code
+            K = snappy.Link(name)
+        else:
+            M = snappy.Manifold(name)
+            K = link_from_manifold(M, verbose)
+    return name, K
+
+
 # Framing issues
 
 
@@ -146,12 +173,13 @@ def genus_lower_bound(M, verbose=3):
     verbose_print(verbose, 10, [P, 'Alexander polynomial'])
     return P.degree()/2
 
-def Alexander_tests(M, verbose=3):
+def Alexander_tests(knot, verbose=3):
     """
+    Accepts either a snappy Link or a snappy Manifold.
     Computes Casson invariant and genus lower bound together, so that Alexander
     polynomial is computed only once.
     """
-    P = M.alexander_polynomial()
+    P = knot.alexander_polynomial()
     verbose_print(verbose, 10, [M.name(), P, 'Alexander polynomial'])
     deg = P.degree()/2
     verbose_print(verbose, 10, [deg, 'half the span'])
@@ -755,13 +783,14 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
             print('Last few difficult knots', bad_uns[-5:])
 
         # Be somewhat generous in what we accept
-        name, M, K = name_manifold_and_link(knot, verbose=verbose)
-        # We use M to compute the Alexander polynomial, and K to compute
-        # all other invariants.
+        name, K = name_and_link(knot, verbose=verbose)
+        # We use K to compute all of the invariants.
+        # The Alexander polynomial can be computed from the fundamental group (hence from M),
+        # but this is much slower.
 
         # Collect Alexander polynomial data
         if Casson or Hanselman_quick: # if we need the Alexander polynomial
-            C, genus_bound = Alexander_tests(M, verbose=verbose)
+            C, genus_bound = Alexander_tests(K, verbose=verbose)
 
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
         if Casson:
