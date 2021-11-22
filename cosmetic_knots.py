@@ -114,32 +114,6 @@ def name_manifold_and_link(in_obj, verbose=3):
     return name, M, K
 
 
-def name_and_link(in_obj, verbose=3):
-    """
-    Given in_obj, which is either a snappy Manifold, a spherogram Link, or
-    a string containing a name, return all three objects: the name,
-    the manifold, and the link.
-    """
-        
-    if type(in_obj) is snappy.Manifold:
-        M = in_obj
-        name = M.name()
-        K = link_from_manifold(M, verbose)
-        verbose_print(verbose, 10, [name, 'Received as manifold'])
-    if type(in_obj) is spherogram.links.invariants.Link:
-        K = in_obj
-        name = K.DT_code(DT_alpha=True)
-        verbose_print(verbose, 10, [name, 'Received as link'])
-    if type(in_obj) == str:
-        name = in_obj
-        verbose_print(verbose, 10, [name, 'Received as string'])
-        if name[:2] == 'DT' or name[:2] == 'dt':  # We received a DT code
-            K = snappy.Link(name)
-        else:
-            M = snappy.Manifold(name)
-            K = link_from_manifold(M, verbose)
-    return name, K
-
 
 # Framing issues
 
@@ -787,14 +761,17 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
             print('Last few difficult knots', bad_uns[-5:])
 
         # Be somewhat generous in what we accept
-        name, K = name_and_link(knot, verbose=verbose)
+        name, M, K = name_manifold_and_link(knot, verbose=verbose)
         # We use K to compute all of the invariants.
         # The Alexander polynomial can be computed from the fundamental group (hence from M),
         # but this is much slower.
 
-        # Collect Alexander polynomial data
+        # Collect Alexander polynomial data. Use the knot if possible
         if Casson or Hanselman_quick: # if we need the Alexander polynomial
-            C, genus_bound = Alexander_tests(K, name, verbose=verbose)
+            if K != None:
+                C, genus_bound = Alexander_tests(K, name, verbose=verbose)
+            else:
+                C, genus_bound = Alexander_tests(M, name, verbose=verbose)
 
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
         if Casson:
@@ -814,8 +791,8 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # (namely, span(Alexander)/2) and a cheap upper bound on thickness
         # (namely, the Turaev genus of the diagram).
         if Hanselman_quick:
-            if genus_bound != None and th != None:
-                g = genus_bound
+            g = genus_bound
+            if g != None and th != None:
                 verbose_print(verbose, 6, [name, 'quick Hanselman test', th, 2*g*(g-2)])
                 if th < 2*g*(g-2):
                     # The above inequality is never true when g=0,1,2, because th >= 0.
