@@ -173,14 +173,14 @@ def genus_lower_bound(M, verbose=3):
     verbose_print(verbose, 10, [P, 'Alexander polynomial'])
     return P.degree()/2
 
-def Alexander_tests(knot, verbose=3):
+def Alexander_tests(knot, name, verbose=3):
     """
     Accepts either a snappy Link or a snappy Manifold.
     Computes Casson invariant and genus lower bound together, so that Alexander
     polynomial is computed only once.
     """
     P = knot.alexander_polynomial()
-    verbose_print(verbose, 10, [M.name(), P, 'Alexander polynomial'])
+    verbose_print(verbose, 10, [name, P, 'Alexander polynomial'])
     deg = P.degree()/2
     verbose_print(verbose, 10, [deg, 'half the span'])
     
@@ -790,7 +790,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
 
         # Collect Alexander polynomial data
         if Casson or Hanselman_quick: # if we need the Alexander polynomial
-            C, genus_bound = Alexander_tests(K, verbose=verbose)
+            C, genus_bound = Alexander_tests(K, name, verbose=verbose)
 
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
         if Casson:
