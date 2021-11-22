@@ -179,6 +179,10 @@ def Alexander_tests(knot, name, verbose=3):
     Computes Casson invariant and genus lower bound together, so that Alexander
     polynomial is computed only once.
     """
+
+    if knot == None:
+        return None, None
+
     P = knot.alexander_polynomial()
     verbose_print(verbose, 10, [name, P, 'Alexander polynomial'])
     deg = P.degree()/2
@@ -520,8 +524,8 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
     verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
     
-	# Build list of short slopes in the homological framing. Note that the list we
-	# receive from find_short_slopes is already in preferred_rep form.
+    # Build list of short slopes in the homological framing. Note that the list we
+    # receive from find_short_slopes is already in preferred_rep form.
     short_slopes_all = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
     verbose_print(verbose, 4, [name, len(short_slopes_all), 'short slopes found'])
     verbose_print(verbose, 10, [short_slopes_all])
@@ -794,7 +798,7 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
 
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
         if Casson:
-            if C != 0:
+            if C != None and C != 0:
                 verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Boyer-Lines'])
                 Casson_ruled_out = Casson_ruled_out + 1
                 continue
@@ -802,8 +806,6 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # Get a cheap upper bound on HFK thickness from Turaev genus
         if Hanselman_quick or Jones_fifth:
             th = thickness_upper_bound(K, name, verbose)
-            if th == None:
-                th = 1000 # some outrageously large value
         
         # Apply the quick Hanselman test. The inequality below, namely
         # 'th < 2*g*(g-2)', becomes harder to satisfy when th goes up and
@@ -812,21 +814,22 @@ def prune_using_invariants(knots, Casson=True, Hanselman_quick=True, Jones_deriv
         # (namely, span(Alexander)/2) and a cheap upper bound on thickness
         # (namely, the Turaev genus of the diagram).
         if Hanselman_quick:
-            g = genus_bound
-            verbose_print(verbose, 6, [name, 'quick Hanselman test', th, 2*g*(g-2)])
-            if th < 2*g*(g-2):
-                # The above inequality is never true when g=0,1,2, because th >= 0.
-                # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
-                # criterion in Hanselman's Theorem 2.
-                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by quick Hanselman test'])
-                Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
-                continue
-            # The following sub-test perhaps deserves its own 'quick Wang' flag
-            if th == 0 and g == 1: 
-                # These must be alternating knots of genus exactly 1
-                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang for alternating knots'])
-                Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
-                continue
+            if genus_bound != None and th != None:
+                g = genus_bound
+                verbose_print(verbose, 6, [name, 'quick Hanselman test', th, 2*g*(g-2)])
+                if th < 2*g*(g-2):
+                    # The above inequality is never true when g=0,1,2, because th >= 0.
+                    # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
+                    # criterion in Hanselman's Theorem 2.
+                    verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by quick Hanselman test'])
+                    Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
+                    continue
+                # The following sub-test perhaps deserves its own 'quick Wang' flag
+                if th == 0 and g == 1: 
+                    # These must be alternating knots of genus exactly 1
+                    verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang for alternating knots'])
+                    Hansel_quick_ruled_out = Hansel_quick_ruled_out + 1
+                    continue
 
         # Compute the Jones polynomial plus related values, if needed
         if Jones_deriv or Jones_fifth:
