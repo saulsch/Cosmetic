@@ -458,6 +458,68 @@ def decompose_along_tori(regina_tri):
     return (toroidal, sorted(ids))
 
 
+def decompose_along_tori_old(regina_tri):
+    """
+    First, finds all essential normal tori in the manifold associated
+    with fundamental normal surfaces.  Then takes a maximal disjoint
+    collection of these tori, namely the one with the fewest tori
+    involved, and cuts the manifold open along it.  It tries to
+    identify the pieces, removing any (torus x I) components. 
+
+    Returns: (has essential torus, list of pieces)
+
+    Note: This may fail to be the true JSJ decomposition because there
+    could be (torus x I)'s in the list of pieces and it might well be
+    possible to amalgamate some of the pieces into a single SFS.
+    """
+    
+    T = regina_tri
+    assert T.isZeroEfficient()
+    essential_tori = []
+    surfaces = regina.NormalSurfaces.enumerate(T,
+                          regina.NS_QUAD, regina.NS_FUNDAMENTAL)
+    for i in range(surfaces.size()):
+        S = surfaces.surface(i)
+        if S.eulerChar() == 0:
+            if not S.isOrientable():
+                S = S.doubleSurface()
+            assert S.isOrientable()
+            X = S.cutAlong()
+            X.intelligentSimplify()
+            X.splitIntoComponents()
+            pieces = list(children(X))
+            if all(not C.hasCompressingDisc() for C in pieces):
+                essential_tori.append(S)
+
+    if len(essential_tori) == 0:
+        return False, None
+    
+    D = nx.Graph()
+    for a, A in enumerate(essential_tori):
+        for b, B in enumerate(essential_tori):
+            if a < b:
+                if A.disjoint(B):
+                    D.add_edge(a, b)
+
+    cliques = list(nx.find_cliques(D))
+    if len(cliques) == 0:
+        clique = [0]
+    else:
+        clique = min(cliques, key=len)
+    clique = [essential_tori[c] for c in clique]
+    A = clique[0]
+    for B in clique[1:]:
+        A = haken_sum(A, B)
+
+    X = A.cutAlong()
+    X.intelligentSimplify()
+    X.splitIntoComponents()
+    ids = [identify_with_torus_boundary(C) for C in list(children(X))]
+    # Remove products
+    ids = [i for i in ids if i[1] not in ('SFS [A: (1,1)]', 'A x S1')]
+    return (True, sorted(ids))
+
+
 def identify_with_bdy_from_isosig(iso):
     """
     Given the isosig of an ideal triangulation, use the combined 
