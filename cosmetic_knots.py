@@ -480,14 +480,14 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     name = M.name()
 
     for i in range(2*tries):
+        N = M.copy()
         try:
-            sys = geom_tests.systole(M, verbose=verbose)
-            # This is too slow.  Can we gain some time by using low precision for most manifolds?
+            sys = geom_tests.systole(N, verbose=verbose)
             break
         except:
             sys = None
             verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
-            M.randomize()
+            N.randomize()
     if sys == None:
         verbose_print(verbose, 6, [name, 'systole fail'])
         return None

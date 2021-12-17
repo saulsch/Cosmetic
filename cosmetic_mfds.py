@@ -672,6 +672,8 @@ def is_distinguished_by_covers(M, s, t, tries, verbose):
     them, and returns True if the "spectrum" distinguishes.  If this
     fails, returns False.
     """
+    
+    verbose_print(verbose, 12, [M, s, t, "entering is_distinguished_by_covers"])
     Ms = M.copy()
     Mt = M.copy()
     Ms.dehn_fill(s)
@@ -694,6 +696,9 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
     the homology groups of those covers and finally returns True if that
     invariant distinguishes.  If this fails, returns False.
     """
+
+    verbose_print(verbose, 12, [M, s, t, "entering is_distinguished_by_cover_homology"])
+
     Ms = M.copy()
     Mt = M.copy()
     Ms.dehn_fill(s)
@@ -724,8 +729,8 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
     # have degree dividing the above?  Hmm. Perhaps there is profit
     # lurking in degree four and six fold covers?  Any way, we
     # hopefully do not spend too much time making covers...
-    cap = min(tries, 8) # do not bother with covers of degree more than 8
-    for deg in range(cap):
+    cap = min(tries, 8) # do not bother with covers of degree more than 7
+    for deg in range(1, cap):
         distinct = check_cover_homology_fixed_deg(Ms, Mt, deg, verbose)
         if distinct:
             return True
@@ -1059,15 +1064,15 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
         
     for i in range(2*tries): # that looks like a magic number... 
+        N = M.copy()
+        for j in range(i):
+            N.randomize()
         try:
-            N = M.copy()
-            for j in range(i):
-                N.randomize()
-            sys = geom_tests.systole(M, verbose = verbose)
+            sys = geom_tests.systole(N, verbose = verbose)
             break
         except:
             sys = None
-            verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
+            verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
         
     if sys == None:
         verbose_print(verbose, 2, [name, None, None, 'systole fail'])
@@ -1347,7 +1352,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     
     return bad_uns
     
-def check_mfds(manifolds, use_BoyerLines=True, tries=8, verbose=5, report=20):
+def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=5, report=20):
     verbose_print(verbose, 12, ["entering check_mfds"])
     amphichiral_uns = []
     bad_uns = []

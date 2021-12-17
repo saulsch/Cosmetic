@@ -253,6 +253,41 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
 # systole
 
 
+def systole_with_covers(M, tries=10, verbose=3):
+    """
+    Given a snappy Manifold M,
+    try to compute a lower bound for the systole.
+    If direct computation fails, then try taking covers.
+    The idea is that the systole of M is at least (1/n) times
+    the systole of an n-fold cover.
+    We only care about systoles that are shorter than 0.15.
+    """
+    
+    name = M.name()
+    verbose_print(verbose, 12, [name, "entering systole_with_covers"])
+
+    tries = 2*tries
+    # This is a hack. In our context, tries is at most 8. But here, we want 
+    # to retriangulate many times, until we succeed.
+
+
+    for deg in range(1, 6):
+        cov = M.covers(deg)
+        for N in cov: 
+            for i in range(tries): # that looks like a magic number... 
+                for j in range(i):
+                    N.randomize()
+                try:
+                    # Q = N.copy()
+                    sys = systole(N, verbose = verbose)
+                    verbose_print(verbose, 10, ['systole of', deg, 'fold cover', N, 'is at least', sys])
+                    return (sys/deg)
+                except:
+                    sys = None
+                    verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
+
+
+
 def systole(M, verbose = 3):
     """
     Given a snappy Manifold M,
