@@ -30,7 +30,7 @@ from sage.symbolic.ring import SR
 # wrappers for Regina utilities
 
 
-def is_reducible_wrapper(M, tries, verbose):
+def is_reducible_wrapper(M, tries=10, verbose=3):
     """
     Given a snappy Manifold M, presumed to be closed, uses
     Regina to decide whether M is reducible.
@@ -54,7 +54,7 @@ def is_reducible_wrapper(M, tries, verbose):
         return out
     
 
-def is_toroidal_wrapper(M, verbose):
+def is_toroidal_wrapper(M, verbose=3):
     """
     Given a snappy manifold M, which could be cusped or closed,
     uses Regina to decide whether M is toroidal.
@@ -69,7 +69,7 @@ def is_toroidal_wrapper(M, verbose):
     return out
 
 
-def torus_decomp_wrapper(M, tries, verbose):
+def torus_decomp_wrapper(M, tries=10, verbose=3):
     """
     Given a snappy Manifold M, presumed to be closed, uses
     Regina to decide whether M is toroidal.
@@ -266,7 +266,7 @@ def systole_with_covers(M, tries=10, verbose=3):
     name = M.name()
     verbose_print(verbose, 12, [name, "entering systole_with_covers"])
 
-    tries = 2*tries
+    retriang_attempts = 2*tries
     # This is a hack. In our context, tries is at most 8. But here, we want 
     # to retriangulate many times, until we succeed.
 
@@ -274,7 +274,7 @@ def systole_with_covers(M, tries=10, verbose=3):
     for deg in range(1, 6):
         cov = M.covers(deg)
         for N in cov: 
-            for i in range(tries): # that looks like a magic number... 
+            for i in range(retriang_attempts): # that looks like a magic number... 
                 for j in range(i):
                     N.randomize()
                 try:
@@ -498,7 +498,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if dunfield.is_hyperbolic(N, i+1, verbose): 
                 return True
         if i > 0: # gosh, this is a tricky one... so
-            if is_toroidal_wrapper_light(N, verbose)[0]:
+            if is_toroidal_wrapper(N, verbose)[0]:
                 return False 
             if is_reducible_wrapper(N, tries, verbose)[0]:
                 return False 

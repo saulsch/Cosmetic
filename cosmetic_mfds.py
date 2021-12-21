@@ -1063,6 +1063,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
     exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
         
+    # We could also call geom_tests.systole_with_covers. So far, it has not been needed.
     for i in range(2*tries): # that looks like a magic number... 
         N = M.copy()
         for j in range(i):

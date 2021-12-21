@@ -399,14 +399,15 @@ def decompose_along_tori(regina_tri):
 
     Returns: (has essential torus, list of pieces)
 
-    Note: This may fail to be the true JSJ decomposition because there
-    could be (torus x I)'s in the list of pieces and it might well be
+    Note: This may fail to be the true JSJ decomposition. There might be
+    unrecognized (torus x I)'s in the list of pieces and it might well be
     possible to amalgamate some of the pieces into a single SFS.
     """
     
     T = regina_tri
     assert T.isZeroEfficient()
-    essential_tori = []
+    assert T.isConnected() # We will be counting components below
+    incompress_tori = []
     surfaces = regina.NormalSurfaces.enumerate(T,
                           regina.NS_QUAD, regina.NS_FUNDAMENTAL)
     for i in range(surfaces.size()):
@@ -420,25 +421,28 @@ def decompose_along_tori(regina_tri):
             X.splitIntoComponents()
             pieces = list(children(X))
             if all(not C.hasCompressingDisc() for C in pieces):
-                essential_tori.append(S)
+                incompress_tori.append(S)
 
-    num_tori = len(essential_tori)
-    if num_tori == 0:
+    if incompress_tori == []:
         return False, None
     
+    # Compute disjointness graph.
     D = nx.Graph()
-    for a, A in enumerate(essential_tori):
-        for b, B in enumerate(essential_tori):
+    for a, A in enumerate(incompress_tori):
+        for b, B in enumerate(incompress_tori):
             if a < b:
                 if A.disjoint(B):
                     D.add_edge(a, b)
 
+    # Build A, the union of a clique of disjoint tori such that any torus disjoint from A
+    # is parallel into A.
     cliques = list(nx.find_cliques(D))
     if len(cliques) == 0:
         clique = [0]
     else:
         clique = min(cliques, key=len)
-    clique = [essential_tori[c] for c in clique]
+    clique = [incompress_tori[c] for c in clique]
+    num_tori = len(clique)
     A = clique[0]
     for B in clique[1:]:
         A = haken_sum(A, B)
@@ -447,77 +451,23 @@ def decompose_along_tori(regina_tri):
     X.intelligentSimplify()
     X.splitIntoComponents()
     ids = [identify_with_torus_boundary(C) for C in list(children(X))]
+
     # Count products. If this is less than the number of tori that we cut along,
     # then at least one torus is not boundary-parallel
     num_products = len([i for i in ids if i[1] in ('SFS [A: (1,1)]', 'A x S1')])
-    toroidal = (num_products < num_tori)
-    
-    # Remove products
-    ids = [i for i in ids if i[1] not in ('SFS [A: (1,1)]', 'A x S1')]
-    
-    return (toroidal, sorted(ids))
-
-
-def decompose_along_tori_old(regina_tri):
-    """
-    First, finds all essential normal tori in the manifold associated
-    with fundamental normal surfaces.  Then takes a maximal disjoint
-    collection of these tori, namely the one with the fewest tori
-    involved, and cuts the manifold open along it.  It tries to
-    identify the pieces, removing any (torus x I) components. 
-
-    Returns: (has essential torus, list of pieces)
-
-    Note: This may fail to be the true JSJ decomposition because there
-    could be (torus x I)'s in the list of pieces and it might well be
-    possible to amalgamate some of the pieces into a single SFS.
-    """
-    
-    T = regina_tri
-    assert T.isZeroEfficient()
-    essential_tori = []
-    surfaces = regina.NormalSurfaces.enumerate(T,
-                          regina.NS_QUAD, regina.NS_FUNDAMENTAL)
-    for i in range(surfaces.size()):
-        S = surfaces.surface(i)
-        if S.eulerChar() == 0:
-            if not S.isOrientable():
-                S = S.doubleSurface()
-            assert S.isOrientable()
-            X = S.cutAlong()
-            X.intelligentSimplify()
-            X.splitIntoComponents()
-            pieces = list(children(X))
-            if all(not C.hasCompressingDisc() for C in pieces):
-                essential_tori.append(S)
-
-    if len(essential_tori) == 0:
-        return False, None
-    
-    D = nx.Graph()
-    for a, A in enumerate(essential_tori):
-        for b, B in enumerate(essential_tori):
-            if a < b:
-                if A.disjoint(B):
-                    D.add_edge(a, b)
-
-    cliques = list(nx.find_cliques(D))
-    if len(cliques) == 0:
-        clique = [0]
+    if len(T.boundaryComponents()) > 0 and (num_products >= num_tori):
+        # All tori are boundary-parallel
+        toroidal = False
     else:
-        clique = min(cliques, key=len)
-    clique = [essential_tori[c] for c in clique]
-    A = clique[0]
-    for B in clique[1:]:
-        A = haken_sum(A, B)
-
-    X = A.cutAlong()
-    X.intelligentSimplify()
-    X.splitIntoComponents()
-    ids = [identify_with_torus_boundary(C) for C in list(children(X))]
+        toroidal = True
+    
     # Remove products
-    ids = [i for i in ids if i[1] not in ('SFS [A: (1,1)]', 'A x S1')]
-    return (True, sorted(ids))
+    pruned_ids = [i for i in ids if i[1] not in ('SFS [A: (1,1)]', 'A x S1')]
+    # But if nothing is left, then keep one product
+    if pruned_ids == []:
+        pruned_ids = ids[:1]
+    
+    return (toroidal, sorted(pruned_ids))
 
 
 def identify_with_bdy_from_isosig(iso):
