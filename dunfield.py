@@ -305,6 +305,7 @@ def best_match(matches):
         return (s, str(m))
     return min(matches, key=score)
 
+
 def identify_with_torus_boundary(regina_tri):
     """
     Use the combined power of Regina and SnapPy to try to give a name
@@ -470,22 +471,25 @@ def decompose_along_tori(regina_tri):
     return (toroidal, sorted(pruned_ids))
 
 
-def identify_with_bdy_from_isosig(iso):
+def identify_with_bdy_from_isosig(data):
     """
     Given the isosig of an ideal triangulation, use the combined 
     power of Regina and SnapPy to try to give a name to the input 
     manifold. Decompose along tori, if necessary.
+    
+    Also works if handed a snappy Manifold.
     """
     
     kind, name = "unknown", None
 
-    # First, throw away the second part of a complicated name
-    parts = iso.split("_")
-    iso = parts[0]
+    # If handed an isosig, throw away the boundary framing
+    if isinstance(data, str):
+        parts = iso.split("_")
+        data = parts[0]
     
-    P = to_regina(iso)
+    P = to_regina(data)
     P.intelligentSimplify()
-    M = snappy.Manifold(iso)
+    M = snappy.Manifold(data)
     M.simplify()
     if appears_hyperbolic(M):
         for i in range(100):

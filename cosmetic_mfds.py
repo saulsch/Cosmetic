@@ -992,11 +992,17 @@ def is_distinguished_non_hyp(L, s, t, tries, verbose):
 
 
 
-def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
+def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=4):
     '''
     Given a one-cusped manifold M we equip it with a shortest framing
     and then return a list of tuples - (name, s, t, 'reason') where s
     and t are possibly a cosmetic pair.
+    
+    If use_BoyerLines==True, then we apply the Boyer-Lines theorem:
+    the Casson invariant obstructs purely cosmetic surgeries.
+    
+    If check_chiral==True, then we check for chirally cosmetic surgeries
+    as well as purely cosmetic ones. 
     '''
 
     verbose_print(verbose, 12, [M, "entering check_cosmetic"])
@@ -1015,7 +1021,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
         
     # If H_1(M) = Z, we can apply the Boyer-Lines criterion to rule out cosmetic surgeries
 
-    if use_BoyerLines:
+    if use_BoyerLines and not check_chiral:
         h = M.homology()
         if h.betti_number() == 1 and h.rank() == 1:
             # M is the complement of a knot in an integer homology sphere
@@ -1031,11 +1037,11 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     sol_type = M.solution_type()
     
     if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
-        # So M is probably not a hyperbolic knot.  Let's do a few
+        # So M is probably not a hyperbolic manifold.  Let's do a few
         # quick tests to help ourselves later, and then give up.
 
         if geom_tests.is_torus_link_filling(M, verbose):
-            # M is a torus knot, so it has non-zero tau invariant, and
+            # M is a torus knot complemebt, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
             verbose_print(verbose, 3, [M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             # Note: torus knots should get caught by the Casson_invt test above, so we should
@@ -1043,7 +1049,7 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
             return []
         out = geom_tests.is_toroidal_wrapper(M, verbose)
         if out[0]:
-            # M is a satellite so use the torus decomposition as the 'reason'
+            # M is toroidal so use the torus decomposition as the 'reason'
             verbose_print(verbose, 3, [name, 'is toroidal'])
             return [(name, None, None, 'toroidal mfd: ' + str(out[1]))]
         # Anything else is confusing
@@ -1314,9 +1320,6 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     # counterexamples and difficult cases to be returned to calling
     # function.
 
-
-    # Uncomment the following to skip actual cosmetic checks
-    # return bad_uns
     for hom_hash in slopes_hyp:
         for s in slopes_hyp[hom_hash]:
             for t in slopes_low_volume[hom_hash]:
@@ -1333,9 +1336,12 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
                 if s_vol > t_vol or t_vol > s_vol:
                     verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes'])
                     continue
-                looks_distinct, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose)
-                if looks_distinct and rigorous:
-                    continue
+                looks_distinct, rigorous = False, False
+                if not check_chiral:
+                    # Try to distinguish by oriented hyperbolic invariants
+                    looks_distinct, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, t, tries, verbose)
+                    if looks_distinct and rigorous:
+                        continue
                     
                 if is_distinguished_by_covers(M, s, t, tries, verbose):
                     continue
@@ -1353,7 +1359,18 @@ def check_cosmetic(M, use_BoyerLines, tries=8, verbose=5):
     
     return bad_uns
     
-def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=5, report=20):
+
+def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
+    """
+    Checks a list of manifolds for purely cosmetic surgeries.
+    
+    Returns two lists of pairs of slopes that the program could not distinguish:
+    * amphichiral_uns is a list of undistinguished amphichiral pairs (M,s) and (M,t), where s,t
+        are exchanged by an orientation-reversing symmetry of M, and M(s) looks similar to (M,t)
+    * bad_uns is a list of pairs (M,s) and (M,t), where s,t are *not* exchanged by an orientation-
+        reversing symmetry of M, and (M,s) looks similar to (M,t)
+    """
+    
     verbose_print(verbose, 12, ["entering check_mfds"])
     amphichiral_uns = []
     bad_uns = []
@@ -1363,7 +1380,7 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=5, report=20):
         if type(M) == str:
             name = M
             M = snappy.Manifold(name)
-        uns = check_cosmetic(M, use_BoyerLines, tries=tries, verbose=verbose)
+        uns = check_cosmetic(M, use_BoyerLines=use_BoyerLines, check_chiral=False, tries=tries, verbose=verbose)
         if len(uns) > 0:
             is_amph, cob = is_amphichiral(M, tries=tries, verbose=verbose)
             if is_amph:
@@ -1388,3 +1405,48 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=5, report=20):
             verbose_print(verbose, 0, [bad_uns])
     return amphichiral_uns, bad_uns
 
+
+def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
+    """
+    Checks a list of manifolds for both purely and chirally cosmetic surgeries.
+    Amphichiral parent manifolds are discarded.
+    
+    Returns a list of pairs of slopes (M,s) and (M,t) that the program could not distinguish.
+    """
+    
+    verbose_print(verbose, 12, ["entering check_mfds"])
+    bad_uns = []
+    for n, M in enumerate(manifolds):
+        if type(M) is snappy.Manifold:
+            name = M.name()
+        if type(M) == str:
+            name = M
+            M = snappy.Manifold(name)
+
+        sol_type = M.solution_type()
+    
+        if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
+            # So M is probably not a hyperbolic manifold. Try to identify it.
+            
+            kind, found_name = dunfield.identify_with_bdy_from_isosig(M)
+            if kind != 'unknown':
+                verbose_print(verbose, 2, [name, kind, found_name])
+                bad_uns.append((name, None, None, found_name))
+            elif is_exceptional_due_to_volume(M, verbose):   
+                verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
+                bad_uns.append((name, None, None, 'small volume'))
+            else:
+                verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
+                bad_uns.append((name, None, None, 'bad solution type - strange!'))
+            continue
+
+        is_amph, _ = is_amphichiral(M, tries=tries, verbose=verbose)
+        if is_amph:
+            verbose_print(verbose, 2, [name, "is amphichiral; skipping."])
+            continue
+        uns = check_cosmetic(M, use_BoyerLines=False, check_chiral=True, tries=tries, verbose=verbose)
+        bad_uns.extend(uns)
+        if n % report == 0: 
+            verbose_print(verbose, 0, ['report', n])
+            verbose_print(verbose, 0, [bad_uns])
+    return bad_uns
