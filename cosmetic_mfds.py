@@ -1411,11 +1411,13 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     Checks a list of manifolds for both purely and chirally cosmetic surgeries.
     Amphichiral parent manifolds are discarded.
     
-    Returns a list of pairs of slopes (M,s) and (M,t) that the program could not distinguish.
+    Returns a list of amphichiral manifolds (which are not checked) and a list of pairs 
+    of slopes (M,s) and (M,t) that the program could not distinguish.
     """
     
     verbose_print(verbose, 12, ["entering check_mfds"])
     bad_uns = []
+    amphichiral_uns = []
     for n, M in enumerate(manifolds):
         if type(M) is snappy.Manifold:
             name = M.name()
@@ -1437,16 +1439,17 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
                 bad_uns.append((name, None, None, 'small volume'))
             else:
                 verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
-                bad_uns.append((name, None, None, 'bad solution type - strange!'))
+                bad_uns.append((name, None, None, 'bad solution type for unclear reasons'))
             continue
 
-        is_amph, _ = is_amphichiral(M, tries=tries, verbose=verbose)
+        is_amph, cob = is_amphichiral(M, tries=tries, verbose=verbose)
         if is_amph:
             verbose_print(verbose, 2, [name, "is amphichiral; skipping."])
+            amphichiral_uns.append(name)
             continue
         uns = check_cosmetic(M, use_BoyerLines=False, check_chiral=True, tries=tries, verbose=verbose)
         bad_uns.extend(uns)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
             verbose_print(verbose, 0, [bad_uns])
-    return bad_uns
+    return amphichiral_uns, bad_uns
