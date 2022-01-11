@@ -1451,5 +1451,6 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
         bad_uns.extend(uns)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
-            verbose_print(verbose, 0, [bad_uns])
+            verbose_print(verbose, 0, ['Amphichiral mfds:', amphichiral_uns])
+            verbose_print(verbose, 0, ['Bad slopes:', bad_uns])
     return amphichiral_uns, bad_uns
