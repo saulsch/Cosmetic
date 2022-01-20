@@ -710,25 +710,18 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
         return True
 
     order = order_of_torsion(Ms)
-    if order == 1:
-        # urk
-        verbose_print(verbose, 5, [Ms, Mt, "are Z homology three-spheres. Cool!"])
-        return False
-    factors = list(factor(order))
-    factors = [f[0] for f in factors] # strip the powers
-    factors.sort()
-    
-    p = factors[0] # smallest prime
-    # first, try covers of degree exactly p
-    if p < tries:
-        distinct = check_cover_homology_fixed_deg(Ms, Mt, p, verbose)
-        if distinct:
-            return True
+    if order != 1:
+        factors = list(factor(order))
+        factors = [f[0] for f in factors] # strip the powers
+        factors.sort()   
+        p = factors[0] # smallest prime
+        # first, try covers of degree exactly p
+        if p < tries:
+            distinct = check_cover_homology_fixed_deg(Ms, Mt, p, verbose)
+            if distinct:
+                return True
 
-    # Saul: I don't think this can work... Don't the covers have to
-    # have degree dividing the above?  Hmm. Perhaps there is profit
-    # lurking in degree four and six fold covers?  Any way, we
-    # hopefully do not spend too much time making covers...
+    # Now, try all covers of small degree
     cap = min(tries, 8) # do not bother with covers of degree more than 7
     for deg in range(1, cap):
         distinct = check_cover_homology_fixed_deg(Ms, Mt, deg, verbose)
@@ -1351,7 +1344,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 if looks_distinct and not rigorous:
                     reason = (name, s, t, 'distinguished by non-rigorous length spectrum')
                 if not looks_distinct:
-                    reason = (name, s, t, 'Not distinguished by hyperbolic invariants')
+                    reason = (name, s, t, 'Not distinguished by hyperbolic invariants or covers')
                 verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 
