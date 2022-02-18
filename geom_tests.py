@@ -25,7 +25,7 @@ from sage.functions.other import sqrt, ceil, floor
 from sage.arith.misc import gcd, xgcd, factor
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
-
+from sage.modules.free_module_element import vector
 
 # wrappers for Regina utilities
 
@@ -351,7 +351,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     ## Pass #3: Regina three-sphere recognition.
     
     for r in short_slopes_all:
-		# Compute homology via intersection number with longitude
+        # Compute homology via intersection number with longitude
         if abs(alg_int(long,r)) != 1:
             verbose_print(verbose, 10, [M, r, 'ruled out by homology'])
         else:
@@ -382,17 +382,15 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
                 continue
 
         # Covers
-        # Checking degree 5 and 7 seems to speed things up by 20%?
+        # Checking degree 5 and 7 only seems to speed things up by 20%?
         if covers_on: 
             verbose_print(verbose, 12, [M, r, 'Trying covers.'])
             cover_found = False
-            # Degrees 5, 7, 11 are useful, but 11 is too slow.
-            # Degrees 2, 3, 4, 6, 8, 9, and 10 appear to be useless.
-            # The manfolds v2947 and t03548 are very unhappy - I think
-            # when looking at covers of degree seven??
-            for i in (5, 7):
+            for i in range(2, 7):
                 verbose_print(verbose, 12, ['searching in degree', i])
-                if N.covers(i, method = 'gap') != []: # much faster
+                if N.covers(i) != []: 
+                # Old comment: method='gap' is much faster
+                # New comment: probably not faster?
                     cover_found = True
                     verbose_print(verbose, 10, [M, r, 'has a cover of degree', i])
                     break
@@ -511,9 +509,74 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
 # Dealing with a pair of slopes
 
 
+def is_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.1, verbose=5):
+    """
+    Given a cusped manifold M and two slopes (where we think that both
+    fillings are hyperbolic), try to distinguish M(s) from M(t) using the 
+    complex length spectra.
+    
+    If check_chiral==False, then we only check for orientation-preserving
+    isometries.
+    
+    If check_chiral==True, then we check for both orientation-preserving and
+    orientation-reversing isometries.
+    
+    The cutoff variable determines how far into the length spectrum we bother checking.
+    To save computer time, we creep up on the cutoff rather than jumping straight there.
+    
+    Returns True if the manifolds are distinguished, and False if not. 
+    A True answer is only as rigorous as the length spectrum (so, not entirely).
+    """
+    name = M.name()
+    verbose_print(verbose, 12, [name, s, t, 'entering is_distinguished_by_length_spectrum'])
+    Ms = M.high_precision()
+    Mt = M.high_precision()
+    
+    Ms.dehn_fill(s)
+    Mt.dehn_fill(t)
+    try:
+        Ms_domain = Ms.dirichlet_domain()
+        Mt_domain = Mt.dirichlet_domain()
+    except Exception as e:
+        verbose_print(verbose, 6, [M, s, t, e])
+
+    length_step = 0.2
+    current_length = min(1.0, cutoff)
+    
+    norm_cutoff = 0.1 # If vector norms differ by this much, the vectors really are different
+    
+    while current_length <= cutoff:
+        # Compute length spectra without multiplicity
+        Ms_spec = Ms_domain.length_spectrum_dicts(current_length, grouped = False)
+        Mt_spec = Mt_domain.length_spectrum_dicts(current_length, grouped = False)
+        # Throw away all but the complex lengths
+        Ms_spec = [line.length for line in Ms_spec]
+        Mt_spec = [line.length for line in Mt_spec]
+        
+        minlen = min(len(Ms_spec), len(Mt_spec))
+        
+        M_diff = [Ms_spec[i] - Mt_spec[i] for i in range(minlen)]
+        M_norm = vector(M_diff).norm()
+        
+        M_conjdiff = [Ms_spec[i] - Mt_spec[i].conjugate() for i in range(minlen)]
+        M_conjnorm = vector(M_conjdiff).norm()
+        
+        if not(check_chiral) and M_norm > norm_cutoff:
+            verbose_print(verbose, 6, [M, s, t, 'length spectrum up to', current_length, 'distinguishes oriented manifolds'])
+            return True
+        if check_chiral and M_norm > norm_cutoff and M_conjnorm > norm_cutoff:
+            verbose_print(verbose, 6, [M, s, t, 'length spectrum up to', current_length, 'distinguishes un-oriented manifolds'])
+            return True
+        else:
+            verbose_print(verbose, 10, [M, s, t, 'length spectrum up to', current_length, 'fails to distinguish'])
+        current_length += length_step
+            
+    return False
+
+
 def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     """
-    Given a manifold M and two slopes (where we think that both
+    Given a cusped manifold M and two slopes (where we think that both
     fillings are hyperbolic), try to prove that M(s) is not
     orientation-preservingly homeomorphic to M(t). 
     Returns a tuple of booleans (distinguished, rigor)
@@ -570,10 +633,16 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             # Let us not randomize, since we already have a good triangulation...
 
     rigor = False
+    if is_distinguished_by_length_spectrum(M, s, t, cutoff = 1.1, verbose=verbose):
+        return (True, rigor)
+    else:
+        return (False, None)
+    
+    '''
     for i in range(tries):
         try:
             # Now, try the bottom of the length spectrum.
-            # Note: "full rigor" isn't. This is not rigorous.
+            # Note: "full rigor" isn't. This is NOT rigorous.
             Ms_spec = Ms.length_spectrum(full_rigor=True)
             Mt_spec = Mt.length_spectrum(full_rigor=True)
 
@@ -596,3 +665,4 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             verbose_print(verbose, 6, [M, s, t, e])
 
     return (False, None)
+    '''
