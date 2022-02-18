@@ -1408,7 +1408,7 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     of slopes (M,s) and (M,t) that the program could not distinguish.
     """
     
-    verbose_print(verbose, 12, ["entering check_mfds"])
+    verbose_print(verbose, 12, ["entering check_mfds_chiral"])
     bad_uns = []
     amphichiral_uns = []
     for n, M in enumerate(manifolds):
@@ -1447,3 +1447,44 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
             verbose_print(verbose, 0, ['Amphichiral mfds:', amphichiral_uns])
             verbose_print(verbose, 0, ['Bad slopes:', bad_uns])
     return amphichiral_uns, bad_uns
+
+
+def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
+    """
+    Given a list of tuples of the form (M,s,t) where M is a manifold (or a name) and s,t
+    are slopes, checks to see whether M(s) can be distinguished from M(t) using
+    geodesic length spectra. 
+    
+    This program tries to distinguish M(s) from M(t) as unoriented manifolds.
+    
+    We presume that M and M(s), M(t) are all hyperbolic.
+    
+    Returns a list of tuples that could not be distinguished.
+    """
+    
+    verbose_print(verbose, 12, ["entering check_using_lengths"])
+    bad_uns = []
+    for n, line in enumerate(slopelist):
+        M, s, t = line
+        if type(M) is snappy.Manifold:
+            name = M.name()
+        if type(M) == str:
+            name = M
+            M = snappy.Manifold(name)
+
+        sol_type = M.solution_type()
+    
+        if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
+            verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
+            bad_uns.append((name, None, None, 'bad solution type for unclear reasons'))
+            continue
+            
+        distinct = geom_tests.is_distinguished_by_length_spectrum(M, s, t, check_chiral=True, cutoff = cutoff, verbose=verbose)
+        if not distinct:
+            bad_uns.append((name, s, t, 'not distinguished by length spectrum up to '+str(cutoff) ))
+        if n % report == 0: 
+            verbose_print(verbose, 0, ['report', n])
+            verbose_print(verbose, 0, [bad_uns])
+    return bad_uns
+           
+            
