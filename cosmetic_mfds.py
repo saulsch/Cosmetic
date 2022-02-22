@@ -1481,6 +1481,7 @@ def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
             
         distinct = geom_tests.is_distinguished_by_length_spectrum(M, s, t, check_chiral=True, cutoff = cutoff, verbose=verbose)
         if not distinct:
+            verbose_print(verbose, 4, [M, s, t, 'not distinguished by length spectrum up to', cutoff])
             bad_uns.append((name, s, t, 'not distinguished by length spectrum up to '+str(cutoff) ))
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
