@@ -157,6 +157,11 @@ def Alexander_tests(knot, name, verbose=3):
     if knot == None:
         return None, None
 
+    if type(knot) is snappy.Manifold:
+        verbose_print(verbose, 8, [name, 'Computing Alexander polynomial from manifold'])
+    if type(knot) is spherogram.links.invariants.Link:
+        verbose_print(verbose, 8, [name, 'Computing Alexander polynomial from knot diagram'])
+
     P = knot.alexander_polynomial()
     verbose_print(verbose, 10, [name, P, 'Alexander polynomial'])
     deg = P.degree()/2
@@ -764,7 +769,7 @@ def prune_using_invariants(knots, Casson=True, Genus_thick_quick=True, Jones_der
         name, M, K = name_manifold_and_link(knot, verbose=verbose)
         # We use K to compute all of the invariants.
         # The Alexander polynomial can be computed from the fundamental group (hence from M),
-        # but this is much slower.
+        # but this is slower for large examples.
 
         # Collect Alexander polynomial data. Use the knot if possible
         if Casson or Genus_thick_quick: # if we need the Alexander polynomial
@@ -793,13 +798,13 @@ def prune_using_invariants(knots, Casson=True, Genus_thick_quick=True, Jones_der
         if Genus_thick_quick:
             g = genus_bound
             if g != None and th != None:
-                verbose_print(verbose, 6, [name, 'quick Hanselman test', th, 2*g*(g-2)])
+                verbose_print(verbose, 6, [name, 'quick genus-thickness test', th, 2*g*(g-2)])
                 # Hanselman portion of the test
                 if th < 2*g*(g-2):
                     # The above inequality is never true when g=0,1,2, because th >= 0.
                     # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
                     # criterion in Hanselman's Theorem 2.
-                    verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by quick Hanselman test'])
+                    verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by quick genus-thickness test'])
                     Quick_GT_ruled_out = Quick_GT_ruled_out + 1
                     continue
                 # Wang portion of the test
