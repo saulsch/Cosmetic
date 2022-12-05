@@ -567,39 +567,32 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     
     if slope_method=='Hanselman' or slope_method=='All':
         hom_slopes = Hanselman_slopes(K, name, use_HFK, verbose)
+        if hom_slopes == set():
+            # We already know K has no cosmetic surgeries
+            return []
 
-    # From now on, we need geometry. So, check if the geometric
-    # structure is good enough.
-
-    sol_type = M.solution_type()
+    # From now on, we need geometry. Install a good hyperbolic metric,
+    # or give up if we cannot find one.
     
-    if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
-        # So M is probably not a hyperbolic knot.  Let's do a few
-        # quick tests to help ourselves later, and then give up.
-
-        if geom_tests.is_torus_link_filling(M, verbose):
+    mfd, reason = geom_tests.sanity_check_cusped(M, tries=tries, verbose=verbose)
+    if mfd == None:
+        # We did not find a hyperbolic structure
+        if reason == 'is a torus knot':
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
             verbose_print(verbose, 3, [M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             # Note: torus knots should get caught by the Casson_invt test above, so we should
             # not end up in this branch.
             return []
-        out = geom_tests.is_toroidal_wrapper(M, verbose)
-        if out[0]:
-            # M is a satellite so use the torus decomposition as the 'reason'
-            verbose_print(verbose, 3, [name, 'is toroidal'])
-            return [(name, None, None, 'satellite knot: ' + str(out[1]))]
-        # Anything else is confusing
-        if is_exceptional_due_to_volume(M, verbose):   
-            verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
-            return [(name, None, None, 'small volume')]
-        verbose_print(verbose, 2, [name, 'is very strange'])
-        return [(name, None, None, 'very strange')]
-
-    # Ok, at this point we are probably hyperbolic. Install a good hyperbolic metric.
-    
-    M = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
-    
+        else:
+            # M is some other non-hyperbolic manifold. Give up.
+            return [(name, None, None, reason)]
+    else:
+        # We found a hyperbolic structure
+        assert type(mfd) is snappy.Manifold
+        assert mfd.solution_type() == 'all tetrahedra positively oriented'
+        M = mfd
+            
     m, l, norm_fac = geom_tests.cusp_invariants(M)
     verbose_print(verbose, 5, [name, 'cusp_stuff', 'merid', m, 'long', l, 'norm_fac', norm_fac])
 
