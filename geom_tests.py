@@ -123,6 +123,59 @@ def is_knot_manifold(M):
     return True
 
 
+def sanity_check_cusped(M, tries=10, verbose=3):
+    """
+    Accepts a manifold M, presumed to be one-cusped and hyperbolic.
+    Performs some sanity checks, such as the number of cusps.
+
+    If M is hyperbolic, returns M (with positive triangulation).
+    If M seems non-hyperbolic, returns None and an error code.
+    """
+
+    name = M.name()
+    if not M.num_cusps() == 1:
+        return (None, 'wrong number of cusps')
+
+    sol_type = M.solution_type()
+    if sol_type == 'all tetrahedra positively oriented':
+    	verbose_print(verbose, 10, [name, 'already positively oriented'])
+    	return (M, None)
+    	
+    elif sol_type == 'contains negatively oriented tetrahedra':
+        X = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
+        if X == None:
+            verbose_print(verbose, 5, [name, 'positive triangulation fail'])
+            return (None, 'positive triangulation fail')
+        else: # we have succeeded
+            verbose_print(verbose, 10, [name, 'found positive triangulation'])
+            return (X, None)
+        
+    else:   
+	    # So M is probably not a hyperbolic manifold.  Let's do a few
+        # quick tests to help ourselves later, and then give up.
+
+        if fundamental.is_torus_link_filling(M, verbose):
+            verbose_print(verbose, 4, [name, 'is a torus link filling'])
+            return (None, 'is a torus knot')
+        if fundamental.is_exceptional_due_to_fundamental_group(M, tries, verbose):
+            verbose_print(verbose, 4, [name, 'exceptional due to fundamental group'])
+            return (None, 'exceptional due to fundamental group')
+        	
+        out = geom_tests.is_toroidal_wrapper(M, verbose)
+        if out[0]:
+            # M is toroidal so use the torus decomposition as the 'reason'
+            verbose_print(verbose, 4, [name, 'is toroidal'])
+            return (None, 'toroidal mfd: ' + str(out[1]))
+        # Anything else is confusing
+        if is_exceptional_due_to_volume(M, verbose):   
+            verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
+            return (None, 'small volume')
+        verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons...'])
+        return (None, 'bad solution type - strange!')
+
+
+
+
 # cusp utilities
 
 
@@ -196,6 +249,7 @@ def cusp_invariants(M):
     [(m,l)] = M.cusp_translations(verified = True, bits_prec = 200)
     norm_fac = sqrt(l * m.imag())
     return m, l, norm_fac
+
 
 
 # Get a list of short slopes
@@ -579,7 +633,8 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     Given a cusped manifold M and two slopes (where we think that both
     fillings are hyperbolic), try to prove that M(s) is not
     orientation-preservingly homeomorphic to M(t). 
-    Returns a tuple of booleans (distinguished, rigor)
+    
+    Returns a tuple of booleans (distinguished, rigor).
     distinguished is True if we can tell the manifolds apart.
     rigor is True if we did so using rigorous verified invariants.
     """
@@ -638,31 +693,3 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     else:
         return (False, None)
     
-    '''
-    for i in range(tries):
-        try:
-            # Now, try the bottom of the length spectrum.
-            # Note: "full rigor" isn't. This is NOT rigorous.
-            Ms_spec = Ms.length_spectrum(full_rigor=True)
-            Mt_spec = Mt.length_spectrum(full_rigor=True)
-
-            if len(Ms_spec) > 0 and len(Mt_spec) > 0:
-                # let's be careful to avoid handedness issues
-                ms = Ms_spec[0].length.real()
-                mt = Mt_spec[0].length.real()
-                if abs(ms - mt) > 0.1: 
-                    verbose_print(verbose, 0, [M, s, t, "bottom of length spectrum distinguishes"])
-                    return (True, rigor)
-
-            Ms_multi = [a.multiplicity for a in Ms.length_spectrum(2, full_rigor=True)]
-            Mt_multi = [a.multiplicity for a in Mt.length_spectrum(2, full_rigor=True)]
-
-            if Ms_multi != Mt_multi:
-                verbose_print(verbose, 0, [M, s, t, "bottom of multiplicity spectrum distinguishes"])
-                return (True, rigor)
-
-        except Exception as e:
-            verbose_print(verbose, 6, [M, s, t, e])
-
-    return (False, None)
-    '''
