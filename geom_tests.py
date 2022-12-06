@@ -155,6 +155,7 @@ def sanity_check_cusped(M, tries=10, verbose=3):
         # quick tests to help ourselves later, and then give up.
 
         if fundamental.is_torus_link_filling(M, verbose):
+            # This is useful information for cosmetic surgeries
             verbose_print(verbose, 4, [name, 'is a torus link filling'])
             return (None, 'is a torus knot')
         if fundamental.is_exceptional_due_to_fundamental_group(M, tries, verbose):
@@ -339,6 +340,34 @@ def systole_with_covers(M, tries=10, verbose=3):
                 except:
                     sys = None
                     verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
+
+    if sys == None:
+        verbose_print(verbose, 6, [name, 'systole fail'])
+        return None
+
+
+def systole_with_tries(M, tries=10, verbose=3):
+    """
+    Given a snappy Manifold M, tries and tries again to compute a lower
+    bound for the systole. Builds in randomization.
+    """
+
+    name = M.name()
+
+    verbose_print(verbose, 12, [name, 'entering systole_with_tries'])
+
+    for i in range(2*tries):
+        N = M.copy()
+        try:
+            sys = systole(N, verbose=verbose)
+            return sys
+        except:
+            sys = None
+            verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
+            N.randomize()
+    if sys == None:
+        verbose_print(verbose, 6, [name, 'systole fail'])
+        return None
 
 
 

@@ -484,17 +484,8 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     
     name = M.name()
 
-    for i in range(2*tries):
-        N = M.copy()
-        try:
-            sys = geom_tests.systole(N, verbose=verbose)
-            break
-        except:
-            sys = None
-            verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
-            N.randomize()
+    sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
     if sys == None:
-        verbose_print(verbose, 6, [name, 'systole fail'])
         return None
 
     # get the translation lengths and the normalisation factor and bounds on p and q
