@@ -260,9 +260,11 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
     """
     Given a one-cusped hyperbolic manifold M and a length cutoff len_cutoff,
     find all slopes on the cusp that are shorter than len_cutoff.
+    
     The Boolean flag 'normalized' clarifies whether the length cutoff is normalized
     (in the sense of Hodgson-Kerckhoff). If true, we convert to un-normalized,
     geometric length.
+    
     The routine accepts M with an arbitrary framing, installs the geometric
     framing on a copy N to do its work, and returns slopes in the original coordinates.
     """

@@ -665,31 +665,31 @@ def check_cover_homology_fixed_deg(M, N, deg, verbose=5):
         return False
 
 
-def is_distinguished_by_covers(M, s, t, tries, verbose):
+def is_distinguished_by_covers(M, s, N, t, tries, verbose):
     """
-    Given a snappy manifold M and a pair of slopes s and t, builds
-    M(s) and M(t), computes a collection of covers of each, counts
+    Given snappy manifolds M and N, and a pair of slopes s and t, builds
+    M(s) and N(t), computes a collection of covers of each, counts
     them, and returns True if the "spectrum" distinguishes.  If this
     fails, returns False.
     """
     
-    verbose_print(verbose, 12, [M, s, t, "entering is_distinguished_by_covers"])
+    verbose_print(verbose, 12, [M, s, N, t, "entering is_distinguished_by_covers"])
     Ms = M.copy()
-    Mt = M.copy()
+    Nt = N.copy()
     Ms.dehn_fill(s)
-    Mt.dehn_fill(t)
+    Nt.dehn_fill(t)
 
     Ms_covers = [len(Ms.covers(i)) for i in range(2, 6)]
-    Mt_covers = [len(Mt.covers(i)) for i in range(2, 6)]
+    Nt_covers = [len(Nt.covers(i)) for i in range(2, 6)]
 
-    if Ms_covers != Mt_covers:
-        verbose_print(verbose, 6, [M, s, t, 'cover spectrum distinguishes'])
+    if Ms_covers != Nt_covers:
+        verbose_print(verbose, 6, [M, s, N, t, 'cover spectrum distinguishes'])
         return True
 
     return False
 
     
-def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+def is_distinguished_by_cover_homology(M, s, N, t, tries, verbose):
     """
     Given a snappy manifold M and a pair of slopes s and t, builds
     M(s) and M(t), computes a collection of covers of each, computes
@@ -697,16 +697,16 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
     invariant distinguishes.  If this fails, returns False.
     """
 
-    verbose_print(verbose, 12, [M, s, t, "entering is_distinguished_by_cover_homology"])
+    verbose_print(verbose, 12, [M, s, N, t, "entering is_distinguished_by_cover_homology"])
 
     Ms = M.copy()
-    Mt = M.copy()
+    Nt = N.copy()
     Ms.dehn_fill(s)
-    Mt.dehn_fill(t)
+    Nt.dehn_fill(t)
 
-    if Ms.homology() != Mt.homology():
+    if Ms.homology() != Nt.homology():
         # This was not supposed to happen, but does because half-lives-half-dies only works over Q. 
-        verbose_print(verbose, 5, [Ms, Ms.homology(), ',', Mt, Mt.homology(), 'distinguished by homology groups'])
+        verbose_print(verbose, 5, [Ms, Ms.homology(), ',', Nt, Nt.homology(), 'distinguished by homology groups'])
         return True
 
     order = order_of_torsion(Ms)
@@ -717,14 +717,14 @@ def is_distinguished_by_cover_homology(M, s, t, tries, verbose):
         p = factors[0] # smallest prime
         # first, try covers of degree exactly p
         if p < tries:
-            distinct = check_cover_homology_fixed_deg(Ms, Mt, p, verbose)
+            distinct = check_cover_homology_fixed_deg(Ms, Nt, p, verbose)
             if distinct:
                 return True
 
     # Now, try all covers of small degree
     cap = min(tries, 8) # do not bother with covers of degree more than 7
     for deg in range(1, cap):
-        distinct = check_cover_homology_fixed_deg(Ms, Mt, deg, verbose)
+        distinct = check_cover_homology_fixed_deg(Ms, Nt, deg, verbose)
         if distinct:
             return True
     return False
@@ -984,6 +984,8 @@ def is_distinguished_non_hyp(L, s, t, tries, verbose):
     return None        
 
 
+# finding common fillings of M and N
+
 
 
 def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
@@ -1065,10 +1067,8 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     M_norm_len_cutoff = max(9.97, sqrt((2*pi/M_sys) + 56.0).n(200)) 
     verbose_print(verbose, 4, [M_name, 'norm_len_cutoff', M_norm_len_cutoff])
 
-
-
     N_volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
-    N_vol = fetch_volume(N, (0,0), M_volumes_table, tries, verbose)
+    N_vol = fetch_volume(N, (0,0), N_volumes_table, tries, verbose)
     N_exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
         
     N_sys = geom_tests.systole_with_tries(N, tries=tries, verbose=verbose)
@@ -1079,34 +1079,40 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     N_norm_len_cutoff = max(9.97, sqrt((2*pi/M_sys) + 56.0).n(200)) 
     verbose_print(verbose, 4, [N_name, 'norm_len_cutoff', N_norm_len_cutoff])
         
-
-    # TO HERE 2022.12.06
-
-    verbose_print(verbose, 3, [name, 'systole is at least', sys])
-    # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200))
-    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
-    verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
     
-    # Step one - fix the framing and gather the invariants that can
+    # Step one - fix the framing of both M and N and gather the invariants that can
     # be found rigorously.
 
-    # Switch to low precision to save time now. 
     M.set_peripheral_curves('shortest')
-    # C = M.cusp_neighborhood()
-    # C.set_displacement(C.stopping_displacement())
-    mer_hol, long_hol, norm_fac = geom_tests.cusp_invariants(M)
-    l_hom = geom_tests.preferred_rep(M.homological_longitude())
-    m_hom = geom_tests.shortest_complement(l_hom, mer_hol, long_hol)
+    M_mer_hol, M_long_hol, M_norm_fac = geom_tests.cusp_invariants(M)
+    M_l_hom = geom_tests.preferred_rep(M.homological_longitude())
+    M_m_hom = geom_tests.shortest_complement(M_l_hom, M_mer_hol, M_long_hol)
     
-    verbose_print(verbose, 4, [name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol])
-    verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
+    verbose_print(verbose, 4, [M_name, 'cusp_stuff', 'merid', M_mer_hol, 'long', M_long_hol])
+    verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', M_norm_fac, 'homolog. long.', M_l_hom, 'homolog. merid.', M_m_hom])
     
+    N.set_peripheral_curves('shortest')
+    N_mer_hol, N_long_hol, N_norm_fac = geom_tests.cusp_invariants(N)
+    N_l_hom = geom_tests.preferred_rep(N.homological_longitude())
+    N_m_hom = geom_tests.shortest_complement(N_l_hom, N_mer_hol, N_long_hol)
+    
+    verbose_print(verbose, 4, [N_name, 'cusp_stuff', 'merid', N_mer_hol, 'long', N_long_hol])
+    verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', N_norm_fac, 'homolog. long.', N_l_hom, 'homolog. merid.', N_m_hom])
+
+    # TO HERE 2022.12.06 - off-ramp for now
+    return None
+
+
     # Step two - get the short slopes. Split them by homology
            
-    short_slopes = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
-                    
-    verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
-    verbose_print(verbose, 5, short_slopes)
+    M_short_slopes = geom_tests.find_short_slopes(M, M_norm_len_cutoff, normalized=True, verbose=verbose)                    
+    verbose_print(verbose, 3, [M_name, len(short_slopes), 'short slopes found'])
+    verbose_print(verbose, 5, M_short_slopes)
+
+    N_short_slopes = geom_tests.find_short_slopes(N, N_norm_len_cutoff, normalized=True, verbose=verbose)                    
+    verbose_print(verbose, 3, [M_name, len(short_slopes), 'short slopes found'])
+    verbose_print(verbose, 5, M_short_slopes)
+    
 
     slopes_by_homology = {}
     for s in short_slopes:
@@ -1225,10 +1231,10 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
                 # At this point, both manifolds should be reducible, or both toroidal (or we have failed to identify a SFS).
 
                 # Tests that search for covers are pretty slow, but effective.                    
-                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                if is_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
 
-                if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+                if is_distinguished_by_cover_homology(M, s, M, t, tries, verbose):
                     continue
 
                 verbose_print(verbose, 2, [reason])
@@ -1340,9 +1346,9 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
                     if looks_distinct and rigorous:
                         continue
                     
-                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                if is_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
-                if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+                if is_distinguished_by_cover_homology(M, s, M, t, tries, verbose):
                     continue
                     
                 if looks_distinct and not rigorous:
@@ -1412,20 +1418,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         assert mfd.solution_type() == 'all tetrahedra positively oriented'
         M = mfd
 
-    # Step one: initialize volume and systole. Fix the framing and 
-    # collect cusp data.
-
-    volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
-    M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
-    exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
-                
-    sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
-    verbose_print(verbose, 3, [name, 'systole is at least', sys])
-    if sys == None:
-        return [(name, None, None, None, 'systole fail')]
-    
-    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
-    verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
+    # Step one: identify exceptional fillings
     
     M.set_peripheral_curves('shortest')
     # C = M.cusp_neighborhood()
@@ -1436,16 +1429,15 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     
     verbose_print(verbose, 4, [name, 'cusp_stuff', 'merid', mer_hol, 'long', long_hol])
     verbose_print(verbose, 5, ['cusp_stuff', 'norm_fac', norm_fac, 'homolog. long.', l_hom, 'homolog. merid.', m_hom])
-    
-    # Step two - get the short slopes. Split them by homology
-           
-    short_slopes = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
-                    
-    verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
-    verbose_print(verbose, 5, short_slopes)
 
-    slopes_by_homology = {}
-    for s in short_slopes:
+    six_theorem_length = 6.01 # All exceptionals shorter than this
+    exceptions_table = {}  # Lookup table of information about non-hyperbolic fillings
+    slopes_hyp = {}
+    slopes_non_hyp = {}
+    slopes_bad = {}
+
+    six_short_slopes = geom_tests.find_short_slopes(M, six_theorem_length, normalized=False, verbose=verbose)
+    for s in six_short_slopes:
         p = abs(geom_tests.alg_int(s, l_hom))
         if p == 0:
             verbose_print(verbose, 4, [name, 'removing homological longitude'])
@@ -1453,42 +1445,18 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         N = M.copy()
         N.dehn_fill(s)
         hom_gp = str(N.homology())
-        
-        # This test fails and also is unnecessary.  See Lem:TorsionInHalfLivesHalfDies
-        # assert ( ( order_of_torsion(N) / order_of_torsion(M) ) - p ) < 0.01, str(M.name()) + ' ' + str(s)
-        
+                
         hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
-        add_to_dict_of_sets(slopes_by_homology, hom_hash, s)
+        hyp_type = is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verbose)
+        if hyp_type == True:
+            add_to_dict_of_sets(slopes_hyp, hom_hash, s)
+        if hyp_type == False:
+            add_to_dict_of_sets(slopes_non_hyp, hom_hash, s)
+        if hyp_type == None: 
+            add_to_dict_of_sets(slopes_bad, hom_hash, s)
 
-    verbose_print(verbose, 0, [name, 'slopes_by_homology', slopes_by_homology]) # Normally, the cutoff should be 5.
-        
-    # Step three - split slopes_by_homology into slopes_hyp, slopes_non_hyp, slopes_bad
-
-    slopes_hyp = {}
-    slopes_non_hyp = {}
-    slopes_bad = {}
-    for hom_hash in slopes_by_homology:
-        for s in slopes_by_homology[hom_hash]:
-            hyp_type = is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verbose)
-            if hyp_type == True:
-                add_to_dict_of_sets(slopes_hyp, hom_hash, s)
-            if hyp_type == False:
-                add_to_dict_of_sets(slopes_non_hyp, hom_hash, s)
-            if hyp_type == None: 
-                add_to_dict_of_sets(slopes_bad, hom_hash, s)
-
-    num_hyp_slopes = sum(len(slopes_hyp[hash]) for hash in slopes_hyp)
-    num_non_hyp_slopes = sum(len(slopes_non_hyp[hash]) for hash in slopes_non_hyp)
-    num_bad_slopes = sum(len(slopes_bad[hash]) for hash in slopes_bad)
-    verbose_print(verbose, 3, [name, num_hyp_slopes, 'hyperbolic', num_non_hyp_slopes, 'exceptional', num_bad_slopes, 'bad'])
-    verbose_print(verbose, 4, [name, len(slopes_hyp), 'homology buckets of hyperbolic slopes'])
-    verbose_print(verbose, 5, [name, 'hyp slopes', slopes_hyp])
-    verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
-    if len(slopes_bad) > 0:
-        verbose_print(verbose, 0, [name, 'bad slopes', slopes_bad])
-
-
-    # Step four - check for (non-hyperbolic) cosmetic pairs in slopes_non_hyp[hom_hash].
+    
+    # Step two: check for (non-hyperbolic) cosmetic pairs in slopes_non_hyp.
     # Note that slopes_bad automatically gets recorded and reported.
 
     bad_uns = []
@@ -1561,16 +1529,74 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 # At this point, both manifolds should be reducible, or both toroidal (or we have failed to identify a SFS).
 
                 # Tests that search for covers are pretty slow, but effective.                    
-                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                if is_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
 
-                if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+                if is_distinguished_by_cover_homology(M, s, M, t, tries, verbose):
                     continue
 
                 verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 
 
+    # Step three: initialize volume and systole. Get the systole-short hyperbolic slopes,
+    # and split them by homology.
+
+    volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
+    M_vol = fetch_volume(M, (0,0), volumes_table, tries, verbose)
+                
+    sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
+    verbose_print(verbose, 3, [name, 'systole is at least', sys])
+    if sys == None:
+        return [(name, None, None, None, 'systole fail')]
+    
+    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
+    verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
+               
+    short_slopes = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
+                    
+    verbose_print(verbose, 3, [name, len(short_slopes), 'short slopes found'])
+    verbose_print(verbose, 5, short_slopes)
+
+    # slopes_by_homology = {}
+    for s in short_slopes:
+        p = abs(geom_tests.alg_int(s, l_hom))
+        if p == 0:
+            verbose_print(verbose, 4, [name, 'removing homological longitude'])
+            continue # the homological longitude is unique, so cannot be cosmetic
+        N = M.copy()
+        N.dehn_fill(s)
+        hom_gp = str(N.homology())
+        hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
+        
+        if hom_hash in slopes_non_hyp:
+            if s in slopes_non_hyp[hom_hash]:
+                verbose_print(verbose, 8, [name, s, 'known exceptional slope'])
+                continue
+        if hom_hash in slopes_bad:
+            if s in slopes_bad[hom_hash]:
+                verbose_print(verbose, 8, [name, s, 'known bad (unidentified) slope'])
+                continue
+        if hom_hash in slopes_hyp:
+            if s in slopes_hyp[hom_hash]:
+                verbose_print(verbose, 8, [name, s, 'known hyperbolic slope'])
+                continue
+
+        assert is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verbose)
+        # All slopes shorter than 6.01 should have been identified already. The new ones are hyperbolic.
+        add_to_dict_of_sets(slopes_hyp, hom_hash, s)
+            
+    num_non_hyp_slopes = sum(len(slopes_non_hyp[hash]) for hash in slopes_non_hyp)
+    num_bad_slopes = sum(len(slopes_bad[hash]) for hash in slopes_bad)
+    num_hyp_slopes = sum(len(slopes_hyp[hash]) for hash in slopes_hyp)
+    verbose_print(verbose, 3, [name, num_hyp_slopes, 'hyperbolic', num_non_hyp_slopes, 'exceptional', num_bad_slopes, 'bad'])
+    verbose_print(verbose, 4, [name, len(slopes_hyp), 'homology buckets of hyperbolic slopes'])
+    verbose_print(verbose, 5, [name, 'hyp slopes', slopes_hyp])
+    verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
+    if len(slopes_bad) > 0:
+        verbose_print(verbose, 0, [name, 'bad slopes', slopes_bad])
+
+    # There is no step four.
 
     # Step five - Compute the max of the volumes in
     # slopes_hyp[hom_hash] and use this to compute the larger set of
@@ -1676,9 +1702,9 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     if looks_distinct and rigorous:
                         continue
                     
-                if is_distinguished_by_covers(M, s, t, tries, verbose):
+                if is_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
-                if is_distinguished_by_cover_homology(M, s, t, tries, verbose):
+                if is_distinguished_by_cover_homology(M, s, M, t, tries, verbose):
                     continue
                     
                 if looks_distinct and not rigorous:
