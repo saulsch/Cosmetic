@@ -436,7 +436,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         for i in range(tries):
             M = snappy.Manifold(M.triangulation_isosig())
             # Why do we replace M here??? 
-            distinguished, rigorous = geom_tests.is_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
+            distinguished, rigorous = geom_tests.are_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
             if distinguished and rigorous:
                 return None
             if distinguished and not rigorous:
