@@ -8,11 +8,12 @@ import re
 import networkx as nx
 
 
-# Code from Dunfield's paper on exceptional slopes from:
+# This code has its origins in Dunfield's paper on exceptional slopes:
 
 # https://dataverse.harvard.edu/file.xhtml?persistentId=doi:10.7910/DVN/6WNVG0/0X6FYV&version=1.0
 
-# Some hacking has taken place.
+# Some hacking has taken place. Most significantly, we have updated a lot of commands
+# to interact with Regina 7.0 rather than 6.0.
 
 ################
 
@@ -169,11 +170,15 @@ def appears_hyperbolic(M):
                   'contains negatively oriented tetrahedra']
     return M.solution_type() in acceptable and M.volume() > 0
 
+'''
+The following seems to be unnecessary now that Regina 7.0 returns lists
+
 def children(packet):
     child = packet.firstChild()
     while child:
         yield child
         child = child.nextSibling()
+'''
 
 def to_regina(data):
     if hasattr(data, '_to_string'):
@@ -219,7 +224,11 @@ def census_lookup(regina_tri):
     name of the manifold, dropping the triangulation number.
     """
     hits = regina.Census.lookup(regina_tri)
-    hit = hits.first()
+    # The following is a Regina 6.0 command, deprecated in Regina 7.0
+    # hit = hits.first()
+    if len(hits) == 0:
+        return None
+    hit = hits[0]
     if hit is not None:
         name = hit.name()
         match = re.search(r"(.*) : #\d+$", name)
@@ -314,7 +323,7 @@ def identify_with_torus_boundary(regina_tri):
     
     kind, name = "unknown", None
     
-    P = regina_tri.clone()
+    P = regina.Triangulation3(regina_tri) # a clone of the triangulation
     P.finiteToIdeal()
     P.intelligentSimplify()
     M = snappy.Manifold(P.isoSig())
@@ -335,7 +344,7 @@ def identify_with_torus_boundary(regina_tri):
     else:
         match = standard_lookup(regina_tri)
         if match is None:
-            Q = P.clone()
+            Q = regina.Triangulation3(P)
             Q.idealToFinite()
             Q.intelligentSimplify()
             match = standard_lookup(Q)
@@ -381,8 +390,10 @@ def is_toroidal(regina_tri):
             assert S.isOrientable()
             X = S.cutAlong()
             X.intelligentSimplify()
-            X.splitIntoComponents()
-            pieces = list(children(X))
+            # The following is Regina 6.0 code, deprecated in version 7.0
+            # X.splitIntoComponents()
+            # pieces = list(children(X))
+            pieces = X.triangulateComponents()
             if all(not C.hasCompressingDisc() for C in pieces):
                 ids = [identify_with_torus_boundary(C) for C in pieces]
                 return (True, sorted(ids))
@@ -419,8 +430,10 @@ def decompose_along_tori(regina_tri):
             assert S.isOrientable()
             X = S.cutAlong()
             X.intelligentSimplify()
-            X.splitIntoComponents()
-            pieces = list(children(X))
+            # The following is Regina 6.0 code, deprecated in version 7.0
+            # X.splitIntoComponents()
+            # pieces = list(children(X))
+            pieces = X.triangulateComponents()
             if all(not C.hasCompressingDisc() for C in pieces):
                 incompress_tori.append(S)
 
@@ -450,13 +463,18 @@ def decompose_along_tori(regina_tri):
 
     X = A.cutAlong()
     X.intelligentSimplify()
-    X.splitIntoComponents()
-    ids = [identify_with_torus_boundary(C) for C in list(children(X))]
+    # The following is Regina 6.0 code, deprecated in version 7.0
+    # X.splitIntoComponents()
+    # pieces = list(children(X))
+    pieces = X.triangulateComponents()
+    ids = [identify_with_torus_boundary(C) for C in pieces]
 
     # Count products. If this is less than the number of tori that we cut along,
     # then at least one torus is not boundary-parallel
     num_products = len([i for i in ids if i[1] in ('SFS [A: (1,1)]', 'A x S1')])
-    if len(T.boundaryComponents()) > 0 and (num_products >= num_tori):
+    # The following is Regina 6.0 code, deprecated in version 7.0
+    # if len(T.boundaryComponents()) > 0 and (num_products >= num_tori):
+    if T.boundaryComponents().size() > 0 and (num_products >= num_tori): 
         # All tori are boundary-parallel
         toroidal = False
     else:
@@ -566,8 +584,10 @@ def regina_name(closed_snappy_manifold, tries = 100, max_tets = 25):
         if match is not None:
             return str(match)
     else:
-        T.connectedSumDecomposition()
-        pieces = list(children(T))
+        # The following is Regina 6.0 code, deprecated in version 7.0
+        # T.connectedSumDecomposition()
+        # pieces = list(children(T))
+        pieces = T.summands()
         if len(pieces) == 1:
             return census_lookup(pieces[0])
         pieces = [regina_name(P) for P in pieces]
