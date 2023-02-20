@@ -594,7 +594,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
 # Dealing with a pair of slopes
 
 
-def is_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.1, verbose=5):
+def are_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.1, verbose=5):
     """
     Given a cusped manifold M and two slopes (where we think that both
     fillings are hyperbolic), try to distinguish M(s) from M(t) using the 
@@ -613,7 +613,7 @@ def is_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.
     A True answer is only as rigorous as the length spectrum (so, not entirely).
     """
     name = M.name()
-    verbose_print(verbose, 12, [name, s, t, 'entering is_distinguished_by_length_spectrum'])
+    verbose_print(verbose, 12, [name, s, t, 'entering are_distinguished_by_length_spectrum'])
     Ms = M.high_precision()
     Mt = M.high_precision()
     
@@ -659,7 +659,7 @@ def is_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.
     return False
 
 
-def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
+def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     """
     Given a cusped manifold M and two slopes (where we think that both
     fillings are hyperbolic), try to prove that M(s) is not
@@ -670,7 +670,7 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     rigor is True if we did so using rigorous verified invariants.
     """
     name = M.name()
-    verbose_print(verbose, 12, [name, s, t, 'entering is_distinguished_by_hyp_invars'])
+    verbose_print(verbose, 12, [name, s, t, 'entering are_distinguished_by_hyp_invars'])
     Ms = M.copy()
     Mt = M.copy()
     
@@ -719,7 +719,7 @@ def is_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             # Let us not randomize, since we already have a good triangulation...
 
     rigor = False
-    if is_distinguished_by_length_spectrum(M, s, t, cutoff = 1.1, verbose=verbose):
+    if are_distinguished_by_length_spectrum(M, s, t, cutoff = 1.1, verbose=verbose):
         return (True, rigor)
     else:
         return (False, None)
