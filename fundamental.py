@@ -205,7 +205,7 @@ def is_exceptional_due_to_fundamental_group(N, tries, verbose):
             return (True, 'Milley manifold filling')
 
         if is_four_syllable_manifold_filling(N, verbose):
-            if verbose > -2: print(N, 'is four-syllable manifold')
+            if verbose > 6: print(N, 'is four-syllable manifold')
             return (True, 'four-syllable manifold')
 
         N.randomize()
