@@ -1229,7 +1229,11 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     If check_chiral==True, then we check for both orientation-preserving
     and orientation-reversing homeos.
     
-    This routine is designed for the situation when M != N. If M == N, use check_cosmetic instead.
+    This routine is designed for the situation when M != N. If M == N, use 
+    check_cosmetic instead.
+    
+    At the moment (2023-02-28), the code has an asymmetry between M and N.
+    So it needs to be run twice, interchanging M <--> N the second time.
     '''
 
     verbose_print(verbose, 12, [M, N, "entering find_common_fillings"])
