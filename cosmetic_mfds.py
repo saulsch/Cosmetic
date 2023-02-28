@@ -37,8 +37,7 @@ from sage.rings.real_mpfi import RIF
 from sage.rings.real_mpfi import RealIntervalField
 from sage.misc.functional import det
 from sage.modules.free_module_element import vector
-from sage.all import gap
-
+from sage.interfaces.gap import gap
 
 # coding
 
@@ -568,12 +567,13 @@ def product(nums):
 # Volume differences under filling
 
 
-# we will need the following:
+# we will need the following (compare Section 3.5 of Cosmetic computation paper)
 
 # eccen = 3.3957
 # u(z) = (eccen/2) * (z**2 * (z**4 + 4*z**2 - 1)) / (z**2 + 1)**3
 # v(z) = (eccen/4) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2+1)**2 + arctan(z) - arctan(1.0) )
 # v(z) is the integral of u from z to 1.
+# Theorem 3.11 says: diff_vol < v(1 - (14.77)/L**2)
 
 def HK_vol_bound(L):
     """
@@ -581,7 +581,7 @@ def HK_vol_bound(L):
     upper bound on the change of volume when filling a slope of that
     normalised length. 
     Reference: Hodgson-Kerckhoff 'Shape of DS space', Thm 5.12.
-    Reference: our Theorem 2.7, which is a secant line approx to the above.
+    Reference: our Theorem 3.11, which is a secant line approx to the above.
     """
     assert L >= 9.93
     z = 1 - (14.77)/L**2
@@ -595,7 +595,13 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
     Given a _difference_ in volumes, diff_vol, returns an interval
     about a normalised length, said length ensuring that the true
     difference (drilled minus filled) is at most diff_vol.
+    
+    We assume diff_vol > 0; otherwise this function cannot help.
     """
+    
+    if not diff_vol > 0:
+        print("HK_vol_bound_inv error: need positive difference in volumes")
+        raise
     
     L = RIF(9.95)  # the lowest length we can return
     
@@ -633,6 +639,18 @@ def Casson_invt(M, verbose):
     return A(1)/2
 
 # Homology
+
+
+def order_of_torsion(M):
+    """
+    Given a snappy manifold return the order of the torsion subgroup
+    of H_1(M).
+    """
+    
+    H = M.homology()
+    elem_divs = H.elementary_divisors()
+    torsion_divs = [d for d in elem_divs if d != 0]
+    return product(torsion_divs)
 
 
 def are_distinguished_by_homology(M, s, N, t, verbose=5):
@@ -745,19 +763,6 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
 # Deprecated routines for homology and covers
 
 
-def order_of_torsion(M):
-    """
-    Given a snappy manifold return the order of the torsion subgroup
-    of H_1(M).
-    
-    This is currently not used anywhere.
-    """
-    H = M.homology()
-    elem_divs = H.elementary_divisors()
-    torsion_divs = [d for d in elem_divs if d != 0]
-    return product(torsion_divs)
-
-
 def check_cover_homology_fixed_deg(M, N, deg, verbose=5):
     """
     Given a pair of snappy manifolds, M and N, and a degree deg,
@@ -821,6 +826,69 @@ def are_distinguished_by_cover_homology_old(M, s, N, t, tries, verbose):
         if distinct:
             return True
     return False
+
+
+# finding comparison set of slopes based on volume, homology, and length
+
+def find_low_volume_slopes(M, point, hom_gp, l_hom, mer_hol, long_hol, l_max, vol_max, volumes_table, slopes_exclude, tries, verbose):
+    '''
+    Consider the line in Dehn surgery space through a point (called "point")
+    that is parallel to l_hom, the homological longitude. On this line, find 
+    all slopes that satisfy:
+    * not in the set slopes_exclude (hence hyperbolic)
+    * have H_1(M(t)) isomorphic to hom_gp
+    * have length at most l_max 
+    * have volume at most vol_max
+    
+    Return the set of these slopes.
+    '''
+    
+    verbose_print(verbose, 12, [])
+    name = M.name()
+    low_vol_slopes = set()
+    len_l_hom = abs(l_hom[0]*mer_hol + l_hom[1]*long_hol)
+    
+    # Find an interval on a line in Dehn surgery space that must contain
+    # all comparison slopes that potentially have low enough volume.
+    middle = geom_tests.a_shortest_lattice_point_on_line(point, l_hom, mer_hol, long_hol)
+    lower = int( (-l_max / len_l_hom).floor().lower() )
+    upper = int( (l_max / len_l_hom).ceil().upper() )
+    verbose_print(verbose, 25, ['lower, upper', lower, upper])
+    
+    # Now, scan the interval to determine low-volume comparison slopes
+    for k in range(lower, upper + 1):
+        verbose_print(verbose, 25, ['k', k])
+        # move along the line 
+        a = middle[0] + k * l_hom[0] 
+        b = middle[1] + k * l_hom[1]
+        t = geom_tests.preferred_rep((a, b))
+        a, b = t
+        verbose_print(verbose, 25, ['t', t])
+        if gcd(a, b) > 1:
+            verbose_print(verbose, 25, [name, hom_gp, k, t, 'excluded because gcd'])
+            continue
+        Q = M.copy()
+        Q.dehn_fill(t)
+        hom_gp_t = str(Q.homology())
+        if hom_gp_t != hom_gp:
+            verbose_print(verbose, 25, [name, hom_gp, k, t, 'excluded because wrong homology'])
+            continue
+        if t in slopes_exclude:
+            verbose_print(verbose, 25, [name, hom_gp, k, t, 'excluded because non-hyperbolic or bad'])
+            continue
+        # Thus t is a hyperbolic filling, so 
+        # First, check length
+        verbose_print(verbose, 25, ['lengths', abs(a*mer_hol + b*long_hol), l_max])
+        if abs(a*mer_hol + b*long_hol) <= l_max:
+            # Then, check the volume
+            t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
+            verbose_print(verbose, 25, ['t_vol', t_vol])
+            verbose_print(verbose, 25, ['max_vol', vol_max])
+            if not t_vol > vol_max:   # We need the 'not' because we are comparing intervals
+                low_vol_slopes.add(t)
+                verbose_print(verbose, 25, ['added to slopes_low_volume'])
+
+    return low_vol_slopes
 
 
 # hyperbolic invariants
@@ -1050,6 +1118,7 @@ def is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verb
     return None
 
 
+
     
 # dealing with a pair of slopes
 
@@ -1067,7 +1136,7 @@ def are_distinguished_exceptionals(M, s, M_exceptions_table, N, t, N_exceptions_
     4) Number of covers of small degree
     '''
     
-    verbose_print(verbose, 12, [M, s, N, t, 'entering are_distinguished_non_hyp'])
+    verbose_print(verbose, 12, [M, s, N, t, 'entering are_distinguished_exceptionals'])
 
     if are_distinguished_by_homology(M, s, N, t, verbose=verbose):
         return True
@@ -1112,19 +1181,23 @@ def are_distinguished_exceptionals(M, s, M_exceptions_table, N, t, N_exceptions_
         t_red, _ = fetch_exceptional_data(N, t, N_exceptions_table, "reducible", tries, verbose)
         if s_geom != "S2 x R" and t_red:
             # M(s) is irreducible but M(t) is reducible
+            verbose_print(verbose, 6, [s_name, t_name, "only one is reducible"])
             return True
         t_tor, _ = fetch_exceptional_data(N, t, N_exceptions_table, "toroidal", tries, verbose)
         if t_tor:
             # M(s) is atoroidal but M(t) is toroidal
+            verbose_print(verbose, 6, [s_name, t_name, "only one is toroidal"])
             return True                    
     if t_ator_sfs:
         s_red, _ = fetch_exceptional_data(M, s, M_exceptions_table, "reducible", tries, verbose)
         if t_geom != "S2 x R" and s_red:
             # M(t) is irreducible but M(s) is reducible
+            verbose_print(verbose, 6, [s_name, t_name, "only one is reducible"])
             return True                    
         s_tor, _ = fetch_exceptional_data(M, s, M_exceptions_table, "toroidal", tries, verbose)
         if s_tor:
             # M(t) is atoroidal but M(s) is toroidal
+            verbose_print(verbose, 6, [s_name, t_name, "only one is toroidal"])
             return True
     
     # At this point, both manifolds should be reducible, or both toroidal (or we have failed to identify a SFS).    
@@ -1207,6 +1280,7 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
         verbose_print(verbose, 3, [M_name, N_name, 'are isometric'])    
         return [(M_name, None, N_name, None, 'isometric parent manifolds')]
 
+
     # Step one - compute the list of exceptional fillings of both M and N.
 
     six_theorem_length = 6.01 # All exceptionals shorter than this
@@ -1235,7 +1309,8 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     verbose_print(verbose, 5, [M_name, 'non-hyp slopes', M_slopes_non_hyp])
     if len(M_slopes_bad) > 0:
         verbose_print(verbose, 0, [M_name, 'bad slopes', M_slopes_bad])
-
+    M_slopes_exclude = M_slopes_non_hyp.union(M_slopes_bad)
+    # These are the slopes excluded from hyperbolic methods
     
     N.set_peripheral_curves('shortest')
     N_mer_hol, N_long_hol, N_norm_fac = geom_tests.cusp_invariants(N)
@@ -1261,6 +1336,9 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     verbose_print(verbose, 5, [N_name, 'non-hyp slopes', N_slopes_non_hyp])
     if len(N_slopes_bad) > 0:
         verbose_print(verbose, 0, [N_name, 'bad slopes', N_slopes_bad])
+    N_slopes_exclude = N_slopes_non_hyp.union(N_slopes_bad)
+    # These are the slopes excluded from hyperbolic methods
+
 
     # Step two: check for (non-hyperbolic) homeomorphic pairs in 
     # M_slopes_non_hyp and N_slopes_non_hyp.
@@ -1294,11 +1372,18 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
             bad_uns.append(reason)
 
 
-    # Step three - Find the volume and systole of both M and N. Find the set
-    # of systole-short slopes for each manifold.
-
+    # Interlude: Compute the volumes of both M and N. Set up volumes_table for each.
+    
     M_volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
     M_vol = fetch_volume(M, (0,0), M_volumes_table, tries, verbose)        
+
+    N_volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
+    N_vol = fetch_volume(N, (0,0), N_volumes_table, tries, verbose)        
+
+
+    # Step three - Find the systole of M and calculate the set
+    # of systole-short slopes. Split this set by homology.
+
     M_sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
     verbose_print(verbose, 3, [M_name, 'systole is at least', M_sys])
     if M_sys == None:
@@ -1309,36 +1394,16 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     verbose_print(verbose, 4, [M_name, 'norm_len_cutoff', M_norm_len_cutoff])
     verbose_print(verbose, 3, [M_name, len(M_short_slopes), 'short slopes found'])
     verbose_print(verbose, 5, M_short_slopes)
-
-    N_volumes_table = {}  # Lookup table of volumes of hyperbolic fillings
-    N_vol = fetch_volume(N, (0,0), N_volumes_table, tries, verbose)        
-    N_sys = geom_tests.systole_with_tries(N, tries=tries, verbose=verbose)
-    verbose_print(verbose, 3, [N_name, 'systole is at least', N_sys])
-    if N_sys == None:
-        return [(N_name, None, None, None, 'systole fail')]
-    
-    N_norm_len_cutoff = max(9.97, sqrt((2*pi/M_sys) + 56.0).n(200)) 
-    N_short_slopes = geom_tests.find_short_slopes(N, N_norm_len_cutoff, normalized=True, verbose=verbose)                    
-    verbose_print(verbose, 4, [N_name, 'norm_len_cutoff', N_norm_len_cutoff])
-    verbose_print(verbose, 3, [N_name, len(N_short_slopes), 'short slopes found'])
-    verbose_print(verbose, 5, N_short_slopes)
-        
-
-    # Step four - Split the short slopes for M and N by homology
-           
+               
     M_slopes_hyp = {}
     for s in M_short_slopes:
-        p = abs(geom_tests.alg_int(s, M_l_hom))
         Q = M.copy()
         Q.dehn_fill(s)
         hom_gp = str(Q.homology())
-        hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
+        hom_hash = hom_gp  
         
-        if s in M_slopes_non_hyp:
-            verbose_print(verbose, 8, [M_name, s, 'known exceptional slope'])
-            continue
-        if s in M_slopes_bad:
-            verbose_print(verbose, 8, [M_name, s, 'known bad (unidentified) slope'])
+        if s in M_slopes_exclude:
+            verbose_print(verbose, 8, [M_name, s, 'known exceptional or unidentified slope'])
             continue
 
         assert is_hyperbolic_filling(M, s, M_mer_hol, M_long_hol, M_exceptions_table, tries, verbose)
@@ -1349,20 +1414,98 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     verbose_print(verbose, 3, [M_name, M_num_hyp_slopes, 'hyperbolic slopes'])
     verbose_print(verbose, 4, [M_name, len(M_slopes_hyp), 'homology buckets of hyperbolic slopes'])
     verbose_print(verbose, 5, [M_name, 'hyp slopes', M_slopes_hyp])
+
+
+    # Step four - Compute the set of Dehn fillings of slopes on N that need to be 
+    # compared to each hyperbolic slope on in M_slopes_hyp. Then, compare them.
     
+    # Calculate the orders of torsion for the meridional and longitudinal fillings of N
+    Q = N.copy()
+    Q.dehn_fill(N_m_hom)
+    N_mer_base = order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology of this order.
+    Q.dehn_fill(N_l_hom)
+    N_long_homology = str(Q.homology())
+    N_long_order = order_of_torsion(Q)
+    verbose_print(verbose, 12, [N_name, 'meridional homology', N_mer_base, 'longitudinal homology', N_long_order])
+    
+    for hom_hash in M_slopes_hyp:
+        s0 = list(M_slopes_hyp[hom_hash])[0]    # a representative slope 
+        Q = M.copy()
+        Q.dehn_fill(s0)
+        tor_order = order_of_torsion(Q)
+        verbose_print(verbose, 12, [M_name, hom_hash, tor_order])
+        hom_gp = hom_hash
+        if (hom_hash != N_long_homology) and (tor_order % N_mer_base != 0):
+            verbose_print(verbose, 12, [M_name, hom_hash, 'cannot have common fillings with', N_name])
+            continue
+
+        if hom_hash == N_long_homology and N_l_hom not in N_slopes_non_hyp and N_l_hom not in N_slopes_bad:
+            verbose_print(verbose, 12, ['Need to compare M fillings to hyperbolic longitudinal filling of N'])
+            N_t_vol = fetch_volume(N, N_l_hom, N_volumes_table, tries, verbose)
+            for s in M_slopes_hyp[hom_hash]:
+                M_s_vol = fetch_volume(M, s, M_volumes_table, tries, verbose)
+                verbose_print(verbose, 12, [M_name, s, M_s_vol, N_name, t, N_t_vol, 'volumes'])
+                if M_s_vol > N_t_vol or N_t_vol > M_s_vol:
+                    verbose_print(verbose, 12, [M_name, s, N_name, N_l_hom, 'verified volume distinguishes'])
+                continue
+                    
+        # Compare each fillings M(s) for s in M_slopes_hyp[hom_hash] to a set of fillings of N.
+        # Every member of this set should have intersection number p with N_l_hom.
+        p = int(tor_order / N_mer_base)  # This will be an integer once we've landed here
+        point = (p*N_m_hom[0], p*N_m_hom[1])
+        verbose_print(verbose, 25, ['p', p])
+        verbose_print(verbose, 25, ['point on Dehn surgery line', point])
+        for s in M_slopes_hyp[hom_hash]:
+            M_s_vol = fetch_volume(M, s, M_volumes_table, tries, verbose)
+            if M_s_vol > N_vol:
+                verbose_print(verbose, 12, [M, s, M_s_vol, 'volume too high for common fillings with', N, N_vol])
+                continue
+            if not M_s_vol < N_vol:
+                reason = (M_name, s, N_name, None, M_s_vol, N_vol)
+                bad_uns.append(reason)
+                verbose_print(verbose, 12, [M, s, M_s_vol, 'cannot distinguish volume from', N, N_vol])
+                continue
+            # At this point, we have M_s_vol < N_vol
+            l_max = HK_vol_bound_inv(N_vol - M_s_vol) * N_norm_fac # length on cusp
+            N_low_vol_slopes = find_low_volume_slopes(N, point, hom_gp, N_l_hom, N_mer_hol, N_long_hol, l_max, M_s_vol, N_volumes_table, N_slopes_exclude, tries, verbose)
+            if len(N_low_vol_slopes) > 0:
+                verbose_print(verbose, 6, [M_name, s, hom_hash, N_name, N_low_vol_slopes, 'low volume slopes'])
+            for t in N_low_vol_slopes:
+                N_t_vol = fetch_volume(N, t, N_volumes_table, tries, verbose)
+                if M_s_vol > N_t_vol or M_s_vol < N_t_vol:
+                    verbose_print(verbose, 6, [M_name, s, N_name, t, 'verified volume distinguishes'])
+                    continue
+                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                    verbose_print(verbose, 6, [M_name, s, N_name, t, 'cover spectrum distinguishes'])
+                    continue
+                
+                reason = (M_name, s, N_name, t, M_s_vol, N_t_vol)
+                verbose_print(verbose, 2, [reason])
+                bad_uns.append(reason)
+    
+    
+    # Step five - Repeat Steps three and four with M and N reversed. Perhaps we should not do this.
+    
+    N_sys = geom_tests.systole_with_tries(N, tries=tries, verbose=verbose)
+    verbose_print(verbose, 3, [N_name, 'systole is at least', N_sys])
+    if N_sys == None:
+        return [(N_name, None, None, None, 'systole fail')]
+    
+    N_norm_len_cutoff = max(9.97, sqrt((2*pi/M_sys) + 56.0).n(200)) 
+    N_short_slopes = geom_tests.find_short_slopes(N, N_norm_len_cutoff, normalized=True, verbose=verbose)                    
+    verbose_print(verbose, 4, [N_name, 'norm_len_cutoff', N_norm_len_cutoff])
+    verbose_print(verbose, 3, [N_name, len(N_short_slopes), 'short slopes found'])
+    verbose_print(verbose, 5, N_short_slopes)
+
     N_slopes_hyp = {}
     for t in N_short_slopes:
-        p = abs(geom_tests.alg_int(t, N_l_hom))
         Q = N.copy()
         Q.dehn_fill(t)
         hom_gp = str(Q.homology())
-        hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
+        hom_hash = hom_gp
         
-        if t in N_slopes_non_hyp:
-            verbose_print(verbose, 8, [N_name, t, 'known exceptional slope'])
-            continue
-        if t in N_slopes_bad:
-            verbose_print(verbose, 8, [N_name, t, 'known bad (unidentified) slope'])
+        if t in N_slopes_exclude:
+            verbose_print(verbose, 8, [N_name, t, 'known exceptional or unidentified slope'])
             continue
 
         assert is_hyperbolic_filling(N, t, N_mer_hol, N_long_hol, N_exceptions_table, tries, verbose)
@@ -1374,129 +1517,8 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
     verbose_print(verbose, 4, [N_name, len(N_slopes_hyp), 'homology buckets of hyperbolic slopes'])
     verbose_print(verbose, 5, [N_name, 'hyp slopes', N_slopes_hyp])
 
-
-    # TO HERE 2023.02.20 - off-ramp for now
-    return bad_uns
-
-
     
-
-
-    # Step five - Compute the max of the volumes in
-    # slopes_hyp[hom_hash] and use this to compute the larger set of
-    # "comparison slopes".
-
-    max_volumes = {}
-    for hom_hash in slopes_hyp:
-        max_volumes[hom_hash] = max(fetch_volume(M, s, volumes_table, tries, verbose) for s in slopes_hyp[hom_hash])
-
-    verbose_print(verbose, 5, [name, 'max volumes by homology', max_volumes])
-
-    # len_m_hom = abs(m_hom[0]*mer_hol + m_hom[1]*long_hol)
-    len_l_hom = abs(l_hom[0]*mer_hol + l_hom[1]*long_hol)
-    slopes_low_volume = {}
-    for hom_hash in slopes_hyp:
-        verbose_print(verbose, 25, ['slopes hyp', slopes_hyp[hom_hash]])
-        # M_vol is the volume of the unfilled manifold M
-        l_max = HK_vol_bound_inv(M_vol - max_volumes[hom_hash]) * norm_fac # length on cusp
-        if verbose > 25:
-            print('hom_hash, max_vol[hom_hash]', hom_hash, max_volumes[hom_hash])
-            print('l_max', l_max, 'l_max_normalized', HK_vol_bound_inv(M_vol - max_volumes[hom_hash]))
-            print('normalized length endpoints', (l_max/norm_fac).endpoints(),)
-            print('norm_fac', norm_fac.endpoints())
-            print('len_l_hom', len_l_hom)
-
-        p, hom_gp = hom_hash
-        point = (p*m_hom[0], p*m_hom[1])
-        middle = geom_tests.a_shortest_lattice_point_on_line(point, l_hom, mer_hol, long_hol)
-        lower = int( (-l_max / len_l_hom).floor().lower() )
-        upper = int( (l_max / len_l_hom).ceil().upper() )
-        verbose_print(verbose, 25, ['lower, upper', lower, upper])
-        for k in range(lower, upper + 1):
-            verbose_print(verbose, 25, ['k', k])
-            # move along the line 
-            a = middle[0] + k * l_hom[0] 
-            b = middle[1] + k * l_hom[1]
-            t = geom_tests.preferred_rep((a, b))
-            a, b = t
-            verbose_print(verbose, 25, ['t', t])
-            if gcd(a, b) > 1:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because gcd'])
-                continue
-            N = M.copy()
-            N.dehn_fill(t)
-            hom_gp_t = str(N.homology())
-            if hom_gp_t != hom_gp:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because wrong homology'])
-                continue
-            # now we now that (p, hom_gp_t) are correct, so we can use the dictionaries we built
-            if hom_hash in slopes_non_hyp and t in slopes_non_hyp[hom_hash]:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because non-hyp'])
-                continue
-            if hom_hash in slopes_bad and t in slopes_bad[hom_hash]:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because bad'])
-                continue
-            # Thus t is a hyperbolic filling, so 
-            # First, check length
-            verbose_print(verbose, 25, ['lengths', abs(a*mer_hol + b*long_hol), l_max])
-            if abs(a*mer_hol + b*long_hol) <= l_max:
-                # Then, check the volume
-                t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
-                verbose_print(verbose, 25, ['t_vol', t_vol])
-                verbose_print(verbose, 25, ['max_vol[hom_hash]', max_volumes[hom_hash]])
-                if not t_vol > max_volumes[hom_hash]:   # We need the 'not' because we are comparing intervals
-                    add_to_dict_of_sets(slopes_low_volume, hom_hash, t)
-                    verbose_print(verbose, 25, ['added to slopes_low_volume'])
-        # Sanity check: slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
-        for t in slopes_hyp[hom_hash]:
-            assert t in slopes_low_volume[hom_hash]
-
-    num_low_volume = sum(len(slopes_low_volume[hash]) for hash in slopes_low_volume)
-    verbose_print(verbose, 3, [name, num_low_volume, 'low volume slopes found'])
-    verbose_print(verbose, 5, [name, '(somewhat-)low volume slopes', slopes_low_volume])
-
-
-    # Step six - check for hyperbolic cosmetic pairs.
-    # That is: for all p, slopes s in slopes_hyp[hom_hash], and slopes t in
-    # slopes_low_volume[hom_hash] (with s \neq t) show that M(s) is not
-    # orientation-preservingly homeomorphic to M(t).  Collect
-    # counterexamples and difficult cases to be returned to calling
-    # function.
-
-    for hom_hash in slopes_hyp:
-        for s in slopes_hyp[hom_hash]:
-            for t in slopes_low_volume[hom_hash]:
-                if t in slopes_hyp[hom_hash] and t < s:
-                    # since slopes_hyp[hom_hash] \subset
-                    # slopes_low_volume[hom_hash] we have (or will)
-                    # checked the pair (t, s) so skip!
-                    continue 
-                if geom_tests.alg_int(s,t) == 0:
-                    continue
-                s_vol = fetch_volume(M, s, volumes_table, tries, verbose)
-                t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
-                verbose_print(verbose, 12, [M, s, t, s_vol, t_vol, 'volumes'])
-                if s_vol > t_vol or t_vol > s_vol:
-                    verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes'])
-                    continue
-                looks_distinct, rigorous = False, False
-                if not check_chiral:
-                    # Try to distinguish by oriented hyperbolic invariants
-                    looks_distinct, rigorous = geom_tests.are_distinguished_by_hyp_invars(M, s, t, tries, verbose)
-                    if looks_distinct and rigorous:
-                        continue
-                    
-                if are_distinguished_by_covers(M, s, M, t, tries, verbose):
-                    continue
-                    
-                if looks_distinct and not rigorous:
-                    reason = (name, s, t, 'distinguished by non-rigorous length spectrum')
-                if not looks_distinct:
-                    reason = (name, s, t, 'Not distinguished by hyperbolic invariants or covers')
-                verbose_print(verbose, 2, [reason])
-                bad_uns.append(reason)
-
-    verbose_print(verbose, 1, [name, 'non-distinguished pairs', bad_uns])
+    # verbose_print(verbose, 1, [M_name, N_name, 'non-distinguished pairs', bad_uns])
     
     return bad_uns
 
@@ -1588,6 +1610,8 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     verbose_print(verbose, 5, [name, 'non-hyp slopes', slopes_non_hyp])
     if len(slopes_bad) > 0:
         verbose_print(verbose, 0, [name, 'bad slopes', slopes_bad])
+    slopes_exclude = slopes_non_hyp.union(slopes_bad)
+    # These are the slopes excluded from hyperbolic methods
 
     
     # Step two: check for (non-hyperbolic) cosmetic pairs in slopes_non_hyp.
@@ -1635,8 +1659,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     continue
             
             verbose_print(verbose, 2, [reason])
-            bad_uns.append(reason)
-
+    
 
     # Step three: initialize volume and systole. Get the systole-short hyperbolic slopes,
     # and split them by homology.
@@ -1659,20 +1682,21 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
 
     slopes_hyp = {}
     for s in short_slopes:
-        p = abs(geom_tests.alg_int(s, l_hom))
-        if p == 0:
+        if s == l_hom:
+            # the homological longitude is unique, so cannot be cosmetic
             verbose_print(verbose, 4, [name, 'removing homological longitude'])
-            continue # the homological longitude is unique, so cannot be cosmetic
+            continue 
         N = M.copy()
         N.dehn_fill(s)
         hom_gp = str(N.homology())
-        hom_hash = (p, hom_gp)  # Note that p is redunant by Lemma~\ref{Lem:HomologyTorsion}
+        p = abs(geom_tests.alg_int(s, l_hom))
+        hom_hash = hom_gp  
+        # p = abs(geom_tests.alg_int(s, l_hom)) 
+        # hom_hash = (p, hom_gp)  
+        # p used to be part of the hom_hash data, but it is redundant by Lemma~\ref{Lem:HomologyTorsion}
         
-        if s in slopes_non_hyp:
-            verbose_print(verbose, 8, [name, s, 'known exceptional slope'])
-            continue
-        if s in slopes_bad:
-            verbose_print(verbose, 8, [name, s, 'known bad (unidentified) slope'])
+        if s in slopes_exclude:
+            verbose_print(verbose, 8, [name, s, 'known exceptional or bad slope'])
             continue
 
         assert is_hyperbolic_filling(M, s, mer_hol, long_hol, exceptions_table, tries, verbose)
@@ -1702,55 +1726,25 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     for hom_hash in slopes_hyp:
         verbose_print(verbose, 25, ['slopes hyp', slopes_hyp[hom_hash]])
         # M_vol is the volume of the unfilled manifold M
-        l_max = HK_vol_bound_inv(M_vol - max_volumes[hom_hash]) * norm_fac # length on cusp
+        vol_max = max_volumes[hom_hash]
+        l_max = HK_vol_bound_inv(M_vol - vol_max) * norm_fac # length on cusp
         if verbose > 25:
-            print('hom_hash, max_vol[hom_hash]', hom_hash, max_volumes[hom_hash])
-            print('l_max', l_max, 'l_max_normalized', HK_vol_bound_inv(M_vol - max_volumes[hom_hash]))
+            print('hom_hash, max_vol[hom_hash]', hom_hash, vol_max)
+            print('l_max', l_max, 'l_max_normalized', HK_vol_bound_inv(M_vol - vol_max))
             print('normalized length endpoints', (l_max/norm_fac).endpoints(),)
             print('norm_fac', norm_fac.endpoints())
             print('len_l_hom', len_l_hom)
 
-        p, hom_gp = hom_hash
+        hom_gp = hom_hash
+        s = list(slopes_hyp[hom_hash])[0]  # some representative slope
+        p = abs(geom_tests.alg_int(s, l_hom))
+        verbose_print(verbose, 20, [name, hom_hash, s, p])
+        
         point = (p*m_hom[0], p*m_hom[1])
-        middle = geom_tests.a_shortest_lattice_point_on_line(point, l_hom, mer_hol, long_hol)
-        lower = int( (-l_max / len_l_hom).floor().lower() )
-        upper = int( (l_max / len_l_hom).ceil().upper() )
-        verbose_print(verbose, 25, ['lower, upper', lower, upper])
-        for k in range(lower, upper + 1):
-            verbose_print(verbose, 25, ['k', k])
-            # move along the line 
-            a = middle[0] + k * l_hom[0] 
-            b = middle[1] + k * l_hom[1]
-            t = geom_tests.preferred_rep((a, b))
-            a, b = t
-            verbose_print(verbose, 25, ['t', t])
-            if gcd(a, b) > 1:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because gcd'])
-                continue
-            N = M.copy()
-            N.dehn_fill(t)
-            hom_gp_t = str(N.homology())
-            if hom_gp_t != hom_gp:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because wrong homology'])
-                continue
-            # now we now that (p, hom_gp_t) are correct, so we can use the dictionaries we built
-            if t in slopes_non_hyp:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because non-hyp'])
-                continue
-            if t in slopes_bad:
-                verbose_print(verbose, 25, [name, hom_hash, k, t, 'excluded because bad'])
-                continue
-            # Thus t is a hyperbolic filling, so 
-            # First, check length
-            verbose_print(verbose, 25, ['lengths', abs(a*mer_hol + b*long_hol), l_max])
-            if abs(a*mer_hol + b*long_hol) <= l_max:
-                # Then, check the volume
-                t_vol = fetch_volume(M, t, volumes_table, tries, verbose)
-                verbose_print(verbose, 25, ['t_vol', t_vol])
-                verbose_print(verbose, 25, ['max_vol[hom_hash]', max_volumes[hom_hash]])
-                if not t_vol > max_volumes[hom_hash]:   # We need the 'not' because we are comparing intervals
-                    add_to_dict_of_sets(slopes_low_volume, hom_hash, t)
-                    verbose_print(verbose, 25, ['added to slopes_low_volume'])
+        out = find_low_volume_slopes(M, point, hom_gp, l_hom, mer_hol, long_hol, l_max, vol_max, volumes_table, slopes_exclude, tries, verbose)        
+        if len(out) > 0:
+            slopes_low_volume[hom_hash] = out
+        
         # Sanity check: slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
         for t in slopes_hyp[hom_hash]:
             assert t in slopes_low_volume[hom_hash]
@@ -1758,7 +1752,6 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     num_low_volume = sum(len(slopes_low_volume[hash]) for hash in slopes_low_volume)
     verbose_print(verbose, 3, [name, num_low_volume, 'low volume slopes found'])
     verbose_print(verbose, 5, [name, '(somewhat-)low volume slopes', slopes_low_volume])
-
 
     # Step six - check for hyperbolic cosmetic pairs.
     # That is: for all p, slopes s in slopes_hyp[hom_hash], and slopes t in
