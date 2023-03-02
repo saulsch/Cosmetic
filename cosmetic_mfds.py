@@ -1440,18 +1440,26 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
         verbose_print(verbose, 12, [M_name, hom_hash, tor_order])
         hom_gp = hom_hash
         if (hom_hash != N_long_homology) and (tor_order % N_mer_base != 0):
-            verbose_print(verbose, 12, [M_name, hom_hash, 'cannot have common fillings with', N_name])
+            verbose_print(verbose, 12, [M_name, hom_hash, 'cannot have common fillings with', N_name, 'for homological reasons'])
             continue
 
-        if hom_hash == N_long_homology and N_l_hom not in N_slopes_non_hyp and N_l_hom not in N_slopes_bad:
+        if hom_hash == N_long_homology and N_l_hom not in N_slopes_exclude:
             verbose_print(verbose, 12, ['Need to compare M fillings to hyperbolic longitudinal filling of N'])
-            N_t_vol = fetch_volume(N, N_l_hom, N_volumes_table, tries, verbose)
+            t = N_l_hom
+            N_t_vol = fetch_volume(N, t, N_volumes_table, tries, verbose)
             for s in M_slopes_hyp[hom_hash]:
                 M_s_vol = fetch_volume(M, s, M_volumes_table, tries, verbose)
                 verbose_print(verbose, 12, [M_name, s, M_s_vol, N_name, t, N_t_vol, 'volumes'])
                 if M_s_vol > N_t_vol or N_t_vol > M_s_vol:
-                    verbose_print(verbose, 12, [M_name, s, N_name, N_l_hom, 'verified volume distinguishes'])
-                continue
+                    verbose_print(verbose, 12, [M_name, s, N_name, t, 'verified volume distinguishes'])
+                    continue
+                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                    verbose_print(verbose, 6, [M_name, s, N_name, t, 'cover spectrum distinguishes'])
+                    continue
+                
+                reason = (M_name, s, N_name, t, M_s_vol, N_t_vol)
+                verbose_print(verbose, 2, [reason])
+                bad_uns.append(reason)
                     
         # Compare each fillings M(s) for s in M_slopes_hyp[hom_hash] to a set of fillings of N.
         # Every member of this set should have intersection number p with N_l_hom.
@@ -1488,39 +1496,8 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
                 bad_uns.append(reason)
     
     
-    # Step five - Repeat Steps three and four with M and N reversed. Perhaps we should not do this.
+    # Step five - Repeat Steps three and four with M and N reversed. Wrap this into a function.
     
-    N_sys = geom_tests.systole_with_tries(N, tries=tries, verbose=verbose)
-    verbose_print(verbose, 3, [N_name, 'systole is at least', N_sys])
-    if N_sys == None:
-        return [(N_name, None, None, None, 'systole fail')]
-    
-    N_norm_len_cutoff = max(9.97, sqrt((2*pi/M_sys) + 56.0).n(200)) 
-    N_short_slopes = geom_tests.find_short_slopes(N, N_norm_len_cutoff, normalized=True, verbose=verbose)                    
-    verbose_print(verbose, 4, [N_name, 'norm_len_cutoff', N_norm_len_cutoff])
-    verbose_print(verbose, 3, [N_name, len(N_short_slopes), 'short slopes found'])
-    verbose_print(verbose, 5, N_short_slopes)
-
-    N_slopes_hyp = {}
-    for t in N_short_slopes:
-        Q = N.copy()
-        Q.dehn_fill(t)
-        hom_gp = str(Q.homology())
-        hom_hash = hom_gp
-        
-        if t in N_slopes_exclude:
-            verbose_print(verbose, 8, [N_name, t, 'known exceptional or unidentified slope'])
-            continue
-
-        assert is_hyperbolic_filling(N, t, N_mer_hol, N_long_hol, N_exceptions_table, tries, verbose)
-        # All slopes shorter than 6.01 should have been identified already. The new ones are hyperbolic.
-        add_to_dict_of_sets(N_slopes_hyp, hom_hash, t)
-            
-    N_num_hyp_slopes = sum(len(N_slopes_hyp[hash]) for hash in N_slopes_hyp)
-    verbose_print(verbose, 3, [N_name, N_num_hyp_slopes, 'hyperbolic slopes'])
-    verbose_print(verbose, 4, [N_name, len(N_slopes_hyp), 'homology buckets of hyperbolic slopes'])
-    verbose_print(verbose, 5, [N_name, 'hyp slopes', N_slopes_hyp])
-
     
     # verbose_print(verbose, 1, [M_name, N_name, 'non-distinguished pairs', bad_uns])
     
