@@ -1778,6 +1778,35 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     
     return bad_uns
     
+def check_list_for_common_fillings(M, manifolds, tries=7, verbose=4, report=20):
+    """
+    Given a cusped SnapPy manifold M, and a list called 'manifolds', check for common
+    Dehn fillings of M and one of the manifolds in the list.
+    
+    Returns a list of tuples containing the slopes that give (potentially) common fillings.
+    """
+    
+    verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
+    
+    if type(M) is snappy.Manifold:
+        name = M.name()
+    if type(M) == str:
+        name = M
+        M = snappy.Manifold(name)
+    
+    bad_uns = []
+    for n, N in enumerate(manifolds):
+        if type(N) == str:
+            N = snappy.Manifold(N)
+        first_uns = find_common_fillings(M, N, check_chiral=False, tries=tries, verbose=verbose)
+        second_uns = find_common_fillings(N, M, check_chiral=False, tries=tries, verbose=verbose)
+        bad_uns.extend(first_uns)
+        bad_uns.extend(second_uns)
+        if n % report == 0: 
+            verbose_print(verbose, 0, ['report', n])
+            verbose_print(verbose, 0, [bad_uns])
+    return bad_uns
+
 
 def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
     """
