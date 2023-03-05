@@ -138,9 +138,9 @@ def sanity_check_cusped(M, tries=10, verbose=3):
 
     sol_type = M.solution_type()
     if sol_type == 'all tetrahedra positively oriented':
-    	verbose_print(verbose, 10, [name, 'already positively oriented'])
-    	return (M, None)
-    	
+        verbose_print(verbose, 10, [name, 'already positively oriented'])
+        return (M, None)
+        
     elif sol_type == 'contains negatively oriented tetrahedra':
         X = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
         if X == None:
@@ -151,7 +151,7 @@ def sanity_check_cusped(M, tries=10, verbose=3):
             return (X, None)
         
     else:   
-	    # So M is probably not a hyperbolic manifold.  Let's do a few
+        # So M is probably not a hyperbolic manifold.  Let's do a few
         # quick tests to help ourselves later, and then give up.
 
         if fundamental.is_torus_link_filling(M, verbose):
@@ -161,7 +161,7 @@ def sanity_check_cusped(M, tries=10, verbose=3):
         if fundamental.is_exceptional_due_to_fundamental_group(M, tries, verbose):
             verbose_print(verbose, 4, [name, 'exceptional due to fundamental group'])
             return (None, 'exceptional due to fundamental group')
-        	
+            
         out = geom_tests.is_toroidal_wrapper(M, verbose)
         if out[0]:
             # M is toroidal so use the torus decomposition as the 'reason'
@@ -367,6 +367,18 @@ def systole_with_tries(M, tries=10, verbose=3):
             sys = None
             verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
             N.randomize()
+        try:
+            D = N.dirichlet_domain()
+            spec = D.length_spectrum_dicts(0.15)
+            if spec == []:
+                sys = 0.15 # any systole larger than this gets ignored. 
+            else:
+                sys = spec[0].length.real()
+            return sys
+        except:
+            sys = None
+            verbose_print(verbose, 10, [N, 'systole via domain and dicts failed on attempt', i])
+
     if sys == None:
         verbose_print(verbose, 6, [name, 'systole fail'])
         return None
