@@ -162,15 +162,15 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     Consider the line in Dehn surgery space through a point (called "point")
     that is parallel to l_hom, the homological longitude. On this line, find 
     all slopes that satisfy:
-    * not in the set slopes_exclude (hence hyperbolic)
+    * not in the set M.slopes_exclude (hence hyperbolic)
     * have H_1(M(t)) isomorphic to hom_gp
     * have volume at most vol_max
     
     Return the set of these slopes.
     """
     
-    M_vol = fetch_volume(M, (0,0), tries, verbose)
-    l_max = HK_vol_bound_inv(M_vol - vol_max) * M.norm_fac  # length on cusp
+    cusped_vol = fetch_volume(M, (0,0), tries, verbose)
+    l_max = HK_vol_bound_inv(cusped_vol - vol_max) * M.norm_fac  # length on cusp
     
     verbose_print(verbose, 12, ["Entering find_low_volume_slopes"])
     # name = M.name()
@@ -1224,8 +1224,124 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     return False        
 
 
+def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
+    """
+    Given cusped manifolds M and N, and slopes s and t, try to prove that
+    M(s) is isometric to N(t).
+    
+    Return True if successful, or None otherwise
+    """
+    
+    Q = M.copy()
+    Q.dehn_fill(s)
+    R = N.copy()
+    R.dehn_fill(t)
+    
+    for i in range(tries):
+        for j in range(i):
+             if Q.is_isometric_to(R):
+                 verbose_print(verbose, 8, [Q, 'proved isometric to', R, 'on try', (i,j)])
+                 return True
+             R.randomize()
+        Q.randomize()
+    
+    return None
+
+
 # finding common fillings of M and N
 
+def find_common_hyp_fillings(M, N, tries, verbose):
+    """
+    Given one-cusped, enhanced manifolds M and N, compare every systole-short
+    Dehn filling of M to the appropriate volume-short set of fillings of N.
+    Find and return the ones that *might* produce the same 3-manifold.
+    
+    Warning: This routine is asymmetric in M and N.
+    """
+    
+    # Initialization for M
+    find_systole_short_slopes(M, tries, verbose)    
+
+    # Initialization for N. This includes homologies of meridional and longitudinal fillings.
+
+    N_vol = fetch_volume(N, (0,0), tries, verbose)
+    Q = N.copy()
+    Q.dehn_fill(N.m_hom)
+    N_mer_base = order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
+    Q.dehn_fill(N.l_hom)
+    N_long_homology = str(Q.homology())
+    N_long_order = order_of_torsion(Q)
+    verbose_print(verbose, 12, [N.name(), 'meridional homology', N_mer_base, 'longitudinal homology', N_long_order])
+
+    # Searching through homology hashes for M 
+    common_uns = []
+    for hom_hash in M.slopes_hyp:
+        s0 = list(M.slopes_hyp[hom_hash])[0]    # a representative slope 
+        Q = M.copy()
+        Q.dehn_fill(s0)
+        tor_order = order_of_torsion(Q)
+        verbose_print(verbose, 12, [M.name(), hom_hash, tor_order])
+        hom_gp = hom_hash
+        if (hom_hash != N_long_homology) and (tor_order % N_mer_base != 0):
+            verbose_print(verbose, 12, [M.name(), hom_hash, 'cannot have common fillings with', N.name(), 'for homological reasons'])
+            continue
+
+        if hom_hash == N_long_homology and N.l_hom not in N.slopes_exclude:
+            verbose_print(verbose, 12, ['Need to compare M fillings to hyperbolic longitudinal filling of N'])
+            t = N.l_hom
+            N_t_vol = fetch_volume(N, t, tries, verbose)
+            for s in M.slopes_hyp[hom_hash]:
+                M_s_vol = fetch_volume(M, s, tries, verbose)
+                verbose_print(verbose, 12, [M.name(), s, M_s_vol, N.name(), t, N_t_vol, 'volumes'])
+                if M_s_vol > N_t_vol or N_t_vol > M_s_vol:
+                    verbose_print(verbose, 12, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
+                    continue
+                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
+                    continue
+                
+                reason = (M.name(), s, N.name(), t, M_s_vol, N_t_vol)
+                verbose_print(verbose, 2, [reason])
+                common_uns.append(reason)
+                    
+        # Compare each fillings M(s) for s in M.slopes_hyp[hom_hash] to a set of fillings of N.
+        # Every member of this set should have intersection number p with N.l_hom.
+        p = int(tor_order / N_mer_base)  # This will be an integer once we've landed here
+        point = (p*N.m_hom[0], p*N.m_hom[1])
+        verbose_print(verbose, 25, ['p', p])
+        verbose_print(verbose, 25, ['point on Dehn surgery line', point])
+        for s in M.slopes_hyp[hom_hash]:
+            M_s_vol = fetch_volume(M, s, tries, verbose)
+            if M_s_vol > N_vol:
+                verbose_print(verbose, 12, [M, s, M_s_vol, 'volume too high for common fillings with', N, N_vol])
+                continue
+            if not M_s_vol < N_vol:
+                reason = (M.name(), s, N.name(), None, M_s_vol, N_vol)
+                common_uns.append(reason)
+                verbose_print(verbose, 12, [M, s, M_s_vol, 'cannot distinguish volume from', N, N_vol])
+                continue
+            # At this point, we have M_s_vol < N_vol
+            N_low_vol_slopes = find_low_volume_slopes(N, point, hom_gp, M_s_vol, tries, verbose)
+            if len(N_low_vol_slopes) > 0:
+                verbose_print(verbose, 6, [M.name(), s, hom_hash, N.name(), N_low_vol_slopes, 'low volume slopes'])
+            for t in N_low_vol_slopes:
+                N_t_vol = fetch_volume(N, t, tries, verbose)
+                if M_s_vol > N_t_vol or M_s_vol < N_t_vol:
+                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
+                    continue
+                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
+                    continue
+                
+                # Now that we have tried and failed to distinguish, try to prove tha they are the same
+                if are_isometric_fillings(M, s, N, t, tries, verbose):
+                    reason = (M.name(), s, N.name(), t, M_s_vol, 'isometric')
+                else:
+                    reason = (M.name(), s, N.name(), t, M_s_vol, 'cannot distinguish')
+                verbose_print(verbose, 2, [reason])
+                common_uns.append(reason)
+
+    return common_uns
 
 
 def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
@@ -1337,94 +1453,39 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
             bad_uns.append(reason)
 
 
-    # Step three - Find the systole of M and calculate the set
-    # of systole-short slopes. Split this set by homology.
-
-    find_systole_short_slopes(M, tries, verbose)
+    # Step four - Compare the volume-short fillings of M to the systole-short fillings of N.
+    # Then, do the reverse.
 
 
+    commons_M_first = find_common_hyp_fillings(M, N, tries, verbose)
+    commons_N_first = find_common_hyp_fillings(N, M, tries, verbose)
+    
+    commons_N_converted = [(line[2], line[3], line[0], line[1], line[4], line[5]) for line in commons_N_first]
+    # Reorder the output of commons_N_first to put M back in the first spot
 
-    # Step four - Compute the set of Dehn fillings of slopes on N that need to be 
-    # compared to each hyperbolic slope on in M.slopes_hyp. Then, compare them.
 
-    N_vol = fetch_volume(N, (0,0), tries, verbose)        
+    # Step five - Remove duplicates. This is not done yet.
     
-    # Calculate the orders of torsion for the meridional and longitudinal fillings of N
-    Q = N.copy()
-    Q.dehn_fill(N.m_hom)
-    N_mer_base = order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology of this order.
-    Q.dehn_fill(N.l_hom)
-    N_long_homology = str(Q.homology())
-    N_long_order = order_of_torsion(Q)
-    verbose_print(verbose, 12, [N.name(), 'meridional homology', N_mer_base, 'longitudinal homology', N_long_order])
+    bad_uns.extend(commons_M_first)    
     
-    for hom_hash in M.slopes_hyp:
-        s0 = list(M.slopes_hyp[hom_hash])[0]    # a representative slope 
-        Q = M.copy()
-        Q.dehn_fill(s0)
-        tor_order = order_of_torsion(Q)
-        verbose_print(verbose, 12, [M.name(), hom_hash, tor_order])
-        hom_gp = hom_hash
-        if (hom_hash != N_long_homology) and (tor_order % N_mer_base != 0):
-            verbose_print(verbose, 12, [M.name(), hom_hash, 'cannot have common fillings with', N.name(), 'for homological reasons'])
-            continue
+    # Add the lines of commons_N_converted one at a time, checking for duplicates
+    
+    for N_line in commons_N_converted:
+        found = False
+        for j in range(len(bad_uns)):
+            M_line = bad_uns[j]
+            if M_line[:4] == N_line[:4]: # same pair of slopes
+                found = True
+                verbose_print(verbose, 12, ['duplicate entry', N_line])
+                if N_line[5] == 'isometric':
+                    # Keep the version that provides more certainty
+                    bad_uns[j] = N_line
+        if found == False:
+            verbose_print(verbose, 12, ['adding entry', N_line])
+            bad_uns.append(N_line)
 
-        if hom_hash == N_long_homology and N.l_hom not in N.slopes_exclude:
-            verbose_print(verbose, 12, ['Need to compare M fillings to hyperbolic longitudinal filling of N'])
-            t = N.l_hom
-            N_t_vol = fetch_volume(N, t, tries, verbose)
-            for s in M.slopes_hyp[hom_hash]:
-                M_s_vol = fetch_volume(M, s, tries, verbose)
-                verbose_print(verbose, 12, [M.name(), s, M_s_vol, N.name(), t, N_t_vol, 'volumes'])
-                if M_s_vol > N_t_vol or N_t_vol > M_s_vol:
-                    verbose_print(verbose, 12, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
-                    continue
-                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
-                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
-                    continue
-                
-                reason = (M.name(), s, N.name(), t, M_s_vol, N_t_vol)
-                verbose_print(verbose, 2, [reason])
-                bad_uns.append(reason)
-                    
-        # Compare each fillings M(s) for s in M.slopes_hyp[hom_hash] to a set of fillings of N.
-        # Every member of this set should have intersection number p with N.l_hom.
-        p = int(tor_order / N_mer_base)  # This will be an integer once we've landed here
-        point = (p*N.m_hom[0], p*N.m_hom[1])
-        verbose_print(verbose, 25, ['p', p])
-        verbose_print(verbose, 25, ['point on Dehn surgery line', point])
-        for s in M.slopes_hyp[hom_hash]:
-            M_s_vol = fetch_volume(M, s, tries, verbose)
-            if M_s_vol > N_vol:
-                verbose_print(verbose, 12, [M, s, M_s_vol, 'volume too high for common fillings with', N, N_vol])
-                continue
-            if not M_s_vol < N_vol:
-                reason = (M.name(), s, N.name(), None, M_s_vol, N_vol)
-                bad_uns.append(reason)
-                verbose_print(verbose, 12, [M, s, M_s_vol, 'cannot distinguish volume from', N, N_vol])
-                continue
-            # At this point, we have M_s_vol < N_vol
-            N_low_vol_slopes = find_low_volume_slopes(N, point, hom_gp, M_s_vol, tries, verbose)
-            if len(N_low_vol_slopes) > 0:
-                verbose_print(verbose, 6, [M.name(), s, hom_hash, N.name(), N_low_vol_slopes, 'low volume slopes'])
-            for t in N_low_vol_slopes:
-                N_t_vol = fetch_volume(N, t, tries, verbose)
-                if M_s_vol > N_t_vol or M_s_vol < N_t_vol:
-                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
-                    continue
-                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
-                    verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
-                    continue
-                
-                reason = (M.name(), s, N.name(), t, M_s_vol, N_t_vol)
-                verbose_print(verbose, 2, [reason])
-                bad_uns.append(reason)
     
-    
-    # Step five - Repeat Steps three and four with M and N reversed. Wrap this into a function.
-    
-    
-    # verbose_print(verbose, 1, [M.name(), N.name(), 'non-distinguished pairs', bad_uns])
+    verbose_print(verbose, 5, [M.name(), N.name(), 'non-distinguished pairs', bad_uns])
     
     return bad_uns
 
@@ -1542,9 +1603,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     find_systole_short_slopes(M, tries, verbose)
 
 
-    # There is no step four.
-
-    # Step five - Compute the max of the volumes in
+    # Step four - Compute the max of the volumes in
     # M.slopes_hyp[hom_hash] and use this to compute the larger set of
     # "comparison slopes".
 
@@ -1582,7 +1641,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     verbose_print(verbose, 3, [M.name(), num_low_volume, 'low volume slopes found'])
     verbose_print(verbose, 5, [M.name(), '(somewhat-)low volume slopes', slopes_low_volume])
 
-    # Step six - check for hyperbolic cosmetic pairs.
+    # Step five - check for hyperbolic cosmetic pairs.
     # That is: for all p, slopes s in M.slopes_hyp[hom_hash], and slopes t in
     # slopes_low_volume[hom_hash] (with s \neq t) show that M(s) is not
     # orientation-preservingly homeomorphic to M(t).  Collect
@@ -1641,10 +1700,8 @@ def check_list_for_common_fillings(M, manifolds, tries=7, verbose=4, report=20):
     bad_uns = []
     for n, N in enumerate(manifolds):
         N = snappy.Manifold(N)
-        first_uns = find_common_fillings(M, N, check_chiral=False, tries=tries, verbose=verbose)
-        second_uns = find_common_fillings(N, M, check_chiral=False, tries=tries, verbose=verbose)
-        bad_uns.extend(first_uns)
-        bad_uns.extend(second_uns)
+        new_uns = find_common_fillings(M, N, check_chiral=False, tries=tries, verbose=verbose)
+        bad_uns.extend(new_uns)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
             verbose_print(verbose, 0, [bad_uns])
