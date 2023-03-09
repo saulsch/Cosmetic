@@ -187,6 +187,8 @@ def is_exceptional_due_to_fundamental_group(N, tries, verbose):
         if len(rels) == 0:
             if verbose > 6: print(N, 'has free fundamental group')
             return (True, 'Free group')
+
+        # TODO: Test for free products here!!!
     
         if len(gens) == 1 and len(rels) == 1:
             if verbose > 6: print(N, 'is a lens space')
