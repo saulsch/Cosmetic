@@ -1344,7 +1344,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     return common_uns
 
 
-def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
+def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     """
     Given one-cusped manifolds M and N, we search for common Dehn fillings,
     that is, pairs of slopes s,t such that M(s) might be homeomorphic to N(t).
@@ -1447,8 +1447,12 @@ def find_common_fillings(M, N, check_chiral=False, tries=8, verbose=4):
 
             s_name = fetch_exceptional_data(M, s, "name", tries, verbose)
             t_name = fetch_exceptional_data(N, t, "name", tries, verbose)
-
+            
             reason = (M.name(), s, N.name(), t, s_name, t_name)
+            if ExcludeS3 and s_name == 'S3' and t_name == 'S3':
+                verbose_print(verbose, 2, ['Excluding', reason])
+                continue
+
             verbose_print(verbose, 2, [reason])
             bad_uns.append(reason)
 
@@ -1685,12 +1689,15 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     return bad_uns
     
 
-def check_list_for_common_fillings(M, manifolds, tries=7, verbose=4, report=20):
+def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, verbose=4, report=20):
     """
     Given a cusped SnapPy manifold M, and a list called 'manifolds', check for common
     Dehn fillings of M and one of the manifolds in the list.
     
-    Returns a list of tuples containing the slopes that give (potentially) common fillings.
+    Returns a list of tuples containing the slopes that give (confirmed or suspected) common fillings.
+    
+    If the flag ExcludeS3 is set to True, then the user does not want common S3 fillings
+    reported. This would be the case when searching a known list of knot complements.
     """
     
     verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
@@ -1700,7 +1707,7 @@ def check_list_for_common_fillings(M, manifolds, tries=7, verbose=4, report=20):
     bad_uns = []
     for n, N in enumerate(manifolds):
         N = snappy.Manifold(N)
-        new_uns = find_common_fillings(M, N, check_chiral=False, tries=tries, verbose=verbose)
+        new_uns = find_common_fillings(M, N, ExcludeS3=ExcludeS3, tries=tries, verbose=verbose)
         bad_uns.extend(new_uns)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
