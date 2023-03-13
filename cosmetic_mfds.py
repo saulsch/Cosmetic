@@ -1239,10 +1239,15 @@ def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
     
     for i in range(tries):
         for j in range(i):
-             if Q.is_isometric_to(R):
-                 verbose_print(verbose, 8, [Q, 'proved isometric to', R, 'on try', (i,j)])
-                 return True
-             R.randomize()
+            isisom = False
+            try: 
+                isisom = Q.is_isometric_to(R)
+            except:
+                verbose_print(verbose, 2, [Q, R, 'isometry checker crashed'])
+            if isisom:
+                verbose_print(verbose, 8, [Q, 'proved isometric to', R, 'on try', (i,j)])
+                return True
+            R.randomize()
         Q.randomize()
     
     return None
