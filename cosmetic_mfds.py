@@ -22,7 +22,7 @@ from __future__ import division
 import snappy
 import regina
 import dunfield
-import geom_tests
+import geom_tests as gt
 import fundamental
 
 from verbose import verbose_print
@@ -60,12 +60,20 @@ def add_to_dict_of_sets(dictionary, key, value):
 def enhance_manifold(M, tries = 8, verbose = 4):
     """
     Given a snappy manifold M, equipped with the preferred framing,
+    install the geometric framing, record the original slopes, and
     record various slope data in M as methods.
     """
 
-    M.mer_hol, M.long_hol, M.norm_fac = geom_tests.cusp_invariants(M)
-    M.l_hom = geom_tests.preferred_rep(M.homological_longitude())
-    M.m_hom = geom_tests.shortest_complement(M.l_hom, M.mer_hol, M.long_hol) 
+    # Fix the framing on the copy N to be shortest
+    cob = M.set_peripheral_curves('shortest', return_matrices = True)
+    # but remember the original meridian and longitude.
+    M.meridian = cob[0][0]   # Original user-specified meridian
+    M.longitude = cob[0][1]  # Original user-specified longitude
+
+    # The following are holonomies in the new (shortest) framing
+    M.mer_hol, M.long_hol, M.norm_fac = gt.cusp_invariants(M)
+    M.l_hom = gt.preferred_rep(M.homological_longitude())
+    M.m_hom = gt.shortest_complement(M.l_hom, M.mer_hol, M.long_hol) 
     
     M.exceptions_table = {}  # Dictionary of information about non-hyperbolic fillings
     M.slopes_non_hyp = set() # Confirmed non-hyperbolic slopes
@@ -90,7 +98,7 @@ def find_exceptionals(M, tries=8, verbose=4):
     M.exceptions_table if possible.
     """
 
-    six_short_slopes = geom_tests.find_short_slopes(M, six_theorem_length, normalized=False, verbose=verbose)
+    six_short_slopes = gt.find_short_slopes(M, six_theorem_length, normalized=False, verbose=verbose)
     for s in six_short_slopes:
         hyp_type = is_hyperbolic_filling(M, s, tries, verbose)
         if hyp_type == True:
@@ -123,13 +131,13 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     install it as M.slopes_hyp.
     """
 
-    M.sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
+    M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     if M.sys == None:
         return [(M.name(), None, None, None, 'systole fail')]
     
     norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0).n(200)) 
-    short_slopes = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
+    short_slopes = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
     verbose_print(verbose, 4, [M.name(), 'norm_len_cutoff', norm_len_cutoff])
     verbose_print(verbose, 3, [M.name(), len(short_slopes), 'short slopes found'])
     verbose_print(verbose, 5, short_slopes)
@@ -179,7 +187,7 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     
     # Find an interval on a line in Dehn surgery space that must contain
     # all comparison slopes that potentially have low enough volume.
-    middle = geom_tests.a_shortest_lattice_point_on_line(point, M.l_hom, M.mer_hol, M.long_hol)
+    middle = gt.a_shortest_lattice_point_on_line(point, M.l_hom, M.mer_hol, M.long_hol)
     lower = int( (-l_max / len_l_hom).floor().lower() )
     upper = int( (l_max / len_l_hom).ceil().upper() )
     verbose_print(verbose, 25, ['lower, upper', lower, upper])
@@ -190,7 +198,7 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
         # move along the line 
         a = middle[0] + k * M.l_hom[0] 
         b = middle[1] + k * M.l_hom[1]
-        t = geom_tests.preferred_rep((a, b))
+        t = gt.preferred_rep((a, b))
         a, b = t
         verbose_print(verbose, 25, ['t', t])
         if gcd(a, b) > 1:
@@ -1047,13 +1055,13 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
             return (None, geom, base, coeffs)
         
     if field == "reducible":
-        out = geom_tests.is_reducible_wrapper(N, tries, verbose)
+        out = gt.is_reducible_wrapper(N, tries, verbose)
         M.exceptions_table[s]["reducible"] = out
         verbose_print(verbose, 10, [N, out, 'reducibility'])
         return out
         
     if field == "toroidal":
-        out = geom_tests.torus_decomp_wrapper(N, tries, verbose)
+        out = gt.torus_decomp_wrapper(N, tries, verbose)
         M.exceptions_table[s]["toroidal"] = out
         verbose_print(verbose, 10, [N, out, 'toroidality'])
         return out
@@ -1316,12 +1324,14 @@ def find_common_hyp_fillings(M, N, tries, verbose):
         verbose_print(verbose, 25, ['p', p])
         verbose_print(verbose, 25, ['point on Dehn surgery line', point])
         for s in M.slopes_hyp[hom_hash]:
+            # find coords of slope s in original framing
+            s_orig = gt.preferred_rep((gt.alg_int(s, M.longitude), gt.alg_int(M.meridian, s))) 
             M_s_vol = fetch_volume(M, s, tries, verbose)
             if M_s_vol > N_vol:
                 verbose_print(verbose, 12, [M, s, M_s_vol, 'volume too high for common fillings with', N, N_vol])
                 continue
             if not M_s_vol < N_vol:
-                reason = (M.name(), s, N.name(), None, M_s_vol, N_vol)
+                reason = (M.name(), s_orig, N.name(), None, M_s_vol, N_vol)
                 common_uns.append(reason)
                 verbose_print(verbose, 12, [M, s, M_s_vol, 'cannot distinguish volume from', N, N_vol])
                 continue
@@ -1337,12 +1347,15 @@ def find_common_hyp_fillings(M, N, tries, verbose):
                 if are_distinguished_by_covers(M, s, N, t, tries, verbose):
                     verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
                     continue
+
+                # find coordinates of t in original framings
+                t_orig = gt.preferred_rep((gt.alg_int(t, N.longitude), gt.alg_int(N.meridian, t)))
                 
                 # Now that we have tried and failed to distinguish, try to prove tha they are the same
                 if are_isometric_fillings(M, s, N, t, tries, verbose):
-                    reason = (M.name(), s, N.name(), t, M_s_vol, 'isometric')
+                    reason = (M.name(), s_orig, N.name(), t_orig, M_s_vol, 'isometric')
                 else:
-                    reason = (M.name(), s, N.name(), t, M_s_vol, 'cannot distinguish')
+                    reason = (M.name(), s_orig, N.name(), t_orig, M_s_vol, 'cannot distinguish')
                 verbose_print(verbose, 2, [reason])
                 common_uns.append(reason)
 
@@ -1386,7 +1399,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
 
     # Install good hyperbolic metrics on M or N. Give up if we cannot find such a metric.
         
-    mfd, reason = geom_tests.sanity_check_cusped(M, tries=tries, verbose=verbose)
+    mfd, reason = gt.sanity_check_cusped(M, tries=tries, verbose=verbose)
     if mfd == None:
         # We did not find a hyperbolic structure, so give up.
         return [(M.name(), None, None, None, reason)]
@@ -1396,7 +1409,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
         assert mfd.solution_type() == 'all tetrahedra positively oriented'
         M = mfd
 
-    mfd, reason = geom_tests.sanity_check_cusped(N, tries=tries, verbose=verbose)
+    mfd, reason = gt.sanity_check_cusped(N, tries=tries, verbose=verbose)
     if mfd == None:
         # We did not find a hyperbolic structure, so give up.
         return [(N.name(), None, None, None, reason)]
@@ -1414,11 +1427,9 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
 
     # Step one - compute the list of exceptional fillings of both M and N.
 
-    M.set_peripheral_curves('shortest')
     enhance_manifold(M, tries, verbose)  
     find_exceptionals(M, tries, verbose)
         
-    N.set_peripheral_curves('shortest')
     enhance_manifold(N, tries, verbose)  
     find_exceptionals(N, tries, verbose)
     
@@ -1450,10 +1461,14 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
             if are_distinguished_exceptionals(M, s, N, t, tries=tries, verbose=verbose):
                 continue
 
+            # find coordinates of s and t in original framings
+            s_orig = gt.preferred_rep((gt.alg_int(s, M.longitude), gt.alg_int(M.meridian, s)))
+            t_orig = gt.preferred_rep((gt.alg_int(t, N.longitude), gt.alg_int(N.meridian, t)))
+            
             s_name = fetch_exceptional_data(M, s, "name", tries, verbose)
             t_name = fetch_exceptional_data(N, t, "name", tries, verbose)
-            
-            reason = (M.name(), s, N.name(), t, s_name, t_name)
+
+            reason = (M.name(), s_orig, N.name(), t_orig, s_name, t_name)
             if ExcludeS3 and s_name == 'S3' and t_name == 'S3':
                 verbose_print(verbose, 2, ['Excluding', reason])
                 continue
@@ -1539,7 +1554,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     # From now on, we need geometry. Install a good hyperbolic metric,
     # or give up if we cannot find one.
     
-    mfd, reason = geom_tests.sanity_check_cusped(M, tries=tries, verbose=verbose)
+    mfd, reason = gt.sanity_check_cusped(M, tries=tries, verbose=verbose)
     if mfd == None:
         # We did not find a hyperbolic structure, so give up.
         return [(M.name(), None, None, reason)]
@@ -1550,10 +1565,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         M = mfd
 
     # Step one: identify exceptional fillings.
-    
-    M.set_peripheral_curves('shortest')
-    # TODO: remember the initial framing that we were handed, and report cosmetic slopes
-    # in initial framing.
+            
     enhance_manifold(M, tries, verbose)  
     find_exceptionals(M, tries, verbose)
 
@@ -1572,7 +1584,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
             if t < s:
                 # We will have checked the pair (t, s) separately.
                 continue 
-            if geom_tests.alg_int(s, t) == 0:
+            if gt.alg_int(s, t) == 0:
                 # Parallel slopes cannot be cosmetic.
                 continue
 
@@ -1590,14 +1602,14 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
             # Try a couple more tests using Gordon-Luecke and CGLS using s_name and t_name     
 
             if "#" in s_name and "#" in t_name:
-                if abs(geom_tests.alg_int(s,t)) > 1:
+                if abs(gt.alg_int(s,t)) > 1:
                     # Gordon and Luecke proved distance between reducible fillings must be 1.
                     verbose_print(verbose, 2, [s_name, t_name, "distinguished by Gordon-Luecke theorem on distance between reducible fillings"])
                     continue
             s_lens, _ = is_lens_space_from_name(s_name, verbose)
             t_lens, _ = is_lens_space_from_name(t_name, verbose)
             if s_name == "S2 x S1" or s_lens or t_name == "S2 x S1" or t_lens:
-                if abs(geom_tests.alg_int(s,t)) > 1:
+                if abs(gt.alg_int(s,t)) > 1:
                     # Cyclic surgery theorem
                     verbose_print(verbose, 2, [s_name, t_name, "distinguished by cyclic surgery theorem"])
                     continue
@@ -1634,7 +1646,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
 
         hom_gp = hom_hash
         s = list(M.slopes_hyp[hom_hash])[0]  # some representative slope
-        p = abs(geom_tests.alg_int(s, M.l_hom))
+        p = abs(gt.alg_int(s, M.l_hom))
         verbose_print(verbose, 20, [M.name(), hom_hash, s, p])
         
         point = (p*M.m_hom[0], p*M.m_hom[1])
@@ -1664,7 +1676,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     # since M.slopes_hyp[hom_hash] \subset slopes_low_volume[hom_hash],
                     # we will have also checked the pair (t, s) so skip!
                     continue 
-                if geom_tests.alg_int(s,t) == 0:
+                if gt.alg_int(s,t) == 0:
                     continue
                 s_vol = fetch_volume(M, s, tries, verbose)
                 t_vol = fetch_volume(M, t, tries, verbose)
@@ -1675,7 +1687,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 looks_distinct, rigorous = False, False
                 if not check_chiral:
                     # Try to distinguish by oriented hyperbolic invariants
-                    looks_distinct, rigorous = geom_tests.are_distinguished_by_hyp_invars(M, s, t, tries, verbose)
+                    looks_distinct, rigorous = gt.are_distinguished_by_hyp_invars(M, s, t, tries, verbose)
                     if looks_distinct and rigorous:
                         continue
                     
@@ -1746,7 +1758,7 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
                     s = line[1]
                     t = line[2]
                     filled_name = line[3]
-                    if is_chiral_graph_mfd_from_name(filled_name) and geom_tests.preferred_rep(cob*vector(s)) == t:
+                    if is_chiral_graph_mfd_from_name(filled_name) and gt.preferred_rep(cob*vector(s)) == t:
                         # The slopes s and t are interchanged by symmetry, and the filled manifold is chiral
                         verbose_print(verbose, 2, ['chiral filling on amph manifold:', name, s, t, filled_name])
                         continue
@@ -1846,7 +1858,7 @@ def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
             bad_uns.append((name, None, None, 'bad solution type for unclear reasons'))
             continue
             
-        distinct = geom_tests.are_distinguished_by_length_spectrum(M, s, t, check_chiral=True, cutoff = cutoff, verbose=verbose)
+        distinct = gt.are_distinguished_by_length_spectrum(M, s, t, check_chiral=True, cutoff = cutoff, verbose=verbose)
         if not distinct:
             verbose_print(verbose, 4, [M, s, t, 'not distinguished by length spectrum up to', cutoff])
             bad_uns.append((name, s, t, 'not distinguished by length spectrum up to '+str(cutoff) ))
