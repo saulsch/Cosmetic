@@ -1382,13 +1382,12 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     At the moment (2023-02-28), the code has an asymmetry between M and N.
     So it needs to be run twice, interchanging M <--> N the second time.
     """
-
-    verbose_print(verbose, 12, [M, N, "entering find_common_fillings"])
+    mfds = [M, N]
+    verbose_print(verbose, 12, [mfds, "entering find_common_fillings"])
     
     # Be liberal in what you accept
-    mfds = [M, N]
-    for P in mfds:
-        P = snappy.Manifold(P)
+    mfds = [snappy.Manifold(P) for P in mfds]
+    M, N = mfds
     
     # but not too liberal.
     for P in mfds:
