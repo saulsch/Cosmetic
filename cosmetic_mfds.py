@@ -1171,9 +1171,8 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     2) Regina names and Seifert invariants
     2) Irreducibility (via Regina)
     3) Toroidality (via Regina)
-    4) Number of covers of small degree
+    4) Homology groups of covers of small degree
     """
-    
     verbose_print(verbose, 12, [M, s, N, t, 'entering are_distinguished_exceptionals'])
 
     if are_distinguished_by_homology(M, s, N, t, verbose=verbose):
@@ -1386,38 +1385,26 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
 
     verbose_print(verbose, 12, [M, N, "entering find_common_fillings"])
     
-    # Let's be liberal in accepting 'M' as either a name or manifold class
-    M = snappy.Manifold(M)
-    N = snappy.Manifold(N)
+    # Be liberal in what you accept
+    mfds = [M, N]
+    for P in mfds:
+        P = snappy.Manifold(P)
     
-    # but not too liberal!
+    # but not too liberal.
+    for P in mfds:
+        if not P.num_cusps() == 1:
+            return [(P.name(), None, None, None, 'wrong number of cusps')]
 
-    if not M.num_cusps() == 1:
-        return [(M.name(), None, None, None, 'wrong number of cusps')]
-    if not N.num_cusps() == 1:
-        return [(N.name(), None, None, None, 'wrong number of cusps')]
-
-    # Install good hyperbolic metrics on M or N. Give up if we cannot find such a metric.
-        
-    mfd, reason = gt.sanity_check_cusped(M, tries=tries, verbose=verbose)
-    if mfd == None:
-        # We did not find a hyperbolic structure, so give up.
-        return [(M.name(), None, None, None, reason)]
-    else:
-        # We found a hyperbolic structure
-        assert type(mfd) is snappy.Manifold
-        assert mfd.solution_type() == 'all tetrahedra positively oriented'
-        M = mfd
-
-    mfd, reason = gt.sanity_check_cusped(N, tries=tries, verbose=verbose)
-    if mfd == None:
-        # We did not find a hyperbolic structure, so give up.
-        return [(N.name(), None, None, None, reason)]
-    else:
-        # We found a hyperbolic structure
-        assert type(mfd) is snappy.Manifold
-        assert mfd.solution_type() == 'all tetrahedra positively oriented'
-        N = mfd
+    # Install good hyperbolic metrics on M and N.
+    for P in mfds:
+        mfd, reason = gt.sanity_check_cusped(P, tries=tries, verbose=verbose)
+        if mfd == None:  # failed, so give up
+            return [(P.name(), None, None, None, reason)]
+        else:  # check and update
+            # We found a hyperbolic structure
+            assert type(mfd) is snappy.Manifold
+            assert mfd.solution_type() == 'all tetrahedra positively oriented'
+            P = mfd
 
     if M.is_isometric_to(N):
         # All their Dehn fillings will coincide
@@ -1427,11 +1414,9 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
 
     # Step one - compute the list of exceptional fillings of both M and N.
 
-    enhance_manifold(M, tries, verbose)  
-    find_exceptionals(M, tries, verbose)
-        
-    enhance_manifold(N, tries, verbose)  
-    find_exceptionals(N, tries, verbose)
+    for P in mfds:
+        enhance_manifold(P, tries, verbose)  
+        find_exceptionals(P, tries, verbose)
     
     # TODO: remember the initial framings of M and N that we were handed, and 
     # report shared fillings in initial framing.
@@ -1442,15 +1427,11 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     # Note that slopes_bad automatically gets recorded and reported.
 
     bad_uns = []
-    for s in M.slopes_bad:
-        reason = (M.name(), s, None, None, 'Could not verify hyperbolicity')
-        verbose_print(verbose, 2, [reason])
-        bad_uns.append(reason)
-    for t in N.slopes_bad:
-        reason = (N.name(), t, None, None, 'Could not verify hyperbolicity')
-        verbose_print(verbose, 2, [reason])
-        bad_uns.append(reason)
-
+    for P in mfds:
+        for r in P.slopes_bad:
+            reason = (P.name(), r, None, None, 'Could not verify hyperbolicity')
+            verbose_print(verbose, 2, [reason])
+            bad_uns.append(reason)
 
     for s in M.slopes_non_hyp:
         for t in N.slopes_non_hyp:
@@ -1532,10 +1513,10 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
 
     verbose_print(verbose, 12, [M, "entering check_cosmetic"])
     
-    # Let's be liberal in what we accept
+    # Be liberal in what you accept
     M = snappy.Manifold(M)
 
-    # but not too liberal!
+    # but not too liberal.
     if not M.num_cusps() == 1:
         return [(M.name(), None, None, 'wrong number of cusps')]
         
