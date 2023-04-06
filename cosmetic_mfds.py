@@ -14,10 +14,11 @@
 # Imports 
 
 
+# %%% Remove this -
 # Division in scripts running under sage is python division.  So we
 # need to fix it as follows.  
 from __future__ import division
-# fixed in SAGE 9.2!  But check this... 
+# fixed in SAGE 9.2!  check...
 
 import snappy
 import regina
@@ -57,6 +58,7 @@ def add_to_dict_of_sets(dictionary, key, value):
 
 # Container for passing manifold data around
 
+
 def enhance_manifold(M, tries = 8, verbose = 4):
     """
     Given a snappy manifold M, equipped with the preferred framing,
@@ -86,8 +88,8 @@ def enhance_manifold(M, tries = 8, verbose = 4):
         
     return None
 
-
 # Finding sets of slopes that satisfy various properties
+
 
 def find_exceptionals(M, tries=8, verbose=4):
     """
@@ -652,7 +654,6 @@ def are_distinguished_graph_pairs(name_0, name_1, verbose = 3):
     return False
 
 
-
 def is_chiral_graph_mfd_from_name(name, verbose = 3):
     """
     Given the Regina name of a graph manifold M assembled from Seifert fibered pieces,
@@ -754,6 +755,7 @@ def product(nums):
 # v(z) is the integral of u from z to 1.
 # Theorem 3.11 says: diff_vol < v(1 - (14.77)/L**2)
 
+
 def HK_vol_bound(L):
     """
     Given a normalised length L (which is at least 9.93), returns an
@@ -768,6 +770,7 @@ def HK_vol_bound(L):
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
 # use bisection to invert. This appears to be fast enough.
+
 
 def HK_vol_bound_inv(diff_vol, digits = 2):
     """
@@ -801,6 +804,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
 
 # Cusped manifolds with H_1(M) = Z can be ruled out via Boyer-Lines
 # criterion on Casson invariant (second deriv of Alexander polynomial)
+
 
 def Casson_invt(M, verbose):
     P = M.alexander_polynomial()
@@ -853,8 +857,8 @@ def are_distinguished_by_homology(M, s, N, t, verbose=5):
     return Ms_hom != Nt_hom
 
 
-
 # Tests using covers
+
 
 def subgroup_abels(G, deg):
     """
@@ -937,8 +941,6 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     Ms.dehn_fill(s)
     Nt.dehn_fill(t)
     return are_distinguished_by_cover_homology(Ms, Nt, tries, verbose)
-
-
 
 
 # hyperbolic invariants
@@ -1100,7 +1102,6 @@ def fetch_volume(M, s, tries, verbose):
     return M.volumes_table[s]
         
 
-
 def is_hyperbolic_filling(M, s, tries, verbose):
     """
     Given a one-cusped manifold M (assumed hyperbolic and enhanced) and a slope s,
@@ -1155,11 +1156,8 @@ def is_hyperbolic_filling(M, s, tries, verbose):
     verbose_print(verbose, -1, [name, "Is_hyperbolic_filling failed. Think about how to handle it!"])
     return None
 
-
-
     
 # dealing with a pair of slopes
-
 
 
 def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
@@ -1261,6 +1259,7 @@ def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
 
 
 # finding common fillings of M and N
+
 
 def find_common_hyp_fillings(M, N, tries, verbose):
     """
@@ -1386,8 +1385,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     verbose_print(verbose, 12, [mfds, "entering find_common_fillings"])
     
     # Be liberal in what you accept
-    mfds = [snappy.Manifold(P) for P in mfds]
-    M, N = mfds
+    M, N = mfds = [snappy.Manifold(P) for P in mfds]
     
     # but not too liberal.
     for P in mfds:
@@ -1419,7 +1417,6 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     
     # TODO: remember the initial framings of M and N that we were handed, and 
     # report shared fillings in initial framing.
-
 
     # Step two: check for (non-hyperbolic) homeomorphic pairs in 
     # M.slopes_non_hyp and N.slopes_non_hyp.
@@ -1456,17 +1453,14 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
             verbose_print(verbose, 2, [reason])
             bad_uns.append(reason)
 
-
     # Step four - Compare the volume-short fillings of M to the systole-short fillings of N.
     # Then, do the reverse.
-
 
     commons_M_first = find_common_hyp_fillings(M, N, tries, verbose)
     commons_N_first = find_common_hyp_fillings(N, M, tries, verbose)
     
     commons_N_converted = [(line[2], line[3], line[0], line[1], line[4], line[5]) for line in commons_N_first]
     # Reorder the output of commons_N_first to put M back in the first spot
-
 
     # Step five - Remove duplicates. This is not done yet.
     
@@ -1487,7 +1481,6 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
         if found == False:
             verbose_print(verbose, 12, ['adding entry', N_line])
             bad_uns.append(N_line)
-
     
     verbose_print(verbose, 5, [M.name(), N.name(), 'non-distinguished pairs', bad_uns])
     
