@@ -90,7 +90,6 @@ def enhance_manifold(M, tries = 8, verbose = 4):
 
 # Finding sets of slopes that satisfy various properties
 
-
 def find_exceptionals(M, tries=8, verbose=4):
     """
     Given a snappy manifold M, assumed cusped and enhanced,
@@ -127,13 +126,15 @@ def find_exceptionals(M, tries=8, verbose=4):
 
 def find_systole_short_slopes(M, tries=8, verbose=4):
     """
-    Given a snappy manifold M, assumed cusped and enhanced,
-    compute the systole of M and calculate the set of systole-short 
+    Takes as in input a snappy manifold M, assumed cusped and enhanced, 
+    and equipped with M.slopes_exclude (a calculated set of exceptional fillings).
+    Given such M, compute the systole of M and calculate the set of systole-short 
     hyperbolic fillings. Filter that set by homology, and
     install it as M.slopes_hyp.
     """
 
     M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     if M.sys == None:
         return [(M.name(), None, None, None, 'systole fail')]
@@ -1071,7 +1072,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
         
 def fetch_volume(M, s, tries, verbose):
     """
-    Given a manifold M (assumed to be one-cusped , enhanced, and 
+    Given a manifold M (assumed to be one-cusped, enhanced, and 
     equipped with a good triangulation) and a slope s (assumed to be 
     hyperbolic), fetch the volume. This means: pull the volume from the 
     table if it is there; else, try to compute it, and then store in the 
@@ -1462,7 +1463,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     commons_N_converted = [(line[2], line[3], line[0], line[1], line[4], line[5]) for line in commons_N_first]
     # Reorder the output of commons_N_first to put M back in the first spot
 
-    # Step five - Remove duplicates. This is not done yet.
+    # Step five - Merge the lists of common fillings and report output.
     
     bad_uns.extend(commons_M_first)    
     
