@@ -898,34 +898,37 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     fundamental groups using finite-index subgroups and their normal cores.
     """
     
-    # verbose_print(verbose, 0, ['Foo!'])
-
     verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
     
     GM = gap(M.fundamental_group().gap_string())
     GN = gap(N.fundamental_group().gap_string())
     degree_bound = min(tries, 6) # Hack: no degrees higher than 6
+
+	# Gradually compute covers and normal cores, up to higher and higher degrees
+    for deg in range(1, degree_bound + 1):
     
-    # First, compute small-degree covers and their homology
-    M_subs, M_data = subgroup_abels(GM, degree_bound)
-    N_subs, N_data = subgroup_abels(GN, degree_bound)
-    verbose_print(verbose, 8, [M, M_data])
-    verbose_print(verbose, 8, [N, N_data])
-    if M_data != N_data:
-        verbose_print(verbose, 6, [M, N, "cover homology distinguishes"])
-        return True
+    	# First, compute small-degree covers and their homology
+    	M_subs, M_data = subgroup_abels(GM, deg)
+    	N_subs, N_data = subgroup_abels(GN, deg)
+    	verbose_print(verbose, 8, [M, M_data])
+    	verbose_print(verbose, 8, [N, N_data])
+    	if M_data != N_data:
+        	verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+        	return True
     
-    # Next, try harder. Compute homology of normal cores.    
-    M_invts = profinite_data(GM, M_subs)
-    N_invts = profinite_data(GN, N_subs)
-    verbose_print(verbose, 8, [M, M_invts])
-    verbose_print(verbose, 8, [N, N_invts])
-    if M_invts != N_invts:
-        verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes"])
-        return True
-    else:
-        verbose_print(verbose, 6, [M, N, "cover homology fails to distinguish"])
-        return False
+    	# Next, try harder. Compute homology of normal cores.    
+    	M_invts = profinite_data(GM, M_subs)
+    	N_invts = profinite_data(GN, N_subs)
+    	verbose_print(verbose, 8, [M, M_invts])
+    	verbose_print(verbose, 8, [N, N_invts])
+    	if M_invts != N_invts:
+        	verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
+        	return True
+    	else:
+        	verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
+    
+    # We have failed    
+    return False
 
 
 def are_distinguished_by_covers(M, s, N, t, tries, verbose):
