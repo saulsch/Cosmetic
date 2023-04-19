@@ -874,20 +874,22 @@ def subgroup_abels(G, deg):
     return subs, out
     
 
-def profinite_data(G, subs):
+def profinite_data(G, subs, deg):
     """
     Given a Gap group G, and a list of finite-index subgroups subs
     (presumed to be all subgroups up to some index), computes
-    the following data for every subgroup H in subs:
-    the index, the abelianization, the index of the normal core, 
-    and the abelianization of the normal core.
+    invariants of the normal cores of subgroups whose index equals deg.
+    Returns the following tuple of data for every subgroup H of index deg:
+    [the index, the abelianization, the index of the normal core, 
+    and the abelianization of the normal core].
     Returns the set of these invariants, sorted lexicographically.
     """
 
     out = []
     for H in subs:
-        K = G.FactorCosetAction(H).Kernel()
-        out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
+        if G.Index(H) == deg:
+            K = G.FactorCosetAction(H).Kernel()
+            out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
     out.sort()
     return out
 
@@ -904,28 +906,27 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     GN = gap(N.fundamental_group().gap_string())
     degree_bound = min(tries, 6) # Hack: no degrees higher than 6
 
-	# Gradually compute covers and normal cores, up to higher and higher degrees
+    # Gradually compute covers up to degree_bound and their homology
     for deg in range(1, degree_bound + 1):
-    
-    	# First, compute small-degree covers and their homology
-    	M_subs, M_data = subgroup_abels(GM, deg)
-    	N_subs, N_data = subgroup_abels(GN, deg)
-    	verbose_print(verbose, 8, [M, M_data])
-    	verbose_print(verbose, 8, [N, N_data])
-    	if M_data != N_data:
-        	verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
-        	return True
-    
-    	# Next, try harder. Compute homology of normal cores.    
-    	M_invts = profinite_data(GM, M_subs)
-    	N_invts = profinite_data(GN, N_subs)
-    	verbose_print(verbose, 8, [M, M_invts])
-    	verbose_print(verbose, 8, [N, N_invts])
-    	if M_invts != N_invts:
-        	verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
-        	return True
-    	else:
-        	verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
+        M_subs, M_data = subgroup_abels(GM, deg)
+        N_subs, N_data = subgroup_abels(GN, deg)
+        verbose_print(verbose, 8, [M, deg, M_data])
+        verbose_print(verbose, 8, [N, deg, N_data])
+        if M_data != N_data:
+            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+            return True
+
+    # Gradually compute the homology and index of each normal core
+    for deg in range(1, degree_bound + 1):
+        M_invts = profinite_data(GM, M_subs, deg)
+        N_invts = profinite_data(GN, N_subs, deg)
+        verbose_print(verbose, 8, [M, deg, M_invts])
+        verbose_print(verbose, 8, [N, deg, N_invts])
+        if M_invts != N_invts:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
+            return True
+        else:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
     
     # We have failed    
     return False
