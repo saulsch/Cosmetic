@@ -90,7 +90,6 @@ def enhance_manifold(M, tries = 8, verbose = 4):
 
 # Finding sets of slopes that satisfy various properties
 
-
 def find_exceptionals(M, tries=8, verbose=4):
     """
     Given a snappy manifold M, assumed cusped and enhanced,
@@ -127,13 +126,15 @@ def find_exceptionals(M, tries=8, verbose=4):
 
 def find_systole_short_slopes(M, tries=8, verbose=4):
     """
-    Given a snappy manifold M, assumed cusped and enhanced,
-    compute the systole of M and calculate the set of systole-short 
+    Takes as in input a snappy manifold M, assumed cusped and enhanced, 
+    and equipped with M.slopes_exclude (a calculated set of exceptional fillings).
+    Given such M, compute the systole of M and calculate the set of systole-short 
     hyperbolic fillings. Filter that set by homology, and
     install it as M.slopes_hyp.
     """
 
     M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     if M.sys == None:
         return [(M.name(), None, None, None, 'systole fail')]
@@ -873,20 +874,22 @@ def subgroup_abels(G, deg):
     return subs, out
     
 
-def profinite_data(G, subs):
+def profinite_data(G, subs, deg):
     """
     Given a Gap group G, and a list of finite-index subgroups subs
     (presumed to be all subgroups up to some index), computes
-    the following data for every subgroup H in subs:
-    the index, the abelianization, the index of the normal core, 
-    and the abelianization of the normal core.
+    invariants of the normal cores of subgroups whose index equals deg.
+    Returns the following tuple of data for every subgroup H of index deg:
+    [the index, the abelianization, the index of the normal core, 
+    and the abelianization of the normal core].
     Returns the set of these invariants, sorted lexicographically.
     """
 
     out = []
     for H in subs:
-        K = G.FactorCosetAction(H).Kernel()
-        out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
+        if G.Index(H) == deg:
+            K = G.FactorCosetAction(H).Kernel()
+            out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
     out.sort()
     return out
 
@@ -897,34 +900,36 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     fundamental groups using finite-index subgroups and their normal cores.
     """
     
-    # verbose_print(verbose, 0, ['Foo!'])
-
     verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
     
     GM = gap(M.fundamental_group().gap_string())
     GN = gap(N.fundamental_group().gap_string())
     degree_bound = min(tries, 6) # Hack: no degrees higher than 6
+
+    # Gradually compute covers up to degree_bound and their homology
+    for deg in range(1, degree_bound + 1):
+        M_subs, M_data = subgroup_abels(GM, deg)
+        N_subs, N_data = subgroup_abels(GN, deg)
+        verbose_print(verbose, 8, [M, deg, M_data])
+        verbose_print(verbose, 8, [N, deg, N_data])
+        if M_data != N_data:
+            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+            return True
+
+    # Gradually compute the homology and index of each normal core
+    for deg in range(1, degree_bound + 1):
+        M_invts = profinite_data(GM, M_subs, deg)
+        N_invts = profinite_data(GN, N_subs, deg)
+        verbose_print(verbose, 8, [M, deg, M_invts])
+        verbose_print(verbose, 8, [N, deg, N_invts])
+        if M_invts != N_invts:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
+            return True
+        else:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
     
-    # First, compute small-degree covers and their homology
-    M_subs, M_data = subgroup_abels(GM, degree_bound)
-    N_subs, N_data = subgroup_abels(GN, degree_bound)
-    verbose_print(verbose, 8, [M, M_data])
-    verbose_print(verbose, 8, [N, N_data])
-    if M_data != N_data:
-        verbose_print(verbose, 6, [M, N, "cover homology distinguishes"])
-        return True
-    
-    # Next, try harder. Compute homology of normal cores.    
-    M_invts = profinite_data(GM, M_subs)
-    N_invts = profinite_data(GN, N_subs)
-    verbose_print(verbose, 8, [M, M_invts])
-    verbose_print(verbose, 8, [N, N_invts])
-    if M_invts != N_invts:
-        verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes"])
-        return True
-    else:
-        verbose_print(verbose, 6, [M, N, "cover homology fails to distinguish"])
-        return False
+    # We have failed    
+    return False
 
 
 def are_distinguished_by_covers(M, s, N, t, tries, verbose):
@@ -1071,7 +1076,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
         
 def fetch_volume(M, s, tries, verbose):
     """
-    Given a manifold M (assumed to be one-cusped , enhanced, and 
+    Given a manifold M (assumed to be one-cusped, enhanced, and 
     equipped with a good triangulation) and a slope s (assumed to be 
     hyperbolic), fetch the volume. This means: pull the volume from the 
     table if it is there; else, try to compute it, and then store in the 
@@ -1462,7 +1467,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     commons_N_converted = [(line[2], line[3], line[0], line[1], line[4], line[5]) for line in commons_N_first]
     # Reorder the output of commons_N_first to put M back in the first spot
 
-    # Step five - Remove duplicates. This is not done yet.
+    # Step five - Merge the lists of common fillings and report output.
     
     bad_uns.extend(commons_M_first)    
     
