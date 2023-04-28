@@ -23,7 +23,6 @@ import networkx as nx
 def all_positive(manifold):
     return manifold.solution_type() == 'all tetrahedra positively oriented'
 
-
 def find_positive_triangulation(manifold, tries = 3, verbose = 2):
     if verbose > 12:
         print("entering find_positive_triangulation")
@@ -354,8 +353,6 @@ def identify_with_torus_boundary(regina_tri):
         else:
             name = P.isoSig()
     return kind, name
-
-
 
 
 def is_toroidal(regina_tri):
