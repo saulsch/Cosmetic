@@ -25,15 +25,16 @@ def all_positive(manifold):
 
 def find_positive_triangulation(manifold, tries = 3, verbose = 2):
     if verbose > 12:
-        print("entering find_positive_triangulation")
+        print(manifold, "entering find_positive_triangulation")
 
-    M = manifold.copy()
+    M = snappy.Manifold(manifold)
     for i in range(tries):
         if all_positive(M):
             if verbose > 20:
                 print(M, "found a positive triangulation")
             return M
-        M.randomize()
+        else:
+            M.randomize()
     try: # this fails in verify_mt_action, sometimes
         if verbose > 12:
             print(M, "trying to drill and fill")
@@ -69,7 +70,7 @@ def find_positive_triangulation(manifold, tries = 3, verbose = 2):
             
 def verify_hyperbolic_basic(manifold, tries = 3, verbose = 2):
     if verbose > 12:
-        print("entering verify_hyperbolic_basic")
+        print(manifold, "entering verify_hyperbolic_basic")
     M = find_positive_triangulation(manifold, tries = tries, verbose = verbose)
     if M is not None:
         for i in range(tries):
@@ -84,12 +85,12 @@ def verify_hyperbolic_basic(manifold, tries = 3, verbose = 2):
             except RuntimeError:
                 if verbose > 12:
                     print(M, "had a RuntimeError")
-                print('Treating exception in verify code as a failure')
+                print(M, 'Treating exception in verify code as a failure')
     return False
 
 def verify_hyperbolic_basic_with_volume(manifold, tries = 3, verbose = 2):
     if verbose > 12:
-        print("entering verify_hyperbolic_basic_with_volume")
+        print(manifold, "entering verify_hyperbolic_basic_with_volume")
     M = find_positive_triangulation(manifold, tries = tries, verbose = verbose)
     if M is not None:
         for i in range(tries):
@@ -104,12 +105,12 @@ def verify_hyperbolic_basic_with_volume(manifold, tries = 3, verbose = 2):
             except RuntimeError:
                 if verbose > 12:
                     print(M, "had a RuntimeError")
-                print('Treating exception in verify code as a failure')
+                print(M, 'Treating exception in verify code as a failure')
     return (False, None)
 
 def is_hyperbolic(manifold, tries = 10, verbose = 2):
     if verbose > 12:
-        print("entering is_hyperbolic")
+        print(manifold, "entering is_hyperbolic")
 
     if verify_hyperbolic_basic(manifold, tries = tries, verbose=verbose):
         if verbose > 12:
@@ -118,7 +119,7 @@ def is_hyperbolic(manifold, tries = 10, verbose = 2):
     else:
         for d in range(2, min(tries, 8)):
             if verbose > 12:
-                print("trying cover of degree", d)
+                print(manifold, "trying cover of degree", d)
             for C in manifold.covers(d):
                 if verify_hyperbolic_basic(C, tries = tries, verbose=verbose):
                     if verbose > 12:
@@ -130,7 +131,7 @@ def is_hyperbolic(manifold, tries = 10, verbose = 2):
                 
 def is_hyperbolic_with_volume(manifold, tries = 10, verbose = 2):
     if verbose > 12:
-        print("entering is_hyperbolic_with_volume")
+        print(manifold, "entering is_hyperbolic_with_volume")
 
     is_hyp, vol = verify_hyperbolic_basic_with_volume(manifold, tries = tries, verbose = verbose)
         
@@ -252,7 +253,7 @@ def closed_isosigs(snappy_manifold, tries = 20, max_tets = 50):
     """
     M = snappy.Manifold(snappy_manifold)
     assert set(M.cusp_info('complete?')) == {False}
-    surgery_descriptions = [M.copy()]
+    surgery_descriptions = [snappy.Manifold(M)]
 
     try:
         for curve in M.dual_curves():
@@ -267,7 +268,7 @@ def closed_isosigs(snappy_manifold, tries = 20, max_tets = 50):
         # dual curves.
         try:
             filling = M.cusp_info(0).filling
-            N = M.copy()
+            N = snappy.Manifold(M)
             N.dehn_fill((0, 0), 0)
             N.randomize()
             for curve in N.dual_curves():
@@ -546,7 +547,6 @@ def identify_with_bdy_from_isosig(data):
     name = P.isoSig()
     return kind, name
     
-
 
 def regina_name(closed_snappy_manifold, tries = 100, max_tets = 25):
     """
