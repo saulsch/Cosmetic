@@ -1074,7 +1074,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
         return out
         
         
-def fetch_volume(M, s, tries, verbose):
+def fetch_volume(M, s, tries=8, verbose=4):
     """
     Given a manifold M (assumed to be one-cusped, enhanced, and 
     equipped with a good triangulation) and a slope s (assumed to be 
@@ -1087,22 +1087,24 @@ def fetch_volume(M, s, tries, verbose):
     if s in M.volumes_table:
         verbose_print(verbose, 10, [M, s, 'volume found in table'])
         return M.volumes_table[s]
-    else:
-        verbose_print(verbose, 10, [M, s, 'trying to compute volume'])
                 
-        assert M.solution_type() == 'all tetrahedra positively oriented'
+    assert M.solution_type() == 'all tetrahedra positively oriented'
 
-        N = M.copy() 
-        N.dehn_fill(s)
+    N = M.copy() 
+    N.dehn_fill(s)
 
-        # will need to wrap this in a try/except. 
+    for i in range(tries):
         is_hyp, vol = dunfield.is_hyperbolic_with_volume(N, tries = tries, verbose = verbose)
-        if not is_hyp:
-            verbose_print(verbose, -1, [N, 'positive triangulation fail - putting untrusted volume in the table'])
-            R = RealIntervalField(10) # downgrade the precision!
-            M.volumes_table[s] = R(N.volume())
-        else: 
+        if is_hyp:
+            verbose_print(verbose, 10, [M, s, 'computed volume on attempt', i+1])
             M.volumes_table[s] = vol
+            return vol
+    if not is_hyp:
+        verbose_print(verbose, -1, [M, s, 'verified volume fail after', tries, 'tries'])
+        raise   
+        # verbose_print(verbose, -1, [N, 'positive triangulation fail - putting untrusted volume in the table'])
+        # R = RealIntervalField(10) # downgrade the precision!
+        # M.volumes_table[s] = R(N.volume())
 
     return M.volumes_table[s]
         
