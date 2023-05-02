@@ -61,7 +61,7 @@ def get_DTs_from_regina(filename):
 # Extracting a link from a manifold, and vice versa
 
 
-def link_from_manifold(M, verbose=3):
+def link_from_manifold(M, verbose = 3):
     """
     Given a snappy manifold M, try to extract the associated link K
     Return K if successful, or None otherwise.
