@@ -1676,9 +1676,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     
                 if looks_distinct and not rigorous:
                     reason = (M.name(), s, t, 'distinguished by non-rigorous length spectrum')
-                    # Temporary flag to make sure we never land here
-                    verbose_print(verbose, 0, [M.name(), s, t, 'distinguished by non-rigorous length spectrum'])
-                    raise
+                    verbose_print(verbose, -1, [M.name(), s, t, 'distinguished by non-rigorous length spectrum'])
                 if not looks_distinct:
                     reason = (M.name(), s, t, 'Not distinguished by hyperbolic invariants or covers')
                 verbose_print(verbose, 2, [reason])
