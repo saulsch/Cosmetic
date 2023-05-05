@@ -10,6 +10,7 @@ import regina
 import dunfield
 import geom_tests
 
+from tqft import Jones_tests
 from verbose import verbose_print
 
 # Math
@@ -18,8 +19,6 @@ from sage.functions.other import sqrt, ceil, floor
 from sage.symbolic.constants import pi
 from sage.arith.misc import gcd
 from sage.symbolic.ring import SR
-from sage.rings.number_field.number_field import CyclotomicField
-# from sage.rings.universal_cyclotomic_field import UniversalCyclotomicField
 
 from string import ascii_letters
 
@@ -176,35 +175,6 @@ def Alexander_tests(knot, name, verbose=3):
     A = Q.derivative().derivative()
     verbose_print(verbose, 10, [A, 'second derivative'])
     return int(A(1)/2), int(deg)
-
-
-# Jones polynomial and related invariants
-
-def Jones_tests(K, name, verbose=3):
-    """
-    Given a snappy link K and its name (for bookkeeping), 
-    compute the Jones polynomial of K.
-    Then, return the third derivative evaluated at 1, as well as 
-    the original polynomial evaluated at the 5th root of 1.
-    Both are relevant to obstructing cosmetic surgeries.
-    """
-    
-    if K == None:
-        return None, None
-    V = K.jones_polynomial(new_convention=False)
-    # The 'new_convention=False' ensures we get classical Jones polynomial
-    verbose_print(verbose, 10, [name, V, "Jones polynomial"])
-    Q = V.derivative().derivative().derivative()
-    
-    w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
-    # Alternative, more complicated expression below:
-    # w = UniversalCyclotomicField().gen(5) 
-
-    verbose_print(verbose, 10, [Q(1), "Jones third derivative at 1"])
-    verbose_print(verbose, 10, [V(w), "Jones poly evaluated at exp(2*Pi*I/5)"])
-    
-    return int(Q(1)), V(w) 
-
 
 # Turaev genus of a diagram
 
