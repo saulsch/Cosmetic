@@ -8,8 +8,9 @@ import snappy
 
 from sage.modules.free_module_element import vector
 from sage.matrix.constructor import Matrix
-
 from sage.rings.number_field.number_field import CyclotomicField
+from sage.arith.misc import gcd
+
 from verbose import verbose_print
 
 # Jones polynomial and related invariants
@@ -102,4 +103,52 @@ def IIS_test(K, s, verbose=3):
     verbose_print(verbose, 5, ['tau_5(U(s))', tau_five_U])
     
     return (Jones_fifth != Jones_fifth.conjugate()) and (tau_five_K != tau_five_U)
+
+def euclidean(s):
+    """Given a slope s = (p, q) in the torus, returns the lengths of the
+    syllables (of T) in a word in the generators
+
+    S = [0 -1]  T = [1 1]
+        [1  0],     [0 1]
+
+    of SL(2, ZZ) taking (\pm 1, 0) (the unoriented meridian) to s.
     
+    Example: Since the many many conventions are confusing, here are
+    two worked examples:
+
+    13, 4 --> 9, 4 -->  5, 4 --> 1, 4 --> -3, 4 -->  (4)
+    4,  3 --> 1, 3 --> -2, 3 -->  (2)
+    3,  2 --> 1, 2 --> -1, 2 -->  (2)
+    2,  1 --> 1, 1 -->  0, 1 -->  (2)
+    1,  0 halt
+
+    That is, the output on s = (13, 4) is [4, 2, 2, 2] giving the word
+    T^2 * S * T^2 * S * T^2 * S * T^4 * S
+
+    -9, 4 -->  (0)
+     4, 9 --> -5, 9 -->  (1)
+     9, 5 -->  4, 5 --> -1, 5 -->  (2)
+     5, 1 --> .... --> 0, 1 --> (5)
+     1, 0 halt
+
+    That is, the output on s = (-9, 4) is [0, 1, 2, 5] giving the word
+    T^0 * S * T^1 * S * T^2 * S * T^5 * S
+    """
+    p, q = s
+    assert gcd(p, q) == 1
+
+    # make q positive - we are actually working in PSL
+    if q < 0:
+        p, q = -p, -q
+
+    terms = []
+    while q > 0:
+        a = 0
+        while p > 0:
+            a = a + 1
+            p = p - q
+        terms.append(a)
+        p = q
+        q = -p
+
+    return terms
