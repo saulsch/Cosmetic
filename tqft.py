@@ -102,3 +102,4 @@ def IIS_test(K, s, verbose=3):
     verbose_print(verbose, 5, ['tau_5(U(s))', tau_five_U])
     
     return (Jones_fifth != Jones_fifth.conjugate()) and (tau_five_K != tau_five_U)
+    
