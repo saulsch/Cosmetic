@@ -68,3 +68,4 @@ def tau_five(K, s, verbose=3):
     v = prod * vector((1, 0))
 
     return u.dot_product(v)
+
