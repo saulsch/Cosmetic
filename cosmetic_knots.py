@@ -770,7 +770,7 @@ def prune_using_invariants(knots, Casson=True, Genus_thick_quick=True, Jones_der
 
         # Compute the Jones polynomial plus related values, if needed
         if Jones_deriv or Jones_fifth:
-            jones_data = Jones_tests(K, verbose)
+            jones_data = Jones_tests(K, name, verbose)
 
         # Ichihara-Wu test, third derivative of the Jones polynomial
         if Jones_deriv:
