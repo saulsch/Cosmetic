@@ -2,7 +2,7 @@
 # tqft.py
 #
 
-# Goal - implement the TQFT invariant coming from ...
+# Goal - implement the TQFT invariant coming from ... [REF]
 
 import snappy
 
@@ -17,10 +17,10 @@ from verbose import verbose_print
 
 def Jones_tests(K, name, verbose=3):
     """
-    Given a snappy link K and its name, compute the Jones polynomial of K.
-    Then, return the third derivative evaluated at 1, as well as 
-    the original polynomial evaluated at the 5th root of 1.
-    Both are relevant to obstructing cosmetic surgeries.
+    Given a snappy link K and its name, compute the Jones polynomial
+    of K.  Then, return the third derivative evaluated at 1, as well
+    as the original polynomial evaluated at the 5th root of 1.  Both
+    are relevant to obstructing cosmetic surgeries.
     """
     
     if K == None:
@@ -51,10 +51,11 @@ def quantum_int(n):
 
 def tau_five(K, s, verbose=3):
     """
-    Given a knot K (as a spherogram link) and
-    a slope s = (m,n) where n=1 or n=2, returns the quantum invariant
-    tau_5(K(s)). The result is correct up to a global scalar, which should be 
-    sufficient for comparing tau_5(K(s)) to tau5(U(s)), where U is the unknot.
+    Given a knot K (as a spherogram link) and a slope s = (m,n) where
+    n = 1 or n = 2, returns the quantum invariant tau_5(K(s)). The
+    result is correct up to a global scalar, which should be
+    sufficient for comparing tau_5(K(s)) to tau5(U(s)), where U is the
+    unknot.
     """
     m, n = s
     assert n == 1 or n == 2
@@ -85,11 +86,13 @@ def tau_five(K, s, verbose=3):
 
 def IIS_test(K, s, verbose=3):
     """
-    Given a snappy link K, plus a slope s, implement the test of Ichihara-Ito-Saito,
-    Theorem 1.2. That is, decide whether (s, -s) is definitely not a chirally
-    cosmetic pair. To rule this out, we need two things to be true:
+    Given a snappy link K, plus a slope s, implement the test of
+    Ichihara-Ito-Saito, Theorem 1.2. That is, decide whether (s, -s)
+    is definitely not a chirally cosmetic pair. To rule this out, we
+    need two things to be true:
+
     * V_K(exp(2*Pi*I/5) is not real.
-    * tau_5(K(s)) != tau_5(U(s)) where U is the unknot. 
+    * tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
     """
 
     _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
