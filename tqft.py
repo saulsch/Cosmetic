@@ -105,50 +105,94 @@ def IIS_test(K, s, verbose=3):
     return (Jones_fifth != Jones_fifth.conjugate()) and (tau_five_K != tau_five_U)
 
 def euclidean(s):
-    """Given a slope s = (p, q) in the torus, returns the lengths of the
-    syllables (of T) in a word in the generators
+    """
+    Given an integer vector s = (p, q), with g = gcd(p, q), returns
+    the lengths of the syllables (of T) in a word in the generators
 
     S = [0 -1]  T = [1 1]
         [1  0],     [0 1]
 
-    of SL(2, ZZ) taking (\pm 1, 0) (the unoriented meridian) to s.
+    of PSL(2, ZZ) taking (+/- g, 0) to s.  For example, if g = 1 then
+    s represents an (unoriented) slope in the torus.  In this case the
+    word in S and T gives a mapping class taking the (unoriented)
+    meridian to s.
     
-    Example: Since the many many conventions are confusing, here are
-    two worked examples:
+    Example: 
 
-    13, 4 --> 9, 4 -->  5, 4 --> 1, 4 --> -3, 4 -->  (4)
-    4,  3 --> 1, 3 --> -2, 3 -->  (2)
-    3,  2 --> 1, 2 --> -1, 2 -->  (2)
-    2,  1 --> 1, 1 -->  0, 1 -->  (2)
-    1,  0 halt
+    sage: euclidean((13, 4))                                                   
+    [4, 2, 2, 2]
 
-    That is, the output on s = (13, 4) is [4, 2, 2, 2] giving the word
-    T^2 * S * T^2 * S * T^2 * S * T^4 * S
+    In detail, we have: 
 
-    -9, 4 -->  (0)
-     4, 9 --> -5, 9 -->  (1)
-     9, 5 -->  4, 5 --> -1, 5 -->  (2)
-     5, 1 --> .... --> 0, 1 --> (5)
-     1, 0 halt
+    13, 4 ---> 13 - 4*4, 4  =  -3, 4 --->    (k = 4)
+     4, 3 --->  4 - 2*3, 3  =  -2, 3 --->    (k = 2)
+     3, 2 --->  3 - 2*2, 2  =  -1, 2 --->    (k = 2)
+     2, 1 --->  2 - 2*1, 1  =   0, 1 --->    (k = 2)
+     1, 0
 
-    That is, the output on s = (-9, 4) is [0, 1, 2, 5] giving the word
+    Thus the desired word in T and S is 
+    T^4 * S * T^2 * S * T^2 * S * T^2 * S
+
+    sage: euclidean((-9, 4))                                                   
+    [0, 1, 2, 5]
+
+    This time we have: 
+
+    -9, 4 ---> -9 - 0*4, 4  =  -9, 4 --->    (k = 0)
+     4, 9 --->  4 - 1*9, 9  =  -5, 9 --->    (k = 1)
+     9, 5 --->  9 - 2*5, 5  =  -1, 5 --->    (k = 2)
+     5, 1 --->  5 - 5*1, 1  =   0, 1 --->    (k = 5)
+     1, 0
+
+    Thus the desired word is: 
     T^0 * S * T^1 * S * T^2 * S * T^5 * S
     """
     p, q = s
-    assert gcd(p, q) == 1
-
-    # make q positive - we are actually working in PSL
-    if q < 0:
+    
+    # we work in PSL so we can make q non-negative
+    if q <= 0:
         p, q = -p, -q
 
     terms = []
     while q > 0:
-        a = 0
-        while p > 0:
-            a = a + 1
-            p = p - q
-        terms.append(a)
-        p = q
-        q = -p
-
+        if p < 0:
+            k = 0
+        else:
+            k = (p // q)
+            if p % q != 0:
+                k = k + 1
+        terms.append(k)
+        # p, q = p - k*q,  q  # T^-k
+        # p, q =       q, -p  # S^-1
+        p, q = q, k*q - p
+        
     return terms
+
+def syllables_to_matrix(L):
+    """
+    Given syllable lengths L, returns the corresponding matrix in
+    SL(2, ZZ).  This "inverts" the function euclidean.
+
+    Example: 
+
+    sage: euclidean((13, 4))
+    [4, 2, 2, 2]
+    sage: syllables_to_matrix([4, 2, 2, 2])
+    [ 13 -10]
+    [  4  -3]
+    
+    sage: euclidean((-9, 4))                                                   
+    [0, 1, 2, 5]
+    sage: syllables_to_matrix([0, 1, 2, 5])
+    [-9  2]
+    [ 4 -1]
+    """
+    Id = Matrix([[1,  0], [0, 1]])
+    T  = Matrix([[1,  1], [0, 1]])
+    S  = Matrix([[0, -1], [1, 0]])
+
+    prod = Id
+    for l in L:
+        prod = prod * T**l * S
+        
+    return prod
