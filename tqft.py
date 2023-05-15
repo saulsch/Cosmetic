@@ -118,7 +118,7 @@ def euclidean(s):
     of PSL(2, ZZ) taking (+/- g, 0) to s.  For example, if g = 1 then
     s represents an (unoriented) slope in the torus.  In this case the
     word in S and T gives a mapping class taking the (unoriented)
-    meridian to s.
+    meridian (+/- 1, 0) to s.
     
     Example: 
 
