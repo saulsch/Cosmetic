@@ -224,7 +224,7 @@ def census_lookup(regina_tri):
             return match
 
 def standard_lookup(regina_tri):
-    match = regina.StandardTriangulation.isStandardTriangulation(regina_tri)
+    match = regina.StandardTriangulation.recognise(regina_tri)
     if match:
         return match.manifold()
 
@@ -364,8 +364,8 @@ def is_toroidal(regina_tri):
     """
     T = regina_tri
     assert T.isZeroEfficient()
-    surfaces = regina.NormalSurfaces.enumerate(T,
-                          regina.NS_QUAD, regina.NS_FUNDAMENTAL)
+    # got rid of regina.NormalSurfaces.enumerate
+    surfaces = regina.NormalSurfaces(T, regina.NS_QUAD, regina.NS_FUNDAMENTAL)
     for i in range(surfaces.size()):
         S = surfaces.surface(i)
         if S.eulerChar() == 0:
@@ -404,8 +404,8 @@ def decompose_along_tori(regina_tri):
     assert T.isZeroEfficient()
     assert T.isConnected() # We will be counting components below
     incompress_tori = []
-    surfaces = regina.NormalSurfaces.enumerate(T,
-                          regina.NS_QUAD, regina.NS_FUNDAMENTAL)
+    # got rid of regina.NormalSurfaces.enumerate
+    surfaces = regina.NormalSurfaces(T, regina.NS_QUAD, regina.NS_FUNDAMENTAL)
     for i in range(surfaces.size()):
         S = surfaces.surface(i)
         if S.eulerChar() == 0:
