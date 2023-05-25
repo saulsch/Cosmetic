@@ -6,8 +6,9 @@ conjecture.
 
 ### Prerequisites and installation
 
-We work inside of SageMath (as of this writing version 9.2).
-We assume that the user has snappy and regina installed inside of sage.
+We work inside of SageMath.
+We also assume that the user has snappy and regina installed inside of sage.
+We are currently running sage 9.2, snappy 3.1, and regina 7.3.
 You can find installation instructions for those programs here:
 
 https://doc.sagemath.org/html/en/installation/  \
@@ -48,8 +49,28 @@ geometry to eliminate these knots.
 remainder = cosmetic_knots.check_knots(remainder)
 ```
 
-Now remainder is empty - these six knots have no cosmetic surgery pairs.
+Now remainder is empty - these six knots have no cosmetic surgery
+pairs.
 
-### In progress
+One can also check manifolds instead of knots.
 
-The code in cosmetic_mfds is currently being developed.
+```
+import snappy
+import cosmetic_mfds
+
+Cen = snappy.OrientableCuspedCensus(num_cusps = 1)
+Cen = Cen[:10]
+out = cosmetic_mfds.check_mfds(Cen)
+```
+
+Now out should be a pair of empty lists, as there are no pairs of
+slopes contradicting either conjecture.
+
+The code can also check for chirally cosmetic surgeries as well as for
+common fillings.  You can find the documention as follows:
+
+```
+cosmetic_mfds.check_mfds?
+cosmetic_mfds.check_cosmetic?
+cosmetic_mfds.check_list_for_common_fillings?
+```
