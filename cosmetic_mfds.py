@@ -42,7 +42,7 @@ from sage.interfaces.gap import gap
 
 # Globals
 
-six_theorem_length = 6.01 # All exceptionals shorter than this
+# six_theorem_length = 6.01 # All exceptionals shorter than this
 
 
 # coding
@@ -99,7 +99,7 @@ def find_exceptionals(M, tries=8, verbose=4):
     M.exceptions_table if possible.
     """
 
-    six_short_slopes = gt.find_short_slopes(M, six_theorem_length, normalized=False, verbose=verbose)
+    six_short_slopes = gt.find_short_slopes(M, verbose=verbose)
     for s in six_short_slopes:
         hyp_type = is_hyperbolic_filling(M, s, tries, verbose)
         if hyp_type == True:
@@ -229,7 +229,6 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
                 verbose_print(verbose, 25, ['added to slopes_low_volume'])
 
     return low_vol_slopes
-
 
 
 # Names - parsing regina names
