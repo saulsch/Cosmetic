@@ -491,10 +491,6 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     verbose_print(verbose, 4, [short_slopes])
     return short_slopes
 
-
-
-
-
 def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tries=10, verbose=3):
     '''
     Given a knot complement in S^3, install the homological framing on M
