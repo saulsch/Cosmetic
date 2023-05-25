@@ -256,7 +256,7 @@ def cusp_invariants(M):
 # Get a list of short slopes
 
 
-def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
+def find_short_slopes_old(M, len_cutoff, normalized=False, verbose=3):
     """
     Given a one-cusped hyperbolic manifold M and a length cutoff len_cutoff,
     find all slopes on the cusp that are shorter than len_cutoff.
@@ -305,6 +305,34 @@ def find_short_slopes(M, len_cutoff, normalized=False, verbose=3):
     verbose_print(verbose, 10, ['In original framing:', slopes_converted])
     
     return slopes_converted
+
+
+def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
+    """
+    Given a hyperbolic manifold M (assumed to have one cusp) finds all
+    slopes that are shorter than length six.  If length_cutoff is
+    given then finds all slopes on the cusp that are shorter than
+    len_cutoff.
+    
+    The Boolean flag 'normalized' clarifies whether the length cutoff
+    is normalized (in the sense of Hodgson-Kerckhoff). If true, we
+    convert to un-normalized, geometric length.
+
+    Note that if len_cutoff is not given, then the normalized flag is
+    ignored.
+    """
+    verbose_print(verbose, 12, [M.name(), 'entering find_short_slopes'])
+
+    if len_cutoff == None:
+        slopes = M.short_slopes(verified=True)[0]
+    else:
+        if normalized:    
+            _, _, norm_fac = cusp_invariants(M)
+            len_cutoff = len_cutoff * norm_fac
+        slopes = M.short_slopes(len_cutoff, verified=True)[0]
+        
+    slopes = [preferred_rep(s) for s in slopes]
+    return set(slopes)
 
 
 # systole
