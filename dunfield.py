@@ -191,7 +191,7 @@ def extract_vector(surface):
         for j in range(3):
             ans.append(S.quads(i, j))
     A = regina.NormalSurface(T, regina.NS_STANDARD, ans)
-    assert A.sameSurface(S)
+    assert A == S
     return ans
 
 def haken_sum(S1, S2):
