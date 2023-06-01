@@ -26,6 +26,9 @@ from sage.arith.misc import gcd, xgcd, factor
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 from sage.modules.free_module_element import vector
+from sage.rings.real_mpfr import RR
+from sage.rings.real_mpfi import RIF
+
 
 # wrappers for Regina utilities
 
@@ -252,59 +255,7 @@ def cusp_invariants(M):
     return m, l, norm_fac
 
 
-
 # Get a list of short slopes
-
-
-def find_short_slopes_old(M, len_cutoff, normalized=False, verbose=3):
-    """
-    Given a one-cusped hyperbolic manifold M and a length cutoff len_cutoff,
-    find all slopes on the cusp that are shorter than len_cutoff.
-    
-    The Boolean flag 'normalized' clarifies whether the length cutoff is normalized
-    (in the sense of Hodgson-Kerckhoff). If true, we convert to un-normalized,
-    geometric length.
-    
-    The routine accepts M with an arbitrary framing, installs the geometric
-    framing on a copy N to do its work, and returns slopes in the original coordinates.
-    """
-    verbose_print(verbose, 12, [M, 'entering find_short_slopes'])
-
-    name = M.name()
-    N = M.copy()
-
-    # Fix the framing on the copy N to be shortest
-    cob = N.set_peripheral_curves('shortest', return_matrices = True)
-    # but remember the original meridian and longitude.
-    meridian = cob[0][0]
-    longitude = cob[0][1]
-
-    m, l, norm_fac = cusp_invariants(N)
-    if normalized==False:
-        cutoff = len_cutoff
-    else:
-        cutoff = len_cutoff * norm_fac
-    
-    p_max = int(ceil(cutoff/abs(m)).endpoints()[0])
-    q_max = int(ceil(cutoff/abs(l)).endpoints()[0])
-    verbose_print(verbose, 10, [name, 'maximal m coeff', p_max, 'merid length', abs(m).endpoints()[0]])
-    verbose_print(verbose, 10, [name, 'maximal l coeff', q_max, 'long length', abs(l).endpoints()[0]])
-
-    # get the short slopes in the geometric framing
-    slopes = []
-    for p in range(0, p_max + 1): # do not need neg p as (p,q) = (-p,-q) is preserved by framing change
-        for q in range(-q_max, q_max + 1):
-            if gcd(p, q) == 1 and abs(p*m + q*l) <= cutoff:    
-                slopes.append((p,q))
-                
-    verbose_print(verbose, 12, ['In geometric framing:', slopes])
-
-    # convert the short slopes to the original framing
-    slopes_converted = set( preferred_rep((alg_int(s, longitude), alg_int(meridian, s))) for s in slopes )
-    verbose_print(verbose, 5, [name, len(slopes_converted), 'slopes shorter than', cutoff])
-    verbose_print(verbose, 10, ['In original framing:', slopes_converted])
-    
-    return slopes_converted
 
 
 def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
@@ -326,9 +277,12 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
     if len_cutoff == None:
         slopes = M.short_slopes(verified=True)[0]
     else:
-        if normalized:    
+        if normalized:
             _, _, norm_fac = cusp_invariants(M)
-            len_cutoff = len_cutoff * norm_fac
+            len_cutoff = len_cutoff * norm_fac.center()  
+            # norm_fac.center is a hackity-hack which stays until (a)
+            # the systole is verified and (b) M.short_slopes accepts
+            # RIFs
         slopes = M.short_slopes(len_cutoff, verified=True)[0]
         
     slopes = [preferred_rep(s) for s in slopes]
