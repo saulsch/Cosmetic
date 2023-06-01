@@ -278,12 +278,12 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
         slopes = M.short_slopes(verified=True)[0]
     else:
         if normalized:
-            _, _, norm_fac = cusp_invariants(M)
+            _, _, norm_fac = cusp_invariants(M)            
             len_cutoff = len_cutoff * norm_fac.center()  
-            # norm_fac.center is a hackity-hack which stays until (a)
-            # the systole is verified and (b) M.short_slopes accepts
-            # RIFs
-        slopes = M.short_slopes(len_cutoff, verified=True)[0]
+            # norm_fac.center is a hackity-hack which stays until the
+            # systole is verified.  When it is we can feed
+            # M.short_slopes an RIF as a length.
+        slopes = M.short_slopes(len_cutoff, verified = True)[0]
         
     slopes = [preferred_rep(s) for s in slopes]
     return set(slopes)
