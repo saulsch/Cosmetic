@@ -864,7 +864,7 @@ def subgroup_abels(G, deg):
     """
     Given a Gap group g, computes the list of finite-index subgroups up
     to index deg. Returns the list of subgroups, their indices, and their
-    abelianizations (sorted lesicographically for comparing).
+    abelianizations (sorted lexicographically for comparing).
     """    
     
     subs = G.LowIndexSubgroupsFpGroup(deg)
@@ -893,19 +893,28 @@ def profinite_data(G, subs, deg):
     return out
 
 
-def are_distinguished_by_cover_homology(M, N, tries, verbose):
+def are_distinguished_by_normcore_homology(M, N, tries, verbose):
     """
     Given snappy manifolds M and N, tries to distinguish their
-    fundamental groups using finite-index subgroups and their normal cores.
+    fundamental groups using the abelianizations of finite-index subgroups 
+    and their normal cores. This uses GAP.
+    
+    For optimum speed, this routine should be used *after* trying
+    are_distinguished_by_cover_homology, which takes advantage of faster 
+    cover enumeration in SnapPy 3.1.
     """
     
-    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
+    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_normcore_homology"])
     
     GM = gap(M.fundamental_group().gap_string())
     GN = gap(N.fundamental_group().gap_string())
     degree_bound = min(tries, 6) # Hack: no degrees higher than 6
 
-    # Gradually compute covers up to degree_bound and their homology
+    # First, compute subgroups of GM and GN up to index degree_bound
+    M_subs = GM.LowIndexSubgroupsFpGroup(degree_bound + 1)
+    N_subs = GN.LowIndexSubgroupsFpGroup(degree_bound + 1)
+    
+    '''
     for deg in range(1, degree_bound + 1):
         M_subs, M_data = subgroup_abels(GM, deg)
         N_subs, N_data = subgroup_abels(GN, deg)
@@ -914,8 +923,9 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
         if M_data != N_data:
             verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
             return True
+    '''
 
-    # Gradually compute the homology and index of each normal core
+    # Now, compute the homology and index of each normal core (for each degree separately)
     for deg in range(1, degree_bound + 1):
         M_invts = profinite_data(GM, M_subs, deg)
         N_invts = profinite_data(GN, N_subs, deg)
@@ -931,6 +941,33 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     return False
 
 
+def are_distinguished_by_cover_homology(M, N, tries, verbose):
+    """
+    Given snappy manifolds M and N, tries to distinguish their
+    fundamental groups using the first homology groups of finite-degree covers
+    (ie, the abelianizations of finite-index subgroups). This routine is designed
+    to take advantage of faster cover enumeration in Snappy 3.1.
+    """
+    
+    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
+
+    degree_bound = min(tries, 8) # Covers up to degree 8 should be acceptable
+    
+    for deg in range(1, degree_bound + 1):
+        M_data = [Q.homology() for Q in M.covers(deg)]
+        N_data = [Q.homology() for Q in N.covers(deg)]
+        M_data.sort()
+        N_data.sort()
+        verbose_print(verbose, 8, [M, deg, M_data])
+        verbose_print(verbose, 8, [N, deg, N_data])
+        if M_data != N_data:
+            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+            return True
+            
+    # We have failed    
+    return False
+        
+    
 def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     """
     Given snappy manifolds M and N, and a pair of slopes s and t, builds
@@ -944,7 +981,12 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     Nt = N.copy()
     Ms.dehn_fill(s)
     Nt.dehn_fill(t)
-    return are_distinguished_by_cover_homology(Ms, Nt, tries, verbose)
+    if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
+        return True
+    elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
+        return True
+    else:
+        return False
 
 
 # hyperbolic invariants
