@@ -63,28 +63,27 @@ def tau_five(K, s, verbose=3):
     delta = a**2 - a**(-2)
     sqrtm5 = 2*z^7 - z^5 + 2*z^3  # sqrt(-5)
     eta = delta/sqrtm5
-    # eta = (a^2 - a^-2)/(sqrt(-5))
    
     Id   = Matrix(G, [[1, 0], [0, 1]]) 
-    rhoT = Matrix(G, [[1, 0], [0, -a**3]])  # Prop 2.7 of Detcherry
+    T = Matrix(G, [[1, 0], [0, -a**3]])  # Prop 2.7 of Detcherry
     one  = quantum_int(1)
     two  = quantum_int(2)
     four = quantum_int(4)
-    # rhoS = eta * Matrix(G, 2, 2, lambda i, j: (-1)**(i+j+2) * quantum_int((i + 1) * (j + 1)))
-    rhoS = eta * Matrix(G, [[one, -two], [-two, four]])  # Prop 2.7 of Detcherry
-    # assert rhoS**2 == Id
-    # assert rhoT**5 == Id
-    # assert (rhoS * rhoT)**3 == Id  # this is only projectively true.
+    # S = eta * Matrix(G, 2, 2, lambda i, j: (-1)**(i+j+2) * quantum_int((i + 1) * (j + 1)))
+    S = eta * Matrix(G, [[one, -two], [-two, four]])  # Prop 2.7 of Detcherry
+    # assert S**2 == Id
+    # assert T**5 == Id
+    # assert (S * T)**3 == Id  # this is only projectively true.
     
     L = euclidean(s) 
-    rep = [rhoS, rhoT]
+    rep = [S, T]
     prod = syllables_to_matrix(L, rep)
 
     # m, n = s
     # if n == 1:
-    #     prod = rhoT**m * rhoS
+    #     prod = T**m * S
     # if n == 2:
-    #     prod = rhoS**2 * rhoT**((m-1)/2) * rhoS * rhoT**(-2) * rhoS  # ???
+    #     prod = S**2 * T**((m-1)/2) * S * T**(-2) * S  # ???  Is this the inverse?
 
     _, u2 = Jones_tests(K, None, verbose = verbose)
     u = vector((1, u2))
@@ -181,8 +180,10 @@ def euclidean(s):
 
 def syllables_to_matrix(L, rep = None):
     """
-    Given syllable lengths L, returns the corresponding matrix in
-    SL(2, ZZ).  This "inverts" the function euclidean.
+    Given syllable lengths L, returns the corresponding matrix in SL(2,
+    ZZ).  This "inverts" the function euclidean.  (If rep is not none,
+    then uses the given representation of SL(2, ZZ) instead of the
+    standard one.)
 
     Example: 
 
@@ -197,6 +198,7 @@ def syllables_to_matrix(L, rep = None):
     sage: syllables_to_matrix([0, 1, 2, 5])
     [-9  2]
     [ 4 -1]
+
     """
     if rep == None:
         S  = Matrix(ZZ, [[0, -1], [1, 0]])
