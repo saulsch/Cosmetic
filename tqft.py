@@ -46,8 +46,8 @@ def Jones_tests(K, name, verbose=3):
     return int(Q(1)), V(w)
 
 def quantum_int(n):
-    a5 = CyclotomicField(10).gen()
-    return (a5**(2*n) - a5**(-2*n))/ (a5**(2) - a5**(-2))
+    a = CyclotomicField(10).gen()
+    return (a**(2*n) - a**(-2*n))/ (a**(2) - a**(-2))
 
 def tau_five(K, s, verbose=3):
     """
@@ -57,28 +57,36 @@ def tau_five(K, s, verbose=3):
     sufficient for comparing tau_5(K(s)) to tau5(U(s)), where U is the
     unknot.
     """
-    m, n = s
-    assert n == 1 or n == 2
-    _, u2 = Jones_tests(K, None, verbose = verbose)
-
-    F = CyclotomicField(10)
-    a5 = F.gen()
-    delta = a5**2 - a5**(-2)
-    # eta5 = (a5^2 - a5^-2)/(sqrt(-5)) = delta/(sqrt(-5)) # The
-    # calling function is computing a ratio of taus, so we can ignore
-    # the global scaling factor of sqrt(-5).
+    G = CyclotomicField(20)
+    z = G.gen()
+    a = z**2  # generates CyclotomicField(10)
+    delta = a**2 - a**(-2)
+    sqrtm5 = 2*z^7 - z^5 + 2*z^3  # sqrt(-5)
+    eta = delta/sqrtm5
+    # eta = (a^2 - a^-2)/(sqrt(-5))
+   
+    Id   = Matrix(G, [[1, 0], [0, 1]]) 
+    rhoT = Matrix(G, [[1, 0], [0, -a**3]])  # Prop 2.7 of Detcherry
+    one  = quantum_int(1)
+    two  = quantum_int(2)
+    four = quantum_int(4)
+    # rhoS = eta * Matrix(G, 2, 2, lambda i, j: (-1)**(i+j+2) * quantum_int((i + 1) * (j + 1)))
+    rhoS = eta * Matrix(G, [[one, -two], [-two, four]])  # Prop 2.7 of Detcherry
+    # assert rhoS**2 == Id
+    # assert rhoT**5 == Id
+    # assert (rhoS * rhoT)**3 == Id  # this is only projectively true.
     
-    rhoT = Matrix(F, [[1, 0], [0, -a5**3]])
-    one = quantum_int(1)
-    two = quantum_int(2)
-    four= quantum_int(4)
-    rhoS = delta * Matrix(F, [[one, -two], [-two, four]])
-    # rhoS = eta5 * Matrix(F, [[one, -two], [-two, four]])
-    if n == 1:
-        prod = rhoT**m * rhoS
-    if n == 2:
-        prod = rhoS**2 * rhoT**((m-1)/2) * rhoS * rhoT**(-2) * rhoS
+    L = euclidean(s) 
+    rep = [rhoS, rhoT]
+    prod = syllables_to_matrix(L, rep)
 
+    # m, n = s
+    # if n == 1:
+    #     prod = rhoT**m * rhoS
+    # if n == 2:
+    #     prod = rhoS**2 * rhoT**((m-1)/2) * rhoS * rhoT**(-2) * rhoS  # ???
+
+    _, u2 = Jones_tests(K, None, verbose = verbose)
     u = vector((1, u2))
     v = prod * vector((1, 0))
 
@@ -171,7 +179,7 @@ def euclidean(s):
         
     return terms
 
-def syllables_to_matrix(L):
+def syllables_to_matrix(L, rep = None):
     """
     Given syllable lengths L, returns the corresponding matrix in
     SL(2, ZZ).  This "inverts" the function euclidean.
@@ -190,11 +198,13 @@ def syllables_to_matrix(L):
     [-9  2]
     [ 4 -1]
     """
-    Id = Matrix([[1,  0], [0, 1]])
-    T  = Matrix([[1,  1], [0, 1]])
-    S  = Matrix([[0, -1], [1, 0]])
-
-    prod = Id
+    if rep == None:
+        S  = Matrix(ZZ, [[0, -1], [1, 0]])
+        T  = Matrix(ZZ, [[1,  1], [0, 1]])
+    else:
+        S, T = rep
+        
+    prod = S.parent().identity_matrix()  # accumulator
     for l in L:
         prod = prod * T**l * S
         
