@@ -970,10 +970,14 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     
 def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     """
-    Given snappy manifolds M and N, and a pair of slopes s and t, builds
-    M(s) and N(t), computes a collection of covers of each, counts
-    them, and returns True if the "spectrum" distinguishes.  If this
-    fails, returns False.
+    Given snappy manifolds M and N, and a pair of slopes s and t, tries to
+    distinguish the fundamental groups of M(s) and N(t) using the abelianizations
+    of finite-index subgroups.
+    
+    This proceeds in two steps. First, enumerate covers up to a fixed degree
+    using SnapPy. This is very fast. If this does not succeed, then enumerate
+    finite-index subgroups and their normal cores using GAP. This is slower, but
+    produces a richer package of data.
     """
     
     verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_covers"])
