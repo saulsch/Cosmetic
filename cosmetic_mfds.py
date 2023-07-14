@@ -963,6 +963,8 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
         if M_data != N_data:
             verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
             return True
+        # Give a status update if (verbose*deg) is large
+        verbose_print(verbose*deg, 36, [M, N, "cover homology up to degree", deg, "failed to distinguish"])
             
     # We have failed    
     return False
