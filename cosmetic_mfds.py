@@ -989,8 +989,8 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     Nt.dehn_fill(t)
     if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
         return True
-    elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
-        return True
+    # elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
+    #     return True
     else:
         return False
 
