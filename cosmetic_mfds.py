@@ -134,10 +134,10 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     """
 
     M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
-    M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
-    verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     if M.sys == None:
         return [(M.name(), None, None, None, 'systole fail')]
+    M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
+    verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     
     norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0).n(200)) 
     short_slopes = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
