@@ -131,11 +131,15 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     Given such M, compute the systole of M and calculate the set of systole-short 
     hyperbolic fillings. Filter that set by homology, and
     install it as M.slopes_hyp.
+    
+    Returns True if everything works as expected, or None if the systole 
+    computation fails. 
     """
 
     M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if M.sys == None:
-        return [(M.name(), None, None, None, 'systole fail')]
+        verbose_print(verbose, 0, [M.name(), 'systole fail!'])
+        return None
     M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     
@@ -164,7 +168,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     verbose_print(verbose, 4, [M.name(), len(M.slopes_hyp), 'homology buckets of hyperbolic slopes'])
     verbose_print(verbose, 5, [M.name(), 'hyp slopes', M.slopes_hyp])
 
-    return None
+    return True
 
 
 def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
@@ -1325,7 +1329,10 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     """
     
     # Initialization for M
-    find_systole_short_slopes(M, tries, verbose)    
+    if find_systole_short_slopes(M, tries, verbose) == None:
+        # systole computation has failed
+        reason = (M.name(), 'systole fail', N.name(), None, None, None)
+        return [reason]
 
     # Initialization for N. This includes homologies of meridional and longitudinal fillings.
 
@@ -1648,8 +1655,11 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     # Step three: Get the systole of M. Find the systole-short hyperbolic slopes,
     # and split them by homology.
     
-    find_systole_short_slopes(M, tries, verbose)
-
+    if find_systole_short_slopes(M, tries, verbose) == None:
+        # Systole computation has failed. Give up.
+        reason = (M.name(), None, None, None, 'systole fail')
+        bad_uns.append(reason)
+        return bad_uns
 
     # Step four - Compute the max of the volumes in
     # M.slopes_hyp[hom_hash] and use this to compute the larger set of

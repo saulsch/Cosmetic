@@ -362,7 +362,7 @@ def systole_with_tries(M, tries=10, verbose=3):
             verbose_print(verbose, 10, [N, 'systole via domain and dicts failed on attempt', i])
 
     if sys == None:
-        verbose_print(verbose, 6, [name, 'systole fail'])
+        verbose_print(verbose, 2, [name, 'systole fail'])
         return None
 
 
