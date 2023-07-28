@@ -586,97 +586,6 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     return bad_uns
 
 
-def collect_data_knots(knots, tries = 3, verbose = 3, report = 20):
-    Casson_ruled_out = 0
-    Jones_ruled_out = 0
-    Torus_ruled_out = 0
-    DNW_ruled_out = 0 # for Detcherry-Ni-Wu
-    Satellites_found = 0
-    Weird_geom_found = 0
-    Short_systoles_found = 0
-    shortest_systole = 1.0 # some sort of upper bound
-    Long_list_found = 0
-    longest_list = 0 # Longest list of slopes to check
-    
-    bad_uns = []
-    for n, knot in enumerate(knots): 
-        if n % report == 0:
-            verbose_print(verbose, 0, ['report', n, bad_uns])
-        knot_output = collect_data_knot_cosmetic(knot, tries, verbose)
-        if knot_output == []:
-            # Nothing at all interesting about this example
-            continue
-        if knot_output[0][1] == "Casson":
-            Casson_ruled_out = Casson_ruled_out +1
-            continue
-        if knot_output[0][1] == "Jones_deriv":
-            Jones_ruled_out = Jones_ruled_out +1
-            continue
-        if knot_output[0][1] == "torus":
-            Torus_ruled_out = Torus_ruled_out +1
-            continue
-        if knot_output[0][1] == "satellite":
-            Satellites_found = Satellites_found +1
-            bad_uns.extend(knot_output)
-            continue
-            
-
-        # From here on, we should be doing hyperbolic stuff
-        if knot_output[0][1] == "weird":
-            Weird_geom_found = Weird_geom_found +1
-            bad_uns.extend(knot_output)
-            continue
-            
-        if knot_output[0][1] == "systole":
-            if knot_output[0][2] == None:
-                Weird_geom_found = Weird_geom_found +1
-                bad_uns.extend(knot_output)
-                continue
-            else:
-                Short_systoles_found = Short_systoles_found +1
-                bad_uns.extend(knot_output[0])
-                sys = knot_output[0][2]
-                if sys < shortest_systole:
-                    shortest_systole = sys
-            del knot_output[0]
-        if knot_output == []:
-            continue
-
-        emptylist = False
-        for i in range(len(knot_output)):
-            if knot_output[i][1] == "emptylist":
-                DNW_ruled_out = DNW_ruled_out + 1
-                emptylist = True
-                break
-        if emptylist:
-            continue
-
-        for i in range(len(knot_output)):
-            if knot_output[i][1] == "biglist":
-                Long_list_found = Long_list_found +1
-                list_length = knot_output[i][2]
-                if list_length > longest_list:
-                    longest_list = list_length
-                break
-
-        bad_uns.extend(knot_output)
-        
-    if verbose > 0:
-        print('final report', n+1, ':')
-        print(Casson_ruled_out, 'ruled out by Casson')
-        print(Jones_ruled_out, 'ruled out by Jones')
-        print(Torus_ruled_out, 'ruled out as torus knots')
-        print(Satellites_found, 'satellite knots found')
-        print(Weird_geom_found, 'knots with undetermined geometry')
-        print(Short_systoles_found, 'hyperbolic knots with systole < 0.15')
-        print(shortest_systole, 'shortest systole')
-        print(DNW_ruled_out, 'knots with no slopes to check after Detcherry and Ni-Wu tests')
-        print(Long_list_found, 'knots with >2 pairs of slopes to check by geometry')
-        print(longest_list, 'maximum pairs of slopes to check')
-        print(bad_uns)
-    return bad_uns
-
-
 
 def prune_using_invariants(knots, Casson=True, Genus_thick_quick=True, Jones_deriv=True, Jones_fifth=True, Tau_test=True, Wang=True, Hanselman_HFK=True, verbose=3, report=100):
     '''
@@ -779,7 +688,7 @@ def prune_using_invariants(knots, Casson=True, Genus_thick_quick=True, Jones_der
         # Detcherry test, Jones polynomial at 5th root of 1. This needs to be combined
         # with previously computed upper bound on HFK thickness.
         if Jones_fifth:
-            D = jones_data[1]  # V_K(zeta5)
+            D = jones_data[2]  # V_K(zeta5)
             verbose_print(verbose, 6, [name, 'th(K) <=', th, ', V_K(zeta5) =', D])
             if (th != None and th < 16) and (D != None and D != 1):
                 # See the proof of Corollary 1.5 in Detcherry's paper.

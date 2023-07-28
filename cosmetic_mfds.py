@@ -131,13 +131,17 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     Given such M, compute the systole of M and calculate the set of systole-short 
     hyperbolic fillings. Filter that set by homology, and
     install it as M.slopes_hyp.
+    
+    Returns True if everything works as expected, or None if the systole 
+    computation fails. 
     """
 
     M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    if M.sys == None:
+        verbose_print(verbose, 0, [M.name(), 'systole fail!'])
+        return None
     M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
-    if M.sys == None:
-        return [(M.name(), None, None, None, 'systole fail')]
     
     norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0).n(200)) 
     short_slopes = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
@@ -164,7 +168,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     verbose_print(verbose, 4, [M.name(), len(M.slopes_hyp), 'homology buckets of hyperbolic slopes'])
     verbose_print(verbose, 5, [M.name(), 'hyp slopes', M.slopes_hyp])
 
-    return None
+    return True
 
 
 def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
@@ -963,6 +967,8 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
         if M_data != N_data:
             verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
             return True
+        # Give a status update if (verbose*deg) is large
+        verbose_print(verbose*deg, 36, [M, N, "cover homology up to degree", deg, "failed to distinguish"])
             
     # We have failed    
     return False
@@ -970,10 +976,14 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     
 def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     """
-    Given snappy manifolds M and N, and a pair of slopes s and t, builds
-    M(s) and N(t), computes a collection of covers of each, counts
-    them, and returns True if the "spectrum" distinguishes.  If this
-    fails, returns False.
+    Given snappy manifolds M and N, and a pair of slopes s and t, tries to
+    distinguish the fundamental groups of M(s) and N(t) using the abelianizations
+    of finite-index subgroups.
+    
+    This proceeds in two steps. First, enumerate covers up to a fixed degree
+    using SnapPy. This is very fast. If this does not succeed, then enumerate
+    finite-index subgroups and their normal cores using GAP. This is slower, but
+    produces a richer package of data.
     """
     
     verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_covers"])
@@ -983,8 +993,8 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     Nt.dehn_fill(t)
     if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
         return True
-    elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
-        return True
+    # elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
+    #     return True
     else:
         return False
 
@@ -1319,7 +1329,10 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     """
     
     # Initialization for M
-    find_systole_short_slopes(M, tries, verbose)    
+    if find_systole_short_slopes(M, tries, verbose) == None:
+        # systole computation has failed
+        reason = (M.name(), 'systole fail', N.name(), None, None, None)
+        return [reason]
 
     # Initialization for N. This includes homologies of meridional and longitudinal fillings.
 
@@ -1642,8 +1655,11 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     # Step three: Get the systole of M. Find the systole-short hyperbolic slopes,
     # and split them by homology.
     
-    find_systole_short_slopes(M, tries, verbose)
-
+    if find_systole_short_slopes(M, tries, verbose) == None:
+        # Systole computation has failed. Give up.
+        reason = (M.name(), None, None, None, 'systole fail')
+        bad_uns.append(reason)
+        return bad_uns
 
     # Step four - Compute the max of the volumes in
     # M.slopes_hyp[hom_hash] and use this to compute the larger set of

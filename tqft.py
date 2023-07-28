@@ -18,101 +18,45 @@ from verbose import verbose_print
 def Jones_tests(K, name, verbose=3):
     """
     Given a snappy link K and its name, compute the Jones polynomial
-    of K.  Then, return the third derivative evaluated at 1, as well
-    as the original polynomial evaluated at the 5th root of 1.  Both
-    are relevant to obstructing cosmetic surgeries.
+    V(K), in the original normalization. Then, return the following data:
+    * V'''(1), the Ichihara-Wu invariant
+    * (V'''(1)+3*V''(1))/-36, the Ito invariant (times four)
+    * V(exp(2*Pi*I/5)), the Detcherry invariant  
+    
+    All of these are relevant to obstructing cosmetic surgeries.
     """
     
     if K == None:
         return None, None
         
-    if K.DT_code(True) == 'DT[aaaa]':
-        # A one-crossing diagram of the unknot. Hard-coded because
-        # the code below crashes on the unknot.
-        return 1, 0
-    
     V = K.jones_polynomial(new_convention=False)
     # The 'new_convention=False' ensures we get classical Jones polynomial
     verbose_print(verbose, 10, [name, V, "Jones polynomial"])
-    Q = V.derivative().derivative().derivative()
+    P = V.derivative().derivative() # Second derivative
+    Q = V.derivative().derivative().derivative() # Third derivative
+    
+    Ito = int((Q(1)+3*P(1))/(-36)) # 4 times Ito's invariant v_3
+    IchiharaWu = int(Q(1)) # Ichihara-Wu invariant
     
     w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
     # Alternative, more complicated expression below:
     # w = UniversalCyclotomicField().gen(5) 
 
-    verbose_print(verbose, 10, [Q(1), "Jones third derivative at 1"])
+    verbose_print(verbose, 10, [IchiharaWu, "Jones third derivative at 1"])
+    verbose_print(verbose, 10, [Ito, "Four times Ito invariant v_3"])
     verbose_print(verbose, 10, [V(w), "Jones poly evaluated at exp(2*Pi*I/5)"])
     
-    return int(Q(1)), V(w)
+    return IchiharaWu, Ito, V(w)
 
 def quantum_int(n):
+    """
+    Given an integer n, returns the quantum integer [n],
+    where a = exp(2*pi*i /10)
+    """
+    
     a = CyclotomicField(10).gen()
     return (a**(2*n) - a**(-2*n))/ (a**(2) - a**(-2))
 
-def tau_five(K, s, verbose=3):
-    """
-    Given a knot K (as a spherogram link) and a slope s = (m,n) where
-    n = 1 or n = 2, returns the quantum invariant tau_5(K(s)). The
-    result is correct up to a global scalar, which should be
-    sufficient for comparing tau_5(K(s)) to tau5(U(s)), where U is the
-    unknot.
-    """
-    G = CyclotomicField(20)
-    z = G.gen()
-    a = z**2  # generates CyclotomicField(10)
-    delta = a**2 - a**(-2)
-    sqrtm5 = 2*z^7 - z^5 + 2*z^3  # sqrt(-5)
-    eta = delta/sqrtm5
-   
-    Id   = Matrix(G, [[1, 0], [0, 1]]) 
-    T = Matrix(G, [[1, 0], [0, -a**3]])  # Prop 2.7 of Detcherry
-    one  = quantum_int(1)
-    two  = quantum_int(2)
-    four = quantum_int(4)
-    # S = eta * Matrix(G, 2, 2, lambda i, j: (-1)**(i+j+2) * quantum_int((i + 1) * (j + 1)))
-    S = eta * Matrix(G, [[one, -two], [-two, four]])  # Prop 2.7 of Detcherry
-    # assert S**2 == Id
-    # assert T**5 == Id
-    # assert (S * T)**3 == Id  # this is only projectively true.
-    
-    L = euclidean(s) 
-    rep = [S, T]
-    prod = syllables_to_matrix(L, rep)
-
-    # m, n = s
-    # if n == 1:
-    #     prod = T**m * S
-    # if n == 2:
-    #     prod = S**2 * T**((m-1)/2) * S * T**(-2) * S  # ???  Is this the inverse?
-
-    _, u2 = Jones_tests(K, None, verbose = verbose)
-    u = vector((1, u2))
-    v = prod * vector((1, 0))
-
-    return u.dot_product(v)
-
-def IIS_test(K, s, verbose=3):
-    """
-    Given a snappy link K, plus a slope s, implement the test of
-    Ichihara-Ito-Saito, Theorem 1.2. That is, decide whether (s, -s)
-    is definitely not a chirally cosmetic pair. To rule this out, we
-    need two things to be true:
-
-    * V_K(exp(2*Pi*I/5) is not real.
-    * tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
-    """
-
-    _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
-    verbose_print(verbose, 5, ['V_K(exp(2*Pi*I/5)', Jones_fifth])    
-
-    tau_five_K = tau_five(K, s, verbose=verbose)
-    U = snappy.RationalTangle(1,1).numerator_closure()
-    tau_five_U = tau_five(U, s, verbose=verbose)
-    
-    verbose_print(verbose, 5, ['tau_5(K(s))', tau_five_K])
-    verbose_print(verbose, 5, ['tau_5(U(s))', tau_five_U])
-    
-    return (Jones_fifth != Jones_fifth.conjugate()) and (tau_five_K != tau_five_U)
 
 def euclidean(s):
     """
@@ -211,3 +155,97 @@ def syllables_to_matrix(L, rep = None):
         prod = prod * T**l * S
         
     return prod
+
+def tau_five(K, s, verbose=3):
+    """
+    Given a knot K (as a spherogram link) and a slope s = (m,n) where
+    n = 1 or n = 2, returns the quantum invariant tau_5(K(s)). The
+    result is correct up to a global scalar, which should be
+    sufficient for comparing tau_5(K(s)) to tau5(U(s)), where U is the
+    unknot.
+    """
+    G = CyclotomicField(20)
+    z = G.gen()
+    a = z**2  # generates CyclotomicField(10)
+    delta = a**2 - a**(-2)
+    sqrtm5 = 2*z**7 - z**5 + 2*z**3  # sqrt(-5)
+    eta = delta/sqrtm5 # Detcherry, displayed equation above Thm 2.3
+   
+    Id   = Matrix(G, [[1, 0], [0, 1]]) 
+    T = Matrix(G, [[1, 0], [0, -a**3]])  # Prop 2.7 of Detcherry
+    one  = quantum_int(1)
+    two  = quantum_int(2)
+    four = quantum_int(4)
+    # S = eta * Matrix(G, 2, 2, lambda i, j: (-1)**(i+j+2) * quantum_int((i + 1) * (j + 1)))
+    S = eta * Matrix(G, [[one, -two], [-two, four]])  # Prop 2.7 of Detcherry
+    # assert S**2 == Id
+    # assert T**5 == Id
+    # assert (S * T)**3 == Id  # this is only projectively true.
+    
+    L = euclidean(s) 
+    rep = [S, T]
+    prod = syllables_to_matrix(L, rep)
+
+    # m, n = s
+    # if n == 1:
+    #     prod = T**m * S
+    # if n == 2:
+    #     prod = S**2 * T**((m-1)/2) * S * T**(-2) * S  # ???  Is this the inverse?
+
+    _, _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
+    u = vector((1, Jones_fifth))
+    v = prod * vector((1, 0))
+
+    return u.dot_product(v)
+
+def tau_distinguishes(K, s, verbose=3):
+    """
+    Given a snappy link K, plus a slope s, decide whether
+    tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
+    If yes, and V_K(exp(2*Pi*I/5) is not real, then
+    (s,-s) cannot be a chirally cosmetic pair by
+    Theorem 1.2 of Ichirara-Ito-Saito.
+    """
+
+    tau_five_K = tau_five(K, s, verbose=verbose)
+    U = snappy.RationalTangle(1,1).numerator_closure()
+    tau_five_U = tau_five(U, s, verbose=verbose)
+    
+    verbose_print(verbose, 5, ['s:', s, 'tau_5(K(s)):', tau_five_K])
+    verbose_print(verbose, 5, ['s:', s, 'tau_5(U(s)):', tau_five_U])
+    
+    return (tau_five_K != tau_five_U)
+
+def IIS_test(K, verbose=3):
+    """
+    Given a snappy link K, implement implement the test of
+    Ichihara-Ito-Saito, Theorem 1.2. The test has two parts:
+    
+    * Decide whether V_K(exp(2*Pi*I/5) is a non-real number.
+      If real, return False (the test fails).
+    * For every possible primitive pair s = (m,n) with entries modulo 5,
+      decide whether tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
+    
+    It suffices to take (m mod 5, n mod 5) because the quantum representation
+    in Proposition 2.7 of Detcherry only cares about the matrix over Z/5Z.
+    
+    If both of the bulleted tests are True, then K cannot admit any chirally
+    cosmetic pairs of 0-type. That is, (s,-s) is never a chirally cosmetic pair.
+    """
+    
+    _, _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
+    verbose_print(verbose, 5, ['V_K(exp(2*Pi*I/5):', Jones_fifth])
+    
+    # if Jones_fifth == Jones_fifth.conjugate():
+    #    return False
+        
+    for m in range(0,5):
+        for n in range(0,5):
+            s = (m,n)
+            if s == (0,0):
+                continue
+            if not tau_distinguishes(K, s, verbose):
+                return False
+    
+    return True
+   
