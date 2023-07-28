@@ -2,7 +2,7 @@
 # tqft.py
 #
 
-# Goal - implement the TQFT invariant coming from ... [REF]
+# Goal - implement the TQFT invariant coming from Detcherry.
 
 import snappy
 
