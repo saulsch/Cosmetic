@@ -337,18 +337,36 @@ def systole_with_tries(M, tries=10, verbose=3):
     """
 
     name = M.name()
+    N = M.copy()
 
     verbose_print(verbose, 12, [name, 'entering systole_with_tries'])
 
-    for i in range(2*tries):
-        N = M.copy()
+    # Before trying hard things, see if we get lucky.
+    try:
+        sys = systole(N, verbose=verbose)
+        verbose_print(verbose, 10, [name, sys, 'systole computed on first attempt'])
+        return sys
+    except:
+        sys = None
+        verbose_print(verbose, 10, [name, 'systole failed on first attempt'])
+    
+    # Build a database of isosigs
+    retriang_attempts = 10*tries
+    isosigs = set()
+    for i in range(retriang_attempts):
+        N.randomize()
+        isosigs.add(N.triangulation_isosig())
+    verbose_print(verbose, 15, [name, 'isosigs:', isosigs])
+        
+    for sig in isosigs:
+        N = snappy.Manifold(sig)
         try:
             sys = systole(N, verbose=verbose)
+            verbose_print(verbose, 10, [name, sys, 'systole computed from', sig])
             return sys
         except:
             sys = None
-            verbose_print(verbose, 10, [name, 'systole failed on attempt', i])
-            N.randomize()
+            verbose_print(verbose, 10, [name, 'systole failed on', sig])
         try:
             D = N.dirichlet_domain()
             spec = D.length_spectrum_dicts(0.15)
@@ -356,10 +374,11 @@ def systole_with_tries(M, tries=10, verbose=3):
                 sys = 0.15 # any systole larger than this gets ignored. 
             else:
                 sys = spec[0].length.real()
+            verbose_print(verbose, 10, [name, sys, 'systole computed using domain and dicts from', sig])
             return sys
         except:
             sys = None
-            verbose_print(verbose, 10, [N, 'systole via domain and dicts failed on attempt', i])
+            verbose_print(verbose, 10, [name, 'systole via domain and dicts failed on', sig])
 
     if sys == None:
         verbose_print(verbose, 2, [name, 'systole fail'])
@@ -372,6 +391,8 @@ def systole(M, verbose = 3):
     Given a snappy Manifold M,
     tries to compute the systole of M, non-rigorously (for now).
     We only care about systoles that are shorter than 0.15.
+    
+    N.length_spectrum() might cause this routine to crash, so usage should be wrapped in a 'try'.
     """
     name = M.name()
     N = M.high_precision()
