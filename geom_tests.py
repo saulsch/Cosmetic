@@ -258,7 +258,7 @@ def cusp_invariants(M):
 # Get a list of short slopes
 
 
-def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
+def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3):
     """
     Given a hyperbolic manifold M (assumed to have one cusp) finds all
     slopes that are shorter than length six.  If length_cutoff is
@@ -275,7 +275,17 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
     verbose_print(verbose, 12, [M.name(), 'entering find_short_slopes'])
 
     if len_cutoff == None:
-        slopes = M.short_slopes(verified=True)[0]
+
+        prec = 40 # note the magic number 40.  Fix.
+        for i in range(tries):
+            try:
+                slopes = M.short_slopes(verified=True, bits_prec=prec)[0]
+                verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
+                break
+            except ValueError:
+                verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
+                prec = prec * 2
+            
     else:
         if normalized:
             _, _, norm_fac = cusp_invariants(M)            
@@ -283,8 +293,17 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, verbose=3):
             # norm_fac.center is a hackity-hack which stays until the
             # systole is verified.  When it is we can feed
             # M.short_slopes an RIF as a length.
-        slopes = M.short_slopes(len_cutoff, verified = True)[0]
-        
+
+        prec = 40 # note the magic number 40.  Fix.
+        for i in range(tries):
+            try:
+                slopes = M.short_slopes(len_cutoff, verified = True, bits_prec=prec)[0]
+                verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
+                break
+            except ValueError:
+                verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
+                prec = prec * 2
+            
     slopes = [preferred_rep(s) for s in slopes]
     return set(slopes)
 
