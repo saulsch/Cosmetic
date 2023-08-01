@@ -22,7 +22,7 @@ from verbose import verbose_print
 
 from sage.functions.log import exp
 from sage.functions.other import sqrt, ceil, floor
-from sage.arith.misc import gcd, xgcd, factor
+from sage.arith.misc import gcd, xgcd, factor, next_prime
 from sage.symbolic.constants import pi
 from sage.symbolic.ring import SR
 from sage.modules.free_module_element import vector
@@ -275,34 +275,54 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
     verbose_print(verbose, 12, [M.name(), 'entering find_short_slopes'])
 
     if len_cutoff == None:
-
-        prec = 40 # note the magic number 40.  Fix.
-        for i in range(tries):
-            try:
-                slopes = M.short_slopes(verified=True, bits_prec=prec)[0]
-                verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
-                break
-            except ValueError:
-                verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
-                prec = prec * 2
+        # Go up to Euclidean length 6
+        len_cutoff = 6.0
+        normalized = False
+        
+#         prec = 40 # note the magic number 40.  Fix.
+#         for i in range(tries):
+#             try:
+#                 slopes = M.short_slopes(verified=True, bits_prec=prec)[0]
+#                 verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
+#                 break
+#             except ValueError:
+#                 verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
+#                 prec = prec * 2
             
+    if normalized:
+        p = next_prime(floor(len_cutoff**2))
+        slopes_expected = p+1
+        # The intersection number between a pair of slopes is at most floor(len_cutoff^2).
+        # Agol's Lemma says: find the next prime p, then the number of slopes is at most  p + 1.
+        # Note that by Sylvester's Theorem says p < 2*floor(len_cutoff^2). This is a massive over-estimate.
+        verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of norm_length less than', len_cutoff])
+        
+        _, _, norm_fac = cusp_invariants(M)            
+        len_cutoff = len_cutoff * norm_fac.center()  
+        # norm_fac.center is a hackity-hack which stays until the
+        # systole is verified.  When it is we can feed
+        # M.short_slopes an RIF as a length.
     else:
-        if normalized:
-            _, _, norm_fac = cusp_invariants(M)            
-            len_cutoff = len_cutoff * norm_fac.center()  
-            # norm_fac.center is a hackity-hack which stays until the
-            # systole is verified.  When it is we can feed
-            # M.short_slopes an RIF as a length.
+        p = next_prime(floor(len_cutoff**2 /3.35))
+        slopes_expected = p+1
+        # The intersection number between a pair of slopes is at most floor(len_cutoff^2 / Area).
+        # The cusp area is at least 3.35 by Cao-Meyerhoff (improved to 2*sqrt(3) by GHMTY).
+        # Agol's Lemma says: find the next prime p, then the number of slopes is at most  p + 1.
+        verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of length less than', len_cutoff])
 
-        prec = 40 # note the magic number 40.  Fix.
-        for i in range(tries):
-            try:
-                slopes = M.short_slopes(len_cutoff, verified = True, bits_prec=prec)[0]
-                verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
+    prec = 40 # note the magic number 40.  Fix.
+    for i in range(tries):
+        prec = prec * 2
+        try:
+            slopes = M.short_slopes(len_cutoff, verified = True, bits_prec=prec)[0]
+            if len(slopes) > slopes_expected:
+                # Accuracy is too low
+                continue
+            else:
+                verbose_print(verbose, 12, [M, 'managed to find', len(slopes), 'short slopes at precision', prec])
                 break
-            except ValueError:
-                verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
-                prec = prec * 2
+        except ValueError:
+            verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
             
     slopes = [preferred_rep(s) for s in slopes]
     return set(slopes)
