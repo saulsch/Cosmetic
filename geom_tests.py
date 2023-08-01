@@ -337,13 +337,12 @@ def systole_with_tries(M, tries=10, verbose=3):
     """
 
     name = M.name()
-    N = M.copy()
 
     verbose_print(verbose, 12, [name, 'entering systole_with_tries'])
 
     # Before trying hard things, see if we get lucky.
     try:
-        sys = systole(N, verbose=verbose)
+        sys = systole(M, verbose=verbose)
         verbose_print(verbose, 10, [name, sys, 'systole computed on first attempt'])
         return sys
     except:
@@ -351,12 +350,14 @@ def systole_with_tries(M, tries=10, verbose=3):
         verbose_print(verbose, 10, [name, 'systole failed on first attempt'])
     
     # Build a database of isosigs
-    retriang_attempts = 10*tries
+    N = snappy.Manifold(M)
+    retriang_attempts = 10*tries # Magic constant
     isosigs = set()
     for i in range(retriang_attempts):
         N.randomize()
         isosigs.add(N.triangulation_isosig())
     verbose_print(verbose, 15, [name, 'isosigs:', isosigs])
+    verbose_print(verbose, 10, [name, len(isosigs), 'isosigs found'])
         
     for sig in isosigs:
         N = snappy.Manifold(sig)
@@ -367,18 +368,18 @@ def systole_with_tries(M, tries=10, verbose=3):
         except:
             sys = None
             verbose_print(verbose, 10, [name, 'systole failed on', sig])
-        try:
-            D = N.dirichlet_domain()
-            spec = D.length_spectrum_dicts(0.15)
-            if spec == []:
-                sys = 0.15 # any systole larger than this gets ignored. 
-            else:
-                sys = spec[0].length.real()
-            verbose_print(verbose, 10, [name, sys, 'systole computed using domain and dicts from', sig])
-            return sys
-        except:
-            sys = None
-            verbose_print(verbose, 10, [name, 'systole via domain and dicts failed on', sig])
+#         try:
+#             D = N.dirichlet_domain()
+#             spec = D.length_spectrum_dicts(0.15)
+#             if spec == []:
+#                 sys = 0.15 # any systole larger than this gets ignored. 
+#             else:
+#                 sys = spec[0].length.real()
+#             verbose_print(verbose, 10, [name, sys, 'systole computed using domain and dicts from', sig])
+#             return sys
+#         except:
+#             sys = None
+#             verbose_print(verbose, 10, [name, 'systole via domain and dicts failed on', sig])
 
     if sys == None:
         verbose_print(verbose, 2, [name, 'systole fail'])
