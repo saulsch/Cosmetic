@@ -251,7 +251,7 @@ def cusp_invariants(M):
     """
     # Note - this uses the current framing, whatever it is
     [(m,l)] = M.cusp_translations(verified = True, bits_prec = 200)
-    norm_fac = sqrt(l * m.imag())
+    norm_fac = sqrt(l * m.imag())  # can replace this by sqrt(M.cusp_area_matrix())???
     return m, l, norm_fac
 
 
@@ -619,7 +619,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     #
     # It is not clear that we should bother with the six-theorem
     if abs(p*m + q*l) > 6: # six-theorem
-        return True            
+        return True
 
     N = M.copy()
     N.dehn_fill(s)
