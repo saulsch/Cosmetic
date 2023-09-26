@@ -611,7 +611,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     #
     # It is not clear that we should bother with the six-theorem
     if abs(p*m + q*l) > 6: # six-theorem
-        return True            
+        return True
 
     N = M.copy()
     N.dehn_fill(s)
