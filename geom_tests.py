@@ -250,7 +250,7 @@ def cusp_invariants(M):
     the area.
     """
     # Note - this uses the current framing, whatever it is
-    [(m,l)] = M.cusp_translations(verified = True, bits_prec = 200)
+    [(m,l)] = M.cusp_translations(verified = True, bits_prec = 100)
     norm_fac = sqrt(l * m.imag())
     return m, l, norm_fac
 
@@ -279,28 +279,18 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
         len_cutoff = 6.0
         normalized = False
         
-#         prec = 40 # note the magic number 40.  Fix.
-#         for i in range(tries):
-#             try:
-#                 slopes = M.short_slopes(verified=True, bits_prec=prec)[0]
-#                 verbose_print(verbose, 18, [M, 'managed to find short slopes at precision', prec])
-#                 break
-#             except ValueError:
-#                 verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
-#                 prec = prec * 2
-            
     if normalized:
         p = next_prime(floor(len_cutoff**2))
         slopes_expected = p+1
         # The intersection number between a pair of slopes is at most floor(len_cutoff^2).
         # Agol's Lemma says: find the next prime p, then the number of slopes is at most  p + 1.
-        # Note that by Sylvester's Theorem says p < 2*floor(len_cutoff^2). This is a massive over-estimate.
+        # Note that by Chebyshev's Theorem, we have p < 2*floor(len_cutoff^2). This is a massive over-estimate.
         verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of norm_length less than', len_cutoff])
         
         _, _, norm_fac = cusp_invariants(M)            
         len_cutoff = len_cutoff * norm_fac.center()  
         # norm_fac.center is a hackity-hack which stays until the
-        # systole is verified.  When it is we can feed
+        # systole is verified.  Once it becomes verified, we can feed
         # M.short_slopes an RIF as a length.
     else:
         p = next_prime(floor(len_cutoff**2 /3.35))
@@ -330,6 +320,8 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
 
 # systole
 
+# This function is never called by our top routines. It does not seem to be
+# all that useful...
 
 def systole_with_covers(M, tries=10, verbose=3):
     """
@@ -354,7 +346,7 @@ def systole_with_covers(M, tries=10, verbose=3):
         for N in cov: 
             for i in range(retriang_attempts): # that looks like a magic number... 
                 for j in range(i):
-                    N.randomize()
+                    N.randomize() # This should probably be done with isosigs.
                 try:
                     # Q = N.copy()
                     sys = systole(N, verbose = verbose)
