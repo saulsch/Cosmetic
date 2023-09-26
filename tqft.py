@@ -39,14 +39,13 @@ def Jones_tests(K, name, verbose=3):
     IchiharaWu = int(Q(1)) # Ichihara-Wu invariant
     
     w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
-    # Alternative, more complicated expression below:
-    # w = UniversalCyclotomicField().gen(5) 
+    Detcherry = V(w)
 
     verbose_print(verbose, 10, [IchiharaWu, "Jones third derivative at 1"])
     verbose_print(verbose, 10, [Ito, "Four times Ito invariant v_3"])
-    verbose_print(verbose, 10, [V(w), "Jones poly evaluated at exp(2*Pi*I/5)"])
+    verbose_print(verbose, 10, [Detcherry, "Jones poly evaluated at exp(2*Pi*I/5)"])
     
-    return IchiharaWu, Ito, V(w)
+    return IchiharaWu, Ito, Detcherry
 
 def quantum_int(n):
     """
@@ -200,13 +199,24 @@ def tau_five(K, s, verbose=3):
 
 def tau_distinguishes(K, s, verbose=3):
     """
-    Given a snappy link K, plus a slope s, decide whether
-    tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
-    If yes, and V_K(exp(2*Pi*I/5) is not real, then
-    (s,-s) cannot be a chirally cosmetic pair by
-    Theorem 1.2 of Ichirara-Ito-Saito.
+    Given a snappy link K, plus a slope s, implement implement 
+    the test of Ichihara-Ito-Saito, Theorem 1.2. The test has two parts:
+    
+    * Decide whether V_K(exp(2*Pi*I/5) is a non-real number.
+      If real, return False (the test fails).
+    * Decide whether tau_5(K(s)) != tau_5(U(s)) where U is the unknot.
+    
+    (For the second test, one could reduce the entries of s mod 5,
+    because the quantum representation in Proposition 2.7 of Detcherry 
+    only cares about the matrix over Z/5Z.) 
+    
+    If both parts of the test succeed, then (s, -s) cannot be a chirally
+    cosmetic pair.
     """
 
+    _, _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
+    verbose_print(verbose, 5, ['V_K(exp(2*Pi*I/5):', Jones_fifth])
+    
     tau_five_K = tau_five(K, s, verbose=verbose)
     U = snappy.RationalTangle(1,1).numerator_closure()
     tau_five_U = tau_five(U, s, verbose=verbose)
@@ -214,7 +224,8 @@ def tau_distinguishes(K, s, verbose=3):
     verbose_print(verbose, 5, ['s:', s, 'tau_5(K(s)):', tau_five_K])
     verbose_print(verbose, 5, ['s:', s, 'tau_5(U(s)):', tau_five_U])
     
-    return (tau_five_K != tau_five_U)
+    return (Jones_fifth != Jones_fifth.conjugate()) and (tau_five_K != tau_five_U)
+
 
 def IIS_test(K, verbose=3):
     """
@@ -231,14 +242,11 @@ def IIS_test(K, verbose=3):
     
     If both of the bulleted tests are True, then K cannot admit any chirally
     cosmetic pairs of 0-type. That is, (s,-s) is never a chirally cosmetic pair.
+    
+    NOTE: THIS WILL NEVER SUCCEED. Since K(1,0) = U(1,0) = S^3, and tau_5 only
+    cares about coordinates mod 5, we get tau_5(K(6,5)) = tau_5(U(6,5)) always.
     """
-    
-    _, _, Jones_fifth = Jones_tests(K, None, verbose = verbose)
-    verbose_print(verbose, 5, ['V_K(exp(2*Pi*I/5):', Jones_fifth])
-    
-    # if Jones_fifth == Jones_fifth.conjugate():
-    #    return False
-        
+            
     for m in range(0,5):
         for n in range(0,5):
             s = (m,n)
