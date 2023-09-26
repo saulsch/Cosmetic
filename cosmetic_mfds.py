@@ -1430,17 +1430,11 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     are possibly the same manifold. The output should contain the list of
     potential pairs, but might have some fluff (non-distinguished pairs).
     
-    If check_chiral==False, then we only check for orientation-preserving
-    homeos.
-
-    If check_chiral==True, then we check for both orientation-preserving
-    and orientation-reversing homeos.
+    If ExcludeS3==True, then the program does not report an S^3 common filling 
+    (presumably because we already know M and N to be knot complements).
     
     This routine is designed for the situation when M != N. If M == N, use 
     check_cosmetic instead.
-    
-    At the moment (2023-02-28), the code has an asymmetry between M and N.
-    So it needs to be run twice, interchanging M <--> N the second time.
     """
     mfds = [M, N]
     verbose_print(verbose, 12, [mfds, "entering find_common_fillings"])
@@ -1751,8 +1745,8 @@ def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, ver
     
     Returns a list of tuples containing the slopes that give (confirmed or suspected) common fillings.
     
-    If the flag ExcludeS3 is set to True, then the user does not want common S3 fillings
-    reported. This would be the case when searching a known list of knot complements.
+    If ExcludeS3==True, then the program does not report an S^3 common filling 
+    (presumably because the user already knows M and N to be knot complements).
     """
     
     verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
