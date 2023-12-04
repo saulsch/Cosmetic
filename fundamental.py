@@ -2,7 +2,18 @@
 # fundamental.py
 #
 
-# Goal - use the fundamental group to recognise a given three-manifold.
+# Goal - Recognize and distinguish manifolds using their fundamental group and covers.
+
+from sage.interfaces.gap import gap
+from verbose import verbose_print
+
+# Arithmetic
+    
+def product(nums):
+    prod = 1
+    for d in nums:
+        prod = prod * d
+    return prod
 
 # combinatorics of words
 
@@ -213,3 +224,179 @@ def is_exceptional_due_to_fundamental_group(N, tries, verbose):
         N.randomize()
 
     return (None, None)
+
+
+# Homology
+
+
+def order_of_torsion(M):
+    """
+    Given a snappy manifold return the order of the torsion subgroup
+    of H_1(M).
+    """
+    
+    H = M.homology()
+    elem_divs = H.elementary_divisors()
+    torsion_divs = [d for d in elem_divs if d != 0]
+    return product(torsion_divs)
+
+
+def are_distinguished_by_homology(M, s, N, t, verbose=5):
+    """
+    Given two parent manifolds M and N (assumed to be one-cusped) 
+    and slopes s and t, decide whether M(s) and N(t) have distinct
+    homology groups
+    """
+    
+    verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_homology"])
+    Ms = M.copy()
+    Nt = N.copy()
+    Ms.dehn_fill(s)
+    Nt.dehn_fill(t)
+    
+    Ms_hom = Ms.homology()
+    Nt_hom = Nt.homology()
+    verbose_print(verbose, 10, [Ms, str(Ms_hom)])
+    verbose_print(verbose, 10, [Nt, str(Nt_hom)])
+    
+    return Ms_hom != Nt_hom
+
+
+
+# Tests using covers
+
+
+def subgroup_abels(G, deg):
+    """
+    Given a Gap group g, computes the list of finite-index subgroups up
+    to index deg. Returns the list of subgroups, their indices, and their
+    abelianizations (sorted lexicographically for comparing).
+    """    
+    
+    subs = G.LowIndexSubgroupsFpGroup(deg)
+    out = [[G.Index(H), H.AbelianInvariants()] for H in subs]
+    out.sort()  # Sort lexicographically
+    return subs, out
+    
+
+def profinite_data(G, subs, deg):
+    """
+    Given a Gap group G, and a list of finite-index subgroups subs
+    (presumed to be all subgroups up to some index), computes
+    invariants of the normal cores of subgroups whose index equals deg.
+    Returns the following tuple of data for every subgroup H of index deg:
+    [the index, the abelianization, the index of the normal core, 
+    and the abelianization of the normal core].
+    Returns the set of these invariants, sorted lexicographically.
+    """
+
+    out = []
+    for H in subs:
+        if G.Index(H) == deg:
+            K = G.FactorCosetAction(H).Kernel()
+            out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
+    out.sort()
+    return out
+
+
+def are_distinguished_by_normcore_homology(M, N, tries, verbose):
+    """
+    Given snappy manifolds M and N, tries to distinguish their
+    fundamental groups using the abelianizations of finite-index subgroups 
+    and their normal cores. This uses GAP.
+    
+    For optimum speed, this routine should be used *after* trying
+    are_distinguished_by_cover_homology, which takes advantage of faster 
+    cover enumeration in SnapPy 3.1.
+    """
+    
+    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_normcore_homology"])
+    
+    GM = gap(M.fundamental_group().gap_string())
+    GN = gap(N.fundamental_group().gap_string())
+    degree_bound = min(tries, 6) # Hack: no degrees higher than 6
+
+    # First, compute subgroups of GM and GN up to index degree_bound
+    M_subs = GM.LowIndexSubgroupsFpGroup(degree_bound + 1)
+    N_subs = GN.LowIndexSubgroupsFpGroup(degree_bound + 1)
+    
+    '''
+    for deg in range(1, degree_bound + 1):
+        M_subs, M_data = subgroup_abels(GM, deg)
+        N_subs, N_data = subgroup_abels(GN, deg)
+        verbose_print(verbose, 8, [M, deg, M_data])
+        verbose_print(verbose, 8, [N, deg, N_data])
+        if M_data != N_data:
+            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+            return True
+    '''
+
+    # Now, compute the homology and index of each normal core (for each degree separately)
+    for deg in range(1, degree_bound + 1):
+        M_invts = profinite_data(GM, M_subs, deg)
+        N_invts = profinite_data(GN, N_subs, deg)
+        verbose_print(verbose, 8, [M, deg, M_invts])
+        verbose_print(verbose, 8, [N, deg, N_invts])
+        if M_invts != N_invts:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
+            return True
+        else:
+            verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
+    
+    # We have failed    
+    return False
+
+
+def are_distinguished_by_cover_homology(M, N, tries, verbose):
+    """
+    Given snappy manifolds M and N, tries to distinguish their
+    fundamental groups using the first homology groups of finite-degree covers
+    (ie, the abelianizations of finite-index subgroups). This routine is designed
+    to take advantage of faster cover enumeration in Snappy 3.1.
+    """
+    
+    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
+
+    degree_bound = min(tries, 8) # Covers up to degree 8 should be acceptable
+    
+    for deg in range(1, degree_bound + 1):
+        M_data = [Q.homology() for Q in M.covers(deg)]
+        N_data = [Q.homology() for Q in N.covers(deg)]
+        M_data.sort()
+        N_data.sort()
+        verbose_print(verbose, 8, [M, deg, M_data])
+        verbose_print(verbose, 8, [N, deg, N_data])
+        if M_data != N_data:
+            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+            return True
+        # Give a status update if (verbose*deg) is large
+        verbose_print(verbose*deg, 36, [M, N, "cover homology up to degree", deg, "failed to distinguish"])
+            
+    # We have failed    
+    return False
+        
+    
+def are_distinguished_by_covers(M, s, N, t, tries, verbose):
+    """
+    Given snappy manifolds M and N, and a pair of slopes s and t, tries to
+    distinguish the fundamental groups of M(s) and N(t) using the abelianizations
+    of finite-index subgroups.
+    
+    This proceeds in two steps. First, enumerate covers up to a fixed degree
+    using SnapPy. This is very fast. If this does not succeed, then enumerate
+    finite-index subgroups and their normal cores using GAP. This is slower, but
+    produces a richer package of data.
+    """
+    
+    verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_covers"])
+    Ms = M.copy()
+    Nt = N.copy()
+    Ms.dehn_fill(s)
+    Nt.dehn_fill(t)
+    if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
+        return True
+    # elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
+    #     return True
+    else:
+        return False
+

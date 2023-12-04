@@ -8,7 +8,9 @@ import snappy
 import spherogram
 import regina
 import dunfield
-import geom_tests
+import geom_tests as gt
+import regina_tests as rt
+
 
 from tqft import Jones_tests
 from verbose import verbose_print
@@ -122,11 +124,11 @@ def fix_framing(M):
     Given a knot complement M, set the peripheral curves to be the homological
     meridian and longitude. This alters M and returns the change of basis matrix.
     """    
-    meridian, _, _, _ = geom_tests.get_S3_slope_hyp(M)
+    meridian, _, _, _ = gt.get_S3_slope_hyp(M)
     assert meridian is not None
     # If get_S3_slope fails, we should complain. Right now, it is in there as an assert.
     longitude = M.homological_longitude()
-    sign = geom_tests.alg_int(meridian, longitude)
+    sign = gt.alg_int(meridian, longitude)
     assert sign == 1 or sign == -1
     meridian = (sign*a for a in meridian)
     cob = M.set_peripheral_curves([meridian, longitude])
@@ -383,12 +385,12 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
     name = M.name()
     sn = (s[0], -s[1])
     # if s and sn are parallel, skip
-    if geom_tests.alg_int(s, sn) == 0:
+    if gt.alg_int(s, sn) == 0:
         verbose_print(verbose, 12, [name, s, sn, 'are parallel'])
         return None
 
-    s_hyp = geom_tests.is_hyperbolic_filling(M, s, m, l, tries, verbose)
-    sn_hyp = geom_tests.is_hyperbolic_filling(M, sn, m, l, tries, verbose)
+    s_hyp = gt.is_hyperbolic_filling(M, s, m, l, tries, verbose)
+    sn_hyp = gt.is_hyperbolic_filling(M, sn, m, l, tries, verbose)
 
     if s_hyp == None:
         verbose_print(verbose, 6, [name, s, 'could not determine type'])
@@ -406,7 +408,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         for i in range(tries):
             M = snappy.Manifold(M.triangulation_isosig())
             # Why do we replace M here??? 
-            distinguished, rigorous = geom_tests.are_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
+            distinguished, rigorous = gt.are_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
             if distinguished and rigorous:
                 return None
             if distinguished and not rigorous:
@@ -414,7 +416,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         return (name, s, sn, 'complex_vol_fail')
     else:
         assert( not s_hyp and not sn_hyp ) 
-        if not( geom_tests.preferred_rep(s) == (1,1) or geom_tests.preferred_rep(s) == (1,-1) ):
+        if not( gt.preferred_rep(s) == (1,1) or gt.preferred_rep(s) == (1,-1) ):
             verbose_print(verbose, 6, [name, s, sn, 'exceptionals distinguished by Ravelomanana'])
             return None
         else:
@@ -422,8 +424,8 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             Pn = M.copy()
             P.dehn_fill(s)
             Pn.dehn_fill(sn)
-            out = geom_tests.torus_decomp_wrapper(P, tries, verbose)
-            outn = geom_tests.torus_decomp_wrapper(Pn, tries, verbose)
+            out = rt.torus_decomp_wrapper(P, tries, verbose)
+            outn = rt.torus_decomp_wrapper(Pn, tries, verbose)
             if out[0] != outn[0]:
                 verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
@@ -454,7 +456,7 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     
     name = M.name()
 
-    sys = geom_tests.systole_with_tries(M, tries=tries, verbose=verbose)
+    sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if sys == None:
         return None
 
@@ -466,7 +468,7 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     
     # Build list of short slopes in the homological framing. Note that the list we
     # receive from find_short_slopes is already in preferred_rep form.
-    short_slopes_all = geom_tests.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
+    short_slopes_all = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
     verbose_print(verbose, 4, [name, len(short_slopes_all), 'short slopes found'])
     verbose_print(verbose, 10, [short_slopes_all])
 
@@ -483,10 +485,10 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
         if use_NiWu == True and (q**2 + 1) % p:  
             # Ni-Wu say p divides (q^2 + 1) in all cosmetics
             continue
-        if geom_tests.preferred_rep((s[0], -s[1])) not in short_slopes:
+        if gt.preferred_rep((s[0], -s[1])) not in short_slopes:
             # That is, we have not yet added the negative of this slope
             verbose_print(verbose, 10, [name, s, 'adding to list of short slopes to check'])
-            short_slopes.add(geom_tests.preferred_rep(s))
+            short_slopes.add(gt.preferred_rep(s))
     verbose_print(verbose, 2, [name, len(short_slopes), 'short slopes left after pruning'])
     verbose_print(verbose, 4, [short_slopes])
     return short_slopes
@@ -515,7 +517,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     name, M, K = name_manifold_and_link(knot, verbose=verbose)
 
     # But not too liberal
-    assert geom_tests.is_knot_manifold(M)
+    assert gt.is_knot_manifold(M)
     # Install the homological framing on M.
     cob = fix_framing(M)
     
@@ -531,7 +533,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     # From now on, we need geometry. Install a good hyperbolic metric,
     # or give up if we cannot find one.
     
-    mfd, reason = geom_tests.sanity_check_cusped(M, tries=tries, verbose=verbose)
+    mfd, reason = gt.sanity_check_cusped(M, tries=tries, verbose=verbose)
     if mfd == None:
         # We did not find a hyperbolic structure
         if reason == 'is a torus knot':
@@ -550,7 +552,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
         assert mfd.solution_type() == 'all tetrahedra positively oriented'
         M = mfd
             
-    m, l, norm_fac = geom_tests.cusp_invariants(M)
+    m, l, norm_fac = gt.cusp_invariants(M)
     verbose_print(verbose, 5, [name, 'cusp_stuff', 'merid', m, 'long', l, 'norm_fac', norm_fac])
 
     if slope_method=='FPS' or slope_method=='All':

@@ -5,16 +5,15 @@
 # This file contains utility code that applies various topological and geometric tests
 # for dealing with slopes and determining the geometric type of the filling. It also
 # contains code for distinguishing two fillings from one another using geometry.
-# The main organizing principle is: routines land here if they use geometry or
-# geometrization. Routines also land here if they are needed for both knot complements
+# The main organizing principle is: routines land here if they use geometry, and
+# especially if# geometrization they are needed for both knot complements
 # and general cusped manifolds.
-#
-# Fundamental group routines are not here -- they are in fundamental.py .
 
 import snappy
 import regina
 import dunfield
-import fundamental
+import fundamental as ft
+import regina_tests as rt
 
 from verbose import verbose_print
 
@@ -29,75 +28,6 @@ from sage.modules.free_module_element import vector
 from sage.rings.real_mpfr import RR
 from sage.rings.real_mpfi import RIF
 
-
-# wrappers for Regina utilities
-
-
-def is_reducible_wrapper(M, tries=10, verbose=3):
-    """
-    Given a snappy Manifold M, presumed to be closed, uses
-    Regina to decide whether M is reducible.
-    Returns a Boolean and the list of summands, if true.
-    """
-    verbose_print(verbose, 12, [M, 'entering is_reducible_wrapper'])
-    isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
-    if isosigs == []:
-        return (None, None)
-    T = dunfield.to_regina(isosigs[0])
-    irred = T.isIrreducible()
-    if irred:
-        out = (False, None)
-        verbose_print(verbose, 12, [M, out, 'from is_reducible_wrapper'])
-        return out
-    else:
-        name = dunfield.regina_name(M)
-        out = (True, dunfield.regina_name(M))
-        assert "#" in name
-        verbose_print(verbose, 12, [M, out, 'from is_reducible_wrapper'])
-        return out
-    
-
-def is_toroidal_wrapper(M, verbose=3):
-    """
-    Given a snappy manifold M, which could be cusped or closed,
-    uses Regina to decide whether M is toroidal.
-    Returns a Boolean and a list of two pieces (not necessarily minimal).
-    """    
-    verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
-    N = M.filled_triangulation() # this is harmless for a cusped manifold
-    T = regina.Triangulation3(N) 
-    T.simplifyToLocalMinimum() # this makes it more likely to be zero-efficient
-    out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)
-    verbose_print(verbose, 6, [M, out, 'from is_toroidal_wrapper'])
-    return out
-
-
-def torus_decomp_wrapper(M, tries=10, verbose=3):
-    """
-    Given a snappy Manifold M, presumed to be closed, uses
-    Regina to decide whether M is toroidal.
-    Returns a Boolean and a list of pieces, if true.
-    
-    The list of pieces may not be the JSJ decomposition.
-    Compare docstring for dunfield.decompose_along_tori.
-    """
-    verbose_print(verbose, 12, [M, 'entering torus_decomp_wrapper'])
-    isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
-    if isosigs == []:
-        return (None, None) # we do not continue, because the normal surface theory may be too slow.
-    out = (None, None)
-    verbose_print(verbose, 25, isosigs)
-    for i in range(min(len(isosigs), tries)):                                     
-        try:
-            T = dunfield.to_regina(isosigs[i])
-            out = dunfield.decompose_along_tori(T)                                                                   
-            if out[0] == True or out[0] == False:
-                break
-        except Exception as e:
-            verbose_print(verbose, 6, [M, isosigs[i], e])
-
-    verbose_print(verbose, 6, [M, out, 'from torus_decomp_wrapper'])
-    return out
 
 
 # sanity check
@@ -157,15 +87,15 @@ def sanity_check_cusped(M, tries=10, verbose=3):
         # So M is probably not a hyperbolic manifold.  Let's do a few
         # quick tests to help ourselves later, and then give up.
 
-        if fundamental.is_torus_link_filling(M, verbose):
+        if ft.is_torus_link_filling(M, verbose):
             # This is useful information for cosmetic surgeries
             verbose_print(verbose, 4, [name, 'is a torus link filling'])
             return (None, 'is a torus knot')
-        if fundamental.is_exceptional_due_to_fundamental_group(M, tries, verbose):
+        if ft.is_exceptional_due_to_fundamental_group(M, tries, verbose):
             verbose_print(verbose, 4, [name, 'exceptional due to fundamental group'])
             return (None, 'exceptional due to fundamental group')
             
-        out = geom_tests.is_toroidal_wrapper(M, verbose)
+        out = rt.is_toroidal_wrapper(M, verbose)
         if out[0]:
             # M is toroidal so use the torus decomposition as the 'reason'
             verbose_print(verbose, 4, [name, 'is toroidal'])
@@ -458,7 +388,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     N = M.copy()
     r=(1,0)
     N.dehn_fill(r)
-    exceptional, type_except = fundamental.is_exceptional_due_to_fundamental_group(N, tries, verbose)
+    exceptional, type_except = ft.is_exceptional_due_to_fundamental_group(N, tries, verbose)
     if type_except=='S3':
         verbose_print(verbose, 5, ['Lucky guess:', M, r, 'has trivial fundamental group'])
         is_knot = True
@@ -495,7 +425,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
 
         # Fundamental group
         
-        exceptional, type_except = fundamental.is_exceptional_due_to_fundamental_group(N, tries, verbose)
+        exceptional, type_except = ft.is_exceptional_due_to_fundamental_group(N, tries, verbose)
         if type_except=='S3':
             verbose_print(verbose, 5, [M, r, 'has trivial fundamental group'])
             is_knot = True
@@ -620,7 +550,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
         for j in range(i+1):
             if i > 0:
                 N.randomize()
-            is_except, _ = fundamental.is_exceptional_due_to_fundamental_group(N, 3, verbose)
+            is_except, _ = ft.is_exceptional_due_to_fundamental_group(N, 3, verbose)
             if is_except:
                 return False
         for j in range(1): # this is not a typo,
@@ -628,9 +558,9 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if dunfield.is_hyperbolic(N, i+1, verbose): 
                 return True
         if i > 0: # gosh, this is a tricky one... so
-            if is_toroidal_wrapper(N, verbose)[0]:
+            if rt.is_toroidal_wrapper(N, verbose)[0]:
                 return False 
-            if is_reducible_wrapper(N, tries, verbose)[0]:
+            if rt.is_reducible_wrapper(N, tries, verbose)[0]:
                 return False 
             name = dunfield.regina_name(N)
             if name[:3] == 'SFS': # We trust the regina_name.
@@ -739,8 +669,9 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
         try:
             # Try ordinary volume first
-            Ms_vol = Ms.volume(verified=True, bits_prec = prec)
-            Mt_vol = Mt.volume(verified=True, bits_prec = prec)
+            bits_prec = prec
+            Ms_vol = Ms.volume(verified=True, bits_prec = 40)
+            Mt_vol = Mt.volume(verified=True, bits_prec = 40)
 
             if abs(Ms_vol - Mt_vol) > 4* (1/2)**prec:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])

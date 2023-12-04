@@ -1,34 +1,25 @@
 #
 # cosmetic_mfds.py
 #
+# This program does the following top-level tasks:
+# 1. Check a given one-cusped hyperbolic three-manifold for cosmetic fillings
+# 2. Check a given pair of cusped hyperbolic manifolds for common fillings
+# Add examples of usage.
 
-# Rule out cosmetic surgeries on one-cusp hyperbolic three-manifolds
-
-# Complication - we need orientation sensitive invariants for the
-# resulting filled manifolds.  In the hyperbolic case we can use the
-# Chern-Simons invariant.  What do we do in the non-hyperbolic case?
-# Worry about the latter...  Does Reidemeister torsion work?  Other
-# torsions?
 
 
 # Imports 
-
-
-# %%% Remove this -
-# Division in scripts running under sage is python division.  So we
-# need to fix it as follows.  
-from __future__ import division
-# fixed in SAGE 9.2!  check...
 
 import snappy
 import regina
 import dunfield
 import geom_tests as gt
-import fundamental
+import regina_tests as rt
+import fundamental as ft
 
 from verbose import verbose_print
 
-from sage.rings.rational_field import QQ
+# from sage.rings.rational_field import QQ
 from sage.functions.other import sqrt, ceil, floor
 from sage.symbolic.constants import pi
 from sage.arith.misc import gcd, xgcd, factor
@@ -38,11 +29,7 @@ from sage.rings.real_mpfi import RIF
 from sage.rings.real_mpfi import RealIntervalField
 from sage.misc.functional import det
 from sage.modules.free_module_element import vector
-from sage.interfaces.gap import gap
-
-# Globals
-
-# six_theorem_length = 6.01 # All exceptionals shorter than this
+# from sage.interfaces.gap import gap
 
 
 # coding
@@ -160,7 +147,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
             continue
 
         assert is_hyperbolic_filling(M, s, tries, verbose)
-        # All slopes shorter than 6.01 should have been identified already. The new ones are hyperbolic.
+        # All slopes not in M.slopes_exclude are necessarily hyperbolic.
         add_to_dict_of_sets(M.slopes_hyp, hom_hash, s)
             
     num_hyp_slopes = sum(len(M.slopes_hyp[hash]) for hash in M.slopes_hyp)
@@ -188,7 +175,6 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     l_max = HK_vol_bound_inv(cusped_vol - vol_max) * M.norm_fac  # length on cusp
     
     verbose_print(verbose, 12, ["Entering find_low_volume_slopes"])
-    # name = M.name()
     low_vol_slopes = set()
     len_l_hom = abs(M.l_hom[0]*M.mer_hol + M.l_hom[1]*M.long_hol)
     
@@ -235,529 +221,20 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     return low_vol_slopes
 
 
-# Names - parsing regina names
+### Dave and Saul stopped here on 11 Nov 2023.
 
-
-def is_lens_space_from_name(name, verbose=3):
-    """
-    Given a regina name, parses it enough to decide if it is a lens
-    space and then extracts the coefficients.  
-    
-    For our purposes, S2 x S1 is treated as a non-lens space.
-    """
-
-    verbose_print(verbose, 12, ["Entering is_lens_space_from_name"])
-    if name == None:
-        return (None, None)
-        
-    if name == "S3":
-        return (True, [1, 0])
-    if name == "RP3":
-        return (True, [2, 1])
-    # New convention: S2 x S1 is not a lens space.
-    # if name == "S2 x S1":
-    #     return (True, [0, 1])
-        
-    # If "L(" appears in the string, then we have a lens space
-    # summand.  If "#" does not appear, then we are just a lens space,
-    # so we will win.
-    if (not "L(" in name) or ("#" in name):
-        return (None, None)
-    parts = name.split(",")
-    assert len(parts) == 2
-    parts = [part.strip("L") for part in parts]
-    parts = [part.strip("(") for part in parts]
-    parts = [part.strip(")") for part in parts]
-    ints = [int(part) for part in parts]
-    
-    verbose_print(verbose, 10, ['Found lens space data:', ints])
-    return (True, ints)
-
-
-def euler_num(coeffs, ModOne = False):
-    """
-    Given a vector of coefficients of singular fibers in a SFS,
-    computes the Euler number.
-    If the ModOne flag is True, then reduce the Euler number modulo 1.
-    """
-    eul = sum( QQ((q, p)) for (p, q) in coeffs )
-    if ModOne:
-        return eul - floor(eul)
-    else:
-        return eul
-        
-        
-def euler_char(starting_char, coeffs):
-    """
-    Computes the Euler characteristic of the base orbifold in a
-    Seifert fibration.
-    starting_char is the Euler characteristic of the total space of the base
-    (ignoring singular fibers). coeffs is the vector of coefficients.
-    """
-    return starting_char - sum( 1- QQ((1, p)) for (p, q) in coeffs )
-
-
-def is_closed_sfs_from_name(name, verbose=3):
-    """
-    Given a regina name, decides whether it is a closed
-    SFS, where the base is one of S2, RP2, T (torus),
-    or KB (Klein bottle).
-    We do not look for larger base surfaces.
-    Returns a tuple (found, geometry, base, coeffs).
-    * found is True or None.
-    * geometry is one of ["Lens", "Elliptic", "S2 x R", "Nil", "Euclidean", "PSL2R", "H2 x R"].
-    * base is the total space of the base orbifold
-    * coeffs is a tuple of integer coefficients for singular fibers
-    
-    We artificially split out lens spaces from other elliptic manifolds,
-    because their Seifert fibrations are highly non-unique.
-    All other closed SFS have at most two Seifert structures, and we pick out
-    a preferred one (the one with orientable base).
-    
-    References: 
-    Hatcher, "Notes on basic 3-manifold theory," Theorem 2.3.
-    Scott, "The geometries of 3-manifolds"
-    
-    If M is not recognized as a closed SFS in this way, return
-    (None, None, None, None).
-    """
-        
-    verbose_print(verbose, 12, ["Entering is_closed_sfs_from_name"])
-
-    # First, test for S2 x R structures.
-    if name == "S2 x S1":
-        return (True, "S2 x R", "S2", [])
-    if name == "RP3 # RP3":
-        return (True, "S2 x R", "RP2", [])
-
-    # Next, test for lens space structures.
-    is_lens, lens_coeffs = is_lens_space_from_name(name, verbose=verbose)
-    if is_lens:
-        return (True, "Lens", "S2", lens_coeffs)
-        
-    # A couple more unusual names.
-    if name == "T x S1":
-        return (True, "Euclidean", "T", [])
-    # KB x/~ S1 should be recognized here, but is not.
-
-    # At this point, all remaining SFS should follow a standard naming convention.
-    if not "SFS" == name[:3]:
-        return (None, None, None, None)
-    if "#" in name:
-        return (None, None, None, None)
-    if "U/" in name:
-        return (None, None, None, None)
-    
-    
-    found = None
-    if "SFS [S2: " == name[:9]:
-        found = True
-        base = "S2"
-        starting_char = 2
-        trunc_name = name[9:-1]
-        coeffs = trunc_name.split(" ")
-        assert len(coeffs) > 2
-        # This disallows lens spaces, which should have already been found.
-    if "SFS [RP2/n2: " == name[:13]:
-        found = True
-        base = "RP2"
-        starting_char = 1
-        trunc_name = name[13:-1]
-        coeffs = trunc_name.split(" ")
-        assert len(coeffs) > 1
-        # This disallows prism manifolds, which also have a SFS structure over S2.
-        # Compare Hatcher, Theorem 2.3(d).
-    if "SFS [T: " == name[:8]:
-        found = True
-        base = "T"
-        starting_char = 0
-        trunc_name = name[8:-1]
-        coeffs = trunc_name.split(" ")
-    if "SFS [KB/n2: " == name[:12]:
-        found = True
-        base = "KB"
-        starting_char = 0
-        trunc_name = name[12:-1]
-        coeffs = trunc_name.split(" ")
-        assert len(coeffs) > 0
-        # This disallows KB x/~ S1, which also has a SFS structure over S2.
-        # Compare Hatcher, Theorem 2.3(e).
-    # We do not search for bases of higher complexity.
-    
-    if not found:
-        return (None, None, None, None)
-
-
-    # Massage the list coeffs to eliminate the fluff
-    coeffs = [coeff.strip("(") for coeff in coeffs]
-    coeffs = [coeff.strip(")") for coeff in coeffs]
-    coeffs = [coeff.split(",") for coeff in coeffs]
-    coeffs = [[int(p) for p in coeff] for coeff in coeffs]
-    
-    # Calculate the base Euler characteristic and Euler number of fibration.
-    base_char = euler_char(starting_char, coeffs)
-    base_num = euler_num(coeffs)
-    verbose_print(verbose, 10, ["found SFS structure:", base, coeffs])
-    verbose_print(verbose, 10, ["Euler characteristic", base_char, "Euler number", base_num])
-    
-    if base_char > 0:
-        assert base_num != 0
-        # if base_num == 0, we would have S2 x R geometry; those manifolds should have already been found.
-        geom = "Elliptic"
-    elif base_char == 0:
-        if base_num == 0:
-            geom = "Euclidean"
-        else:
-            geom = "Nil"
-    elif base_char < 0:
-        if base_num == 0:
-            geom = "H2 x R"
-        else:
-            geom = "PSL2R"
-            
-    verbose_print(verbose, 10, ["Geometric type:", geom])
-    return (found, geom, base, coeffs)
-
-
-def is_sfs_over_disk_from_name(name, verbose=3):
-    """
-    Given a regina name, if it is a SFS over D^2 (and not a solid torus),
-    return True and the coefficients. If not, or unsure, return (None, None).
-    """
-
-    verbose_print(verbose, 12, ["Entering is_sfs_over_disk_from_name"])
-
-    if name == "SFS [M/n2: ]":
-        # This manifold is Seifert fibered in two ways; the other is over a disk.
-        return is_sfs_over_disk_from_name("SFS [D: (2,1) (2,1)]", verbose=verbose)    
-    if not "SFS [D: (" == name[:9]:
-        return (None, None)
-    if "#" in name:
-        return (None, None)
-    if "U/" in name:
-        # This handles pseudo-names with a "U/?" gluing
-        return (None, None)
-        
-    name = name[8:-1] # regina names...
-    coeffs = name.split(" ")
-    assert len(coeffs) > 1
-    coeffs = [coeff.strip("(") for coeff in coeffs]
-    coeffs = [coeff.strip(")") for coeff in coeffs]
-    coeffs = [coeff.split(",") for coeff in coeffs]
-    coeffs = [[int(p) for p in coeff] for coeff in coeffs]
-    verbose_print(verbose, 10, ["Found SFS structure over disk:", coeffs])
-    return (True, coeffs)
-
-
-def is_graph_pair_from_name(name):
-    """
-    Given a regina name, test to see if it is a graph manifold with exactly two pieces,
-    each of which is SFS over a disk. If so, return True and the pieces.
-    According to Regina documentation, a True answer guarantees that the manifold is not
-    a SFS, because the gluing matrix does not send fibers to fibers.
-    If not, or unsure, return (None, None).
-    """
-    
-    if name == None:
-        return(None, None)
-    if "#" in name:
-        return (None, None)
-    if "U/m" not in name:
-        # This also rules out graph loops of the form "SFS [A: (2,1)] / [ 0,-1 | -1,0 ]"
-        return (None, None)
-
-    tori = name.count("U/")
-    # This counts all gluing tori, including "U/?" gluings in pseudo-name
-    if tori != 1:
-        return (None, None)
-        
-    A, B = name.split(", m =")[0].split(" U/m ")
-    A_bool, A_coeffs = is_sfs_over_disk_from_name(A)
-    B_bool, B_coeffs = is_sfs_over_disk_from_name(B)
-    if A_bool and B_bool:
-        return(True, [A, B])
-        
-    return (None, None)
-
-
-def are_distinguished_lens_spaces(name0, name1, verbose = 3):
-    """
-    Given two Regina names, checks whether the two manifolds are lens spaces.
-    If yes, and the two are not homeomorphic, return True. If one is not
-    a lens space, or they are homeomorphic, return False.
-    This only tests for _un_oriented homeomorphism.
-    """
-    
-    verbose_print(verbose, 12, ["Entering are_distinguished_lens_spaces"])
-    bool0, ints0 = is_lens_space_from_name(name0, verbose=verbose)
-    bool1, ints1 = is_lens_space_from_name(name1, verbose=verbose)
-    if not (bool0 and bool1):
-        verbose_print(verbose, 10, [name0, name1, "at least one is not a lens space"])
-        return False
-    p0, q0 = ints0
-    p1, q1 = ints1
-    if p0 != p1:
-        verbose_print(verbose, 4, [name0, name1, "lens spaces with different homology"])
-        return True
-    p = p0
-    if ((q0 - q1) % p) == 0 or ((q0 + q1) % p) == 0 or ((q0 * q1) % p) == 1 or ((q0 * q1) % p) == -1 % p:
-        verbose_print(verbose, 10, [name0, name1, "homeomorphic lens spaces"])
-        return False
-    verbose_print(verbose, 10, [name0, name1, "non-homeomorphic lens spaces"])
-    return True
-
-
-def are_distinguished_closed_sfs(name_0, name_1, verbose = 3):
-    """
-    Given two Regina names, checks whether the two manifolds are SFS over S2,
-    RP2, Torus, or Klein Bottle.
-    If yes, and the two are not homeomorphic, return True. 
-    Lens spaces are allowed, and are handled separately from others over S2.
-    The tests applied here are not exhaustive, but a True answer is trustworthy.
-    This routine only tests for _un_oriented homeomorphism.
-    """
-
-    verbose_print(verbose, 12, ["Entering are_distinguished_closed_sfs"])
-    
-    bool_0, geom_0, base_0, coeffs_0 = is_closed_sfs_from_name(name_0, verbose=verbose)
-    bool_1, geom_1, base_1, coeffs_1 = is_closed_sfs_from_name(name_1, verbose=verbose)
-    
-    if not (bool_0 and bool_1):
-        verbose_print(verbose, 10, [name_0, name_1, "at least one seems not to be a known closed SFS"])
-        # so give up
-        return False
-        
-    if base_0 != base_1:
-        verbose_print(verbose, 10, [name_0, name_1, "different base orbifolds"])
-        return True
-        
-    if geom_0 != geom_1:
-        verbose_print(verbose, 10, [name_0, name_1, "different geometric types"])
-        return True
-
-    if geom_0 == "Lens" and geom_1 == "Lens":
-        return are_distinguished_lens_spaces(name_0, name_1, verbose = verbose)
-        
-    # At this point, we know that both are SFS over the same base, and neither is a lens space.
-   
-    coeffs_0.sort()
-    coeffs_1.sort()
-
-    if len(coeffs_0) != len(coeffs_1):
-        verbose_print(verbose, 10, [name_0, name_1, "different number of singular fibers"])
-        return True
-
-    cone_pts_0 = [p for (p, q) in coeffs_0]
-    cone_pts_1 = [p for (p, q) in coeffs_1]
-    # homework - check that regina sorts the coefficients.
-
-    if cone_pts_0 != cone_pts_1: 
-        verbose_print(verbose, 10, [name_0, name_1, "base orbifolds have different cone points"])
-        return True
-
-    eul_num_0 = euler_num(coeffs_0)
-    eul_num_1 = euler_num(coeffs_1)
-    
-    if abs(eul_num_0) != abs(eul_num_1): 
-        verbose_print(verbose, 10, [name_0, name_1, "Euler numbers are different"])
-        return True
-
-    # normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0].sort()
-    # normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1].sort()
-    # if normed_coeffs_0 != normed_coeffs_1: 
-    #    verbose_print(verbose, 12, [name_0, name_1, "distinguished by singular fibers"])
-    #    return True
-
-    verbose_print(verbose, 10, [name_0, name_1, "could not distinguish."])
-    return False
-
-
-def are_distinguished_sfs_over_disk(name_0, name_1, verbose = 3):
-    """
-    Given two Regina names, checks whether the two manifolds are SFS over disk.
-    If yes, and the two are not homeomorphic, return True. 
-    The tests applied here are not exhaustive, but a True answer is trustworthy.
-    This routine only tests for _un_oriented homeomorphism.
-    """
-
-    bool_0, coeffs_0 = is_sfs_over_disk_from_name(name_0)
-    bool_1, coeffs_1 = is_sfs_over_disk_from_name(name_1)
-    coeffs_0.sort()
-    coeffs_1.sort()
-
-    if not (bool_0 and bool_1):
-        verbose_print(verbose, 10, [name_0, name_1, "at least one seems not to be a sfs over disk"])
-        # so give up
-        return False 
-
-    if len(coeffs_0) != len(coeffs_1):
-        verbose_print(verbose, 10, [name_0, name_1, "different number of singular fibers"])
-        return True
-
-    cone_pts_0 = [p for (p, q) in coeffs_0]
-    cone_pts_1 = [p for (p, q) in coeffs_1]
-    # homework - check that regina sorts the coefficients.
-
-    if cone_pts_0 != cone_pts_1: 
-        verbose_print(verbose, 10, [name_0, name_1, "base orbifolds are different"])
-        return True
-
-    euler_num_0 = euler_num(coeffs_0, ModOne = True)
-    euler_num_1 = euler_num(coeffs_1, ModOne = True) 
-    if (euler_num_0 != euler_num_1) and (euler_num_0 + euler_num_1 != 1): 
-        verbose_print(verbose, 10, [name_0, name_1, "euler numbers are different", euler_num_0, euler_num_1])
-        return True
-
-    # normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0].sort()
-    # normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1].sort()
-    # if normed_coeffs_0 != normed_coeffs_1: 
-    #    verbose_print(verbose, 12, [name_0, name_1, "distinguished by singular fibers"])
-    #    return True
-
-    verbose_print(verbose, 10, [name_0, name_1, "could not distinguish."])
-    return False
-
-
-def are_distinguished_graph_pairs(name_0, name_1, verbose = 3):
-    """
-    Given two Regina names, checks whether the two manifolds are graph pairs.
-    If yes, and the two are not homeomorphic, return True. 
-    The tests applied here are not exhaustive, but a True answer is trustworthy.
-    According to Regina documentation, a graph pair is guaranteed to not be a SFS, so the list
-    of pieces is an invariant.
-    This routine only tests for _un_oriented homeomorphism.
-    """
-
-    bool_0, pieces_0 = is_graph_pair_from_name(name_0)
-    bool_1, pieces_1 = is_graph_pair_from_name(name_1)
-
-    if not (bool_0 and bool_1):
-        verbose_print(verbose, 10, [name_0, name_1, "at least one seems not to be a graph pair"])
-        # so give up
-        return False 
-
-    if are_distinguished_sfs_over_disk(pieces_0[0], pieces_1[0]) and are_distinguished_sfs_over_disk(pieces_0[0], pieces_1[1]):
-        verbose_print(verbose, 10, [pieces_0[0], 'is not a piece of', name_1])
-        return True
-
-    if are_distinguished_sfs_over_disk(pieces_0[1], pieces_1[0]) and are_distinguished_sfs_over_disk(pieces_0[1], pieces_1[1]):
-        verbose_print(verbose, 10, [pieces_0[1], 'is not a piece of', name_1])
-        return True
-
-    if are_distinguished_sfs_over_disk(pieces_1[0], pieces_0[0]) and are_distinguished_sfs_over_disk(pieces_1[0], pieces_0[1]):
-        verbose_print(verbose, 10, [pieces_1[0], 'is not a piece of', name_0])
-        return True
-
-    if are_distinguished_sfs_over_disk(pieces_1[1], pieces_0[0]) and are_distinguished_sfs_over_disk(pieces_1[1], pieces_0[1]):
-        verbose_print(verbose, 10, [pieces_1[1], 'is not a piece of', name_0])
-        return True
-
-    # We could also check the gluing matrices. We do not do this.
-
-    verbose_print(verbose, 10, [name_0, name_1, "could not distinguish."])
-    return False
-
-
-def is_chiral_graph_mfd_from_name(name, verbose = 3):
-    """
-    Given the Regina name of a graph manifold M assembled from Seifert fibered pieces,
-    try a few tests to determine whether M is chiral. If chiral, return True.
-    If the simple tests do not succeed, return None.
-    The tests applied here are not exhaustive, but a True answer is trustworthy.
-    """
-
-    # Lens spaces
-    # https://math.stackexchange.com/questions/2843946/which-lens-spaces-are-chiral
-    # "Example 3.22 and Lemma 3.23 in Hempel give q^2 + 1 = 0 (mod p)
-    # as a necessary and sufficient condition for L(p,q) to admit an
-    # orientation-reversing homeomorphism."
-    is_lens, ints = is_lens_space_from_name(name, verbose=verbose)
-    if is_lens:
-        p, q = ints
-        if p == 0:
-            return False
-        else:
-            return ((q**2 + 1) % p) != 0
-    
-    is_closed_sfs, _, _, coeffs = is_closed_sfs_from_name(name, verbose=verbose)
-    if is_closed_sfs:
-        # We know this is not a lens space, so Euler number is an invariant.
-            
-        eul = euler_num(coeffs)
-        if eul != 0: 
-            return True
-        elif (len(coeffs) % 2 != 0) and ([2,1] not in coeffs) and ([2,-1] not in coeffs):
-            # Any orientation-reversing bijection of the singular fibers would have to fix
-            # a fiber of type [2,1] or [2,-1]. So, such a bijection cannot exist.
-            return True
-        else:
-            # We could look for another fiberwise bijection that reverses signs.
-            # But this is not currently implemented
-            return None
-
-    is_sfs_over_disk, coeffs = is_sfs_over_disk_from_name(name, verbose=verbose)
-    if is_sfs_over_disk:
-        eul = euler_num(coeffs, ModOne = True)
-        if eul !=0 and eul != QQ((1, 2)):
-            return True
-        elif (len(coeffs) % 2 != 0) and ([2,1] not in coeffs) and ([2,-1] not in coeffs):
-            # Any orientation-reversing bijection of the singular fibers would have to fix
-            # a fiber of type [2,1] or [2,-1]. So, such a bijection cannot exist.
-            return True
-        else:
-            # We could look for another fiberwise bijection that reverses signs.
-            # But this is not currently implemented
-            return None
-        
-    is_graph_pair, pieces = is_graph_pair_from_name(name)
-    if is_graph_pair:
-        name0, name1 = pieces
-        distinct = are_distinguished_sfs_over_disk(name0, name1)
-        if distinct:
-            # Any self-homeo would have to send each piece to itself.
-            verbose_print(verbose, 10, [name0, name1, 'are distinct pieces'])
-            return (is_chiral_graph_mfd_from_name(name0) or is_chiral_graph_mfd_from_name(name1))
-        else:
-            _, coeffs0 = is_sfs_over_disk_from_name(name0)
-            _, coeffs1 = is_sfs_over_disk_from_name(name1)
-            eul0 = euler_num(coeffs0, ModOne = True)
-            eul1 = euler_num(coeffs1, ModOne = True)
-            sum_of_eul = eul0 + eul1
-            verbose_print(verbose, 10, [name0, name1, 'homeomorphic pieces with Euler numbers summing to', sum_of_eul])
-            # To have an orientation-reversing homeo from piece0 to piece1, their euler
-            # numbers would have to be opposite (modulo 1).
-            return (sum_of_eul != 0 and sum_of_eul != 1)
-
-    if '#' in name:
-        pieces = name.split(" # ")
-        if len(pieces) == 2:
-            name0, name1 = pieces
-            if are_distinguished_closed_sfs(name0, name1, verbose = verbose):
-                verbose_print(verbose, 10, [name0, name1, 'are distinct pieces'])
-                return (is_chiral_graph_mfd_from_name(name0) or is_chiral_graph_mfd_from_name(name1))
-
-    return None   
-
-# Math
-
-    
-def product(nums):
-    prod = 1
-    for d in nums:
-        prod = prod * d
-    return prod
 
 
 # Volume differences under filling
 
 
-# we will need the following (compare Section 3.5 of Cosmetic computation paper)
+# we will need the following (compare Section 3.3 of Cosmetic computation paper)
 
 # eccen = 3.3957
 # u(z) = (eccen/2) * (z**2 * (z**4 + 4*z**2 - 1)) / (z**2 + 1)**3
 # v(z) = (eccen/4) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2+1)**2 + arctan(z) - arctan(1.0) )
 # v(z) is the integral of u from z to 1.
-# Theorem 3.11 says: diff_vol < v(1 - (14.77)/L**2)
+# Theorem 3.14 says: diff_vol < v(1 - (14.77)/L**2)
 
 
 def HK_vol_bound(L):
@@ -825,178 +302,7 @@ def Casson_invt(M, verbose):
     verbose_print(verbose, 10, [A, 'second derivative'])
     return A(1)/2
 
-# Homology
 
-
-def order_of_torsion(M):
-    """
-    Given a snappy manifold return the order of the torsion subgroup
-    of H_1(M).
-    """
-    
-    H = M.homology()
-    elem_divs = H.elementary_divisors()
-    torsion_divs = [d for d in elem_divs if d != 0]
-    return product(torsion_divs)
-
-
-def are_distinguished_by_homology(M, s, N, t, verbose=5):
-    """
-    Given two parent manifolds M and N (assumed to be one-cusped) 
-    and slopes s and t, decide whether M(s) and N(t) have distinct
-    homology groups
-    """
-    
-    verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_homology"])
-    Ms = M.copy()
-    Nt = N.copy()
-    Ms.dehn_fill(s)
-    Nt.dehn_fill(t)
-    
-    Ms_hom = Ms.homology()
-    Nt_hom = Nt.homology()
-    verbose_print(verbose, 10, [Ms, str(Ms_hom)])
-    verbose_print(verbose, 10, [Nt, str(Nt_hom)])
-    
-    return Ms_hom != Nt_hom
-
-
-# Tests using covers
-
-
-def subgroup_abels(G, deg):
-    """
-    Given a Gap group g, computes the list of finite-index subgroups up
-    to index deg. Returns the list of subgroups, their indices, and their
-    abelianizations (sorted lexicographically for comparing).
-    """    
-    
-    subs = G.LowIndexSubgroupsFpGroup(deg)
-    out = [[G.Index(H), H.AbelianInvariants()] for H in subs]
-    out.sort()  # Sort lexicographically
-    return subs, out
-    
-
-def profinite_data(G, subs, deg):
-    """
-    Given a Gap group G, and a list of finite-index subgroups subs
-    (presumed to be all subgroups up to some index), computes
-    invariants of the normal cores of subgroups whose index equals deg.
-    Returns the following tuple of data for every subgroup H of index deg:
-    [the index, the abelianization, the index of the normal core, 
-    and the abelianization of the normal core].
-    Returns the set of these invariants, sorted lexicographically.
-    """
-
-    out = []
-    for H in subs:
-        if G.Index(H) == deg:
-            K = G.FactorCosetAction(H).Kernel()
-            out.append([G.Index(H), H.AbelianInvariants(), G.Index(K), K.AbelianInvariants()])
-    out.sort()
-    return out
-
-
-def are_distinguished_by_normcore_homology(M, N, tries, verbose):
-    """
-    Given snappy manifolds M and N, tries to distinguish their
-    fundamental groups using the abelianizations of finite-index subgroups 
-    and their normal cores. This uses GAP.
-    
-    For optimum speed, this routine should be used *after* trying
-    are_distinguished_by_cover_homology, which takes advantage of faster 
-    cover enumeration in SnapPy 3.1.
-    """
-    
-    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_normcore_homology"])
-    
-    GM = gap(M.fundamental_group().gap_string())
-    GN = gap(N.fundamental_group().gap_string())
-    degree_bound = min(tries, 6) # Hack: no degrees higher than 6
-
-    # First, compute subgroups of GM and GN up to index degree_bound
-    M_subs = GM.LowIndexSubgroupsFpGroup(degree_bound + 1)
-    N_subs = GN.LowIndexSubgroupsFpGroup(degree_bound + 1)
-    
-    '''
-    for deg in range(1, degree_bound + 1):
-        M_subs, M_data = subgroup_abels(GM, deg)
-        N_subs, N_data = subgroup_abels(GN, deg)
-        verbose_print(verbose, 8, [M, deg, M_data])
-        verbose_print(verbose, 8, [N, deg, N_data])
-        if M_data != N_data:
-            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
-            return True
-    '''
-
-    # Now, compute the homology and index of each normal core (for each degree separately)
-    for deg in range(1, degree_bound + 1):
-        M_invts = profinite_data(GM, M_subs, deg)
-        N_invts = profinite_data(GN, N_subs, deg)
-        verbose_print(verbose, 8, [M, deg, M_invts])
-        verbose_print(verbose, 8, [N, deg, N_invts])
-        if M_invts != N_invts:
-            verbose_print(verbose, 6, [M, N, "homology of normal cores distinguishes in degree", deg])
-            return True
-        else:
-            verbose_print(verbose, 6, [M, N, "homology of normal cores fails to distinguish in degree", deg])
-    
-    # We have failed    
-    return False
-
-
-def are_distinguished_by_cover_homology(M, N, tries, verbose):
-    """
-    Given snappy manifolds M and N, tries to distinguish their
-    fundamental groups using the first homology groups of finite-degree covers
-    (ie, the abelianizations of finite-index subgroups). This routine is designed
-    to take advantage of faster cover enumeration in Snappy 3.1.
-    """
-    
-    verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
-
-    degree_bound = min(tries, 8) # Covers up to degree 8 should be acceptable
-    
-    for deg in range(1, degree_bound + 1):
-        M_data = [Q.homology() for Q in M.covers(deg)]
-        N_data = [Q.homology() for Q in N.covers(deg)]
-        M_data.sort()
-        N_data.sort()
-        verbose_print(verbose, 8, [M, deg, M_data])
-        verbose_print(verbose, 8, [N, deg, N_data])
-        if M_data != N_data:
-            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
-            return True
-        # Give a status update if (verbose*deg) is large
-        verbose_print(verbose*deg, 36, [M, N, "cover homology up to degree", deg, "failed to distinguish"])
-            
-    # We have failed    
-    return False
-        
-    
-def are_distinguished_by_covers(M, s, N, t, tries, verbose):
-    """
-    Given snappy manifolds M and N, and a pair of slopes s and t, tries to
-    distinguish the fundamental groups of M(s) and N(t) using the abelianizations
-    of finite-index subgroups.
-    
-    This proceeds in two steps. First, enumerate covers up to a fixed degree
-    using SnapPy. This is very fast. If this does not succeed, then enumerate
-    finite-index subgroups and their normal cores using GAP. This is slower, but
-    produces a richer package of data.
-    """
-    
-    verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_covers"])
-    Ms = M.copy()
-    Nt = N.copy()
-    Ms.dehn_fill(s)
-    Nt.dehn_fill(t)
-    if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
-        return True
-    # elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
-    #     return True
-    else:
-        return False
 
 
 # hyperbolic invariants
@@ -1063,7 +369,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
     N.dehn_fill(s)
     
     if field == "fund_gp":
-        out = fundamental.is_exceptional_due_to_fundamental_group(N, tries, verbose)
+        out = ft.is_exceptional_due_to_fundamental_group(N, tries, verbose)
         is_except, _ = out
         if is_except:
             M.exceptions_table[s]["fund_gp"] = out
@@ -1098,7 +404,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
         if name == None:
             return (None, None)
 
-        out = is_closed_sfs_from_name(name)
+        out = rt.is_closed_sfs_from_name(name)
         is_sfs, geom, base, coeffs = out
         if is_sfs and geom in ["Lens", "Elliptic", "S2 x R"]:
             M.exceptions_table[s]["atoroidal_sfs"] = out
@@ -1113,13 +419,13 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
             return (None, geom, base, coeffs)
         
     if field == "reducible":
-        out = gt.is_reducible_wrapper(N, tries, verbose)
+        out = rt.is_reducible_wrapper(N, tries, verbose)
         M.exceptions_table[s]["reducible"] = out
         verbose_print(verbose, 10, [N, out, 'reducibility'])
         return out
         
     if field == "toroidal":
-        out = gt.torus_decomp_wrapper(N, tries, verbose)
+        out = rt.torus_decomp_wrapper(N, tries, verbose)
         M.exceptions_table[s]["toroidal"] = out
         verbose_print(verbose, 10, [N, out, 'toroidality'])
         return out
@@ -1231,7 +537,7 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     """
     verbose_print(verbose, 12, [M, s, N, t, 'entering are_distinguished_exceptionals'])
 
-    if are_distinguished_by_homology(M, s, N, t, verbose=verbose):
+    if ft.are_distinguished_by_homology(M, s, N, t, verbose=verbose):
         return True
 
     s_name = fetch_exceptional_data(M, s, "name", tries, verbose)
@@ -1244,9 +550,9 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
         # We have no hope of distinguishing this pair.
         return False
     
-    if are_distinguished_closed_sfs(s_name, t_name, verbose):
+    if rt.are_distinguished_closed_sfs(s_name, t_name, verbose):
         return True
-    if are_distinguished_graph_pairs(s_name, t_name, verbose):
+    if rt.are_distinguished_graph_pairs(s_name, t_name, verbose):
         return True
      
     s_ator_sfs, s_geom, _, _ = fetch_exceptional_data(M, s, "atoroidal_sfs", tries, verbose)
@@ -1281,7 +587,7 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     # We should probably compare reducible manifolds using their prime decompositions.
 
     # Tests that search for covers are pretty slow, but effective.                    
-    if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+    if ft.are_distinguished_by_covers(M, s, N, t, tries, verbose):
         return True
     
     return False        
@@ -1339,10 +645,10 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     N_vol = fetch_volume(N, (0,0), tries, verbose)
     Q = N.copy()
     Q.dehn_fill(N.m_hom)
-    N_mer_base = order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
+    N_mer_base = ft.order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
     Q.dehn_fill(N.l_hom)
     N_long_homology = str(Q.homology())
-    N_long_order = order_of_torsion(Q)
+    N_long_order = ft.order_of_torsion(Q)
     verbose_print(verbose, 12, [N.name(), 'meridional homology', N_mer_base, 'longitudinal homology', N_long_order])
 
     # Searching through homology hashes for M 
@@ -1351,7 +657,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
         s0 = list(M.slopes_hyp[hom_hash])[0]    # a representative slope 
         Q = M.copy()
         Q.dehn_fill(s0)
-        tor_order = order_of_torsion(Q)
+        tor_order = ft.order_of_torsion(Q)
         verbose_print(verbose, 12, [M.name(), hom_hash, tor_order])
         hom_gp = hom_hash
         if (hom_hash != N_long_homology) and (tor_order % N_mer_base != 0):
@@ -1368,7 +674,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
                 if M_s_vol > N_t_vol or N_t_vol > M_s_vol:
                     verbose_print(verbose, 12, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
                     continue
-                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                if ft.are_distinguished_by_covers(M, s, N, t, tries, verbose):
                     verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
                     continue
                 
@@ -1403,7 +709,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
                 if M_s_vol > N_t_vol or M_s_vol < N_t_vol:
                     verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'verified volume distinguishes'])
                     continue
-                if are_distinguished_by_covers(M, s, N, t, tries, verbose):
+                if ft.are_distinguished_by_covers(M, s, N, t, tries, verbose):
                     verbose_print(verbose, 6, [M.name(), s, N.name(), t, 'cover spectrum distinguishes'])
                     continue
 
@@ -1464,7 +770,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
         return [(M.name(), None, N.name(), None, 'isometric parent manifolds')]
 
 
-    # Step one - compute the list of exceptional fillings of both M and N.
+    # Step two - compute the list of exceptional fillings of both M and N.
 
     for P in mfds:
         enhance_manifold(P, tries, verbose)  
@@ -1473,7 +779,7 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     # TODO: remember the initial framings of M and N that we were handed, and 
     # report shared fillings in initial framing.
 
-    # Step two: check for (non-hyperbolic) homeomorphic pairs in 
+    # Step three: check for (non-hyperbolic) homeomorphic pairs in 
     # M.slopes_non_hyp and N.slopes_non_hyp.
     # Note that slopes_bad automatically gets recorded and reported.
 
@@ -1634,8 +940,8 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     # Gordon and Luecke proved distance between reducible fillings must be 1.
                     verbose_print(verbose, 2, [s_name, t_name, "distinguished by Gordon-Luecke theorem on distance between reducible fillings"])
                     continue
-            s_lens, _ = is_lens_space_from_name(s_name, verbose)
-            t_lens, _ = is_lens_space_from_name(t_name, verbose)
+            s_lens, _ = rt.is_lens_space_from_name(s_name, verbose)
+            t_lens, _ = rt.is_lens_space_from_name(t_name, verbose)
             if s_name == "S2 x S1" or s_lens or t_name == "S2 x S1" or t_lens:
                 if abs(gt.alg_int(s,t)) > 1:
                     # Cyclic surgery theorem
@@ -1722,7 +1028,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     if looks_distinct and rigorous:
                         continue
                     
-                if are_distinguished_by_covers(M, s, M, t, tries, verbose):
+                if ft.are_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
                     
                 if looks_distinct and not rigorous:
@@ -1780,7 +1086,6 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
     bad_uns = []
     for n, M in enumerate(manifolds):
         M = snappy.Manifold(M)
-        name = M.name()
             
         uns = check_cosmetic(M, use_BoyerLines=use_BoyerLines, check_chiral=False, tries=tries, verbose=verbose)
         if len(uns) > 0:
@@ -1790,9 +1095,9 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
                     s = line[1]
                     t = line[2]
                     filled_name = line[3]
-                    if is_chiral_graph_mfd_from_name(filled_name) and gt.preferred_rep(cob*vector(s)) == t:
+                    if rt.is_chiral_graph_mfd_from_name(filled_name) and gt.preferred_rep(cob*vector(s)) == t:
                         # The slopes s and t are interchanged by symmetry, and the filled manifold is chiral
-                        verbose_print(verbose, 2, ['chiral filling on amph manifold:', name, s, t, filled_name])
+                        verbose_print(verbose, 2, ['chiral filling on amph manifold:', M.name(), s, t, filled_name])
                         continue
                     else:
                         verbose_print(verbose, 0, ["undistinguished amphichiral filling", line])
@@ -1830,7 +1135,6 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     amphichiral_uns = []
     for n, M in enumerate(manifolds):
         M = snappy.Manifold(M)
-        name = M.name()
 
         sol_type = M.solution_type()
     
@@ -1839,20 +1143,20 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
             
             kind, found_name = dunfield.identify_with_bdy_from_isosig(M)
             if kind != 'unknown':
-                verbose_print(verbose, 2, [name, kind, found_name])
-                bad_uns.append((name, None, None, found_name))
+                verbose_print(verbose, 2, [M.name(), kind, found_name])
+                bad_uns.append((M.name(), None, None, found_name))
             elif is_exceptional_due_to_volume(M, verbose):   
-                verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
-                bad_uns.append((name, None, None, 'small volume'))
+                verbose_print(verbose, 2, [M.name(), 'NON-RIGOROUS TEST says volume is too small']) 
+                bad_uns.append((M.name(), None, None, 'small volume'))
             else:
                 verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
-                bad_uns.append((name, None, None, 'bad solution type for unclear reasons'))
+                bad_uns.append((M.name(), None, None, 'bad solution type for unclear reasons'))
             continue
 
         is_amph, cob = is_amphichiral(M, tries=tries, verbose=verbose)
         if is_amph:
-            verbose_print(verbose, 2, [name, "is amphichiral; skipping."])
-            amphichiral_uns.append(name)
+            verbose_print(verbose, 2, [M.name(), "is amphichiral; skipping."])
+            amphichiral_uns.append(M.name())
             continue
         uns = check_cosmetic(M, use_BoyerLines=False, check_chiral=True, tries=tries, verbose=verbose)
         bad_uns.extend(uns)
@@ -1881,19 +1185,18 @@ def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
     for n, line in enumerate(slopelist):
         M, s, t = line
         M = snappy.Manifold(M)
-        name = M.name()
 
         sol_type = M.solution_type()
     
         if sol_type != 'all tetrahedra positively oriented' and sol_type != 'contains negatively oriented tetrahedra':
             verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
-            bad_uns.append((name, None, None, 'bad solution type for unclear reasons'))
+            bad_uns.append((M.name(), None, None, 'bad solution type for unclear reasons'))
             continue
             
         distinct = gt.are_distinguished_by_length_spectrum(M, s, t, check_chiral=True, cutoff = cutoff, verbose=verbose)
         if not distinct:
             verbose_print(verbose, 4, [M, s, t, 'not distinguished by length spectrum up to', cutoff])
-            bad_uns.append((name, s, t, 'not distinguished by length spectrum up to '+str(cutoff) ))
+            bad_uns.append((M.name(), s, t, 'not distinguished by length spectrum up to '+str(cutoff) ))
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n])
             verbose_print(verbose, 0, [bad_uns])
