@@ -358,13 +358,11 @@ def Hanselman_slopes(K, name, use_HFK=True, verbose=3):
 # The following test is non-rigorous. It is designed to produce a flag that
 # none of the rigorous tests have succeeded. We should not rely on it beyond that.
 def is_exceptional_due_to_volume(M, verbose):
-    # verbose = 100
     verbose_print(verbose, 6, [M.name(), "entering is_exceptional_due_to_volume"])
     if M.volume() < 0.9:
         verbose_print(verbose, 2, [M.name(), "has volume too small...(NON-RIGOROUS)"])
         verbose_print(verbose, 6, [M.fundamental_group()])
         return True
-    
 
             
 # routines for checking things on a knot complement

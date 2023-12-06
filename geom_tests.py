@@ -540,7 +540,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     # Computing cusp_invariants(M) is slow, so we do not do it here.
     #
     # It is not clear that we should bother with the six-theorem
-    if abs(p*m + q*l) > 6: # six-theorem
+    if abs(p*m + q*l) > RIF( 6 ): # six-theorem
         return True
 
     N = M.copy()
@@ -673,7 +673,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             Ms_vol = Ms.volume(verified=True, bits_prec = 40)
             Mt_vol = Mt.volume(verified=True, bits_prec = 40)
 
-            if abs(Ms_vol - Mt_vol) > 4* (1/2)**prec:
+            if abs(Ms_vol - Mt_vol) > RIF( (1/2)**(prec - 2) ):
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
                 return (True, rigor)
             else:
@@ -686,7 +686,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
             Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
 
-            if abs(Ms_cpx_vol - Mt_cpx_vol) > 4* (1/2)**prec:
+            if abs(Ms_cpx_vol - Mt_cpx_vol) > RIF( (1/2)**(prec - 2) ):
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
                 return (True, rigor)
             else:

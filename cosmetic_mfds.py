@@ -7,7 +7,6 @@
 # Add examples of usage.
 
 
-
 # Imports 
 
 import snappy
@@ -77,7 +76,7 @@ def enhance_manifold(M, tries = 8, verbose = 4):
 
 # Finding sets of slopes that satisfy various properties
 
-def find_exceptionals(M, tries=8, verbose=4):
+def find_exceptionals(M, tries = 8, verbose = 4):
     """
     Given a snappy manifold M, assumed cusped and enhanced,
     calculate the set of exceptional fillings. Install the
@@ -87,8 +86,9 @@ def find_exceptionals(M, tries=8, verbose=4):
     """
 
     six_short_slopes = gt.find_short_slopes(M, verbose=verbose)
+    m, l = M.mer_hol, M.long_hol
     for s in six_short_slopes:
-        hyp_type = is_hyperbolic_filling(M, s, tries, verbose)
+        hyp_type = gt.is_hyperbolic_filling(M, s, m, l, tries, verbose)
         if hyp_type == True:
             # We will deal with hyperbolic slopes later
             continue
@@ -137,6 +137,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     verbose_print(verbose, 5, short_slopes)
                
     M.slopes_hyp = {}
+    m, l = M.mer_hol, M.long_hol
     for s in short_slopes:
         Q = M.copy()
         Q.dehn_fill(s)
@@ -146,7 +147,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
             verbose_print(verbose, 8, [M.name(), s, 'known exceptional or unidentified slope'])
             continue
 
-        assert is_hyperbolic_filling(M, s, tries, verbose)
+        assert gt.is_hyperbolic_filling(M, s, m, l, tries, verbose)
         # All slopes not in M.slopes_exclude are necessarily hyperbolic.
         add_to_dict_of_sets(M.slopes_hyp, hom_hash, s)
             
@@ -466,59 +467,59 @@ def fetch_volume(M, s, tries=8, verbose=4):
     return M.volumes_table[s]
         
 
-def is_hyperbolic_filling(M, s, tries, verbose):
-    """
-    Given a one-cusped manifold M (assumed hyperbolic and enhanced) and a slope s,
-    try to determine if M(s) is hyperbolic or exceptional.  Returns
-    True or False respectively, and returns None if we failed.
-    """
+# def is_hyperbolic_filling(M, s, tries, verbose):
+#     """
+#     Given a one-cusped manifold M (assumed hyperbolic and enhanced) and a slope s,
+#     try to determine if M(s) is hyperbolic or exceptional.  Returns
+#     True or False respectively, and returns None if we failed.
+#     """
     
-    # TODO: Check for Regina name earlier in the logic!!!
+#     # TODO: Check for Regina name earlier in the logic!!!
     
-    verbose_print(verbose, 12, [M, s, 'entering is_hyperbolic_filling'])
-    p, q = s
-    # We don't recompute cusp_invariants because it is slow
-    # m, l, _ = cusp_invariants(C)
-    if abs(p*M.mer_hol + q*M.long_hol) > 6: # six-theorem
-        verbose_print(verbose, 10, [M, s, 'has length', abs(p*M.mer_hol + q*M.long_hol), 'hence the filling is hyperbolic by 6-theorem'])
-        return True            
+#     verbose_print(verbose, 12, [M, s, 'entering is_hyperbolic_filling'])
+#     p, q = s
+#     # We don't recompute cusp_invariants because it is slow
+#     # m, l, _ = cusp_invariants(C)
+#     if abs(p*M.mer_hol + q*M.long_hol) > RIF( 6 ): # six-theorem
+#         verbose_print(verbose, 10, [M, s, 'has length', abs(p*M.mer_hol + q*M.long_hol), 'hence the filling is hyperbolic by 6-theorem'])
+#         return True            
 
-    N = M.copy()
-    N.dehn_fill(s)
+#     N = M.copy()
+#     N.dehn_fill(s)
 
-    for i in range(tries):
+#     for i in range(tries):
 
-        for j in range(i + 1):
-            N.randomize()  # Note: the randomized triangulation will stay with us until the next i
-            is_except, _ = fetch_exceptional_data(M, s, "fund_gp", tries, verbose)
-            if is_except:
-                return False
+#         for j in range(i + 1):
+#             N.randomize()  # Note: the randomized triangulation will stay with us until the next i
+#             is_except, _ = fetch_exceptional_data(M, s, "fund_gp", tries, verbose)
+#             if is_except:
+#                 return False
             
-        for j in range(1): # this is not a typo.  :P
-            if dunfield.is_hyperbolic(N, 2*i + 1, verbose): # because Nathan randomises for us.
-                # at this moment we trust the volume so put it in the table?
-                return True
+#         for j in range(1): # this is not a typo.  :P
+#             if dunfield.is_hyperbolic(N, 2*i + 1, verbose): # because Nathan randomises for us.
+#                 # at this moment we trust the volume so put it in the table?
+#                 return True
             
-        if i == 0: # this is trustworthy and expensive.
-            # Check reducibility and maybe small SFS here, to prevent code from spinning its wheels
-            is_tor, _ = fetch_exceptional_data(M, s, "toroidal", tries, verbose)
-            if is_tor: 
-                return False
+#         if i == 0: # this is trustworthy and expensive.
+#             # Check reducibility and maybe small SFS here, to prevent code from spinning its wheels
+#             is_tor, _ = fetch_exceptional_data(M, s, "toroidal", tries, verbose)
+#             if is_tor: 
+#                 return False
             
-    # ok, nothing "easy" worked
+#     # ok, nothing "easy" worked
 
-    name = fetch_exceptional_data(M, s, "name", tries, verbose)
-    if name == None:
-        # We have failed.  Very sad.
-        return None
-    elif name[:3] == 'SFS': # We trust regina_name.
-        return False
-    elif "#" in name:
-        return False
+#     name = fetch_exceptional_data(M, s, "name", tries, verbose)
+#     if name == None:
+#         # We have failed.  Very sad.
+#         return None
+#     elif name[:3] == 'SFS': # We trust regina_name.
+#         return False
+#     elif "#" in name:
+#         return False
 
-    # We have failed.  Very sad.
-    verbose_print(verbose, -1, [name, "Is_hyperbolic_filling failed. Think about how to handle it!"])
-    return None
+#     # We have failed.  Very sad.
+#     verbose_print(verbose, -1, [name, "Is_hyperbolic_filling failed. Think about how to handle it!"])
+#     return None
 
     
 # dealing with a pair of slopes
@@ -978,7 +979,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         if verbose > 25:
             print('hom_hash, max_vol[hom_hash]', hom_hash, vol_max)
             print('l_max_normalized', HK_vol_bound_inv(M.volume() - vol_max))
-            print('normalized length endpoints', (l_max/M.norm_fac).endpoints(),)
+            # print('normalized length endpoints', (l_max/M.norm_fac).endpoints(),)
             print('norm_fac', M.norm_fac.endpoints())
 
         hom_gp = hom_hash
