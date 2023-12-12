@@ -2,12 +2,13 @@
 # geom_tests.py
 #
 
-# This file contains utility code that applies various topological and geometric tests
-# for dealing with slopes and determining the geometric type of the filling. It also
-# contains code for distinguishing two fillings from one another using geometry.
-# The main organizing principle is: routines land here if they use geometry, and
-# especially if# geometrization they are needed for both knot complements
-# and general cusped manifolds.
+# This file contains utility code that applies various topological and
+# geometric tests for dealing with slopes and determining the
+# geometric type of the filling. It also contains code for
+# distinguishing two fillings from one another using geometry.  The
+# main organizing principle is: routines land here if they use
+# geometry, and especially if geometrization they are needed for both
+# knot complements and general cusped manifolds.
 
 import snappy
 import regina
@@ -673,7 +674,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             Ms_vol = Ms.volume(verified=True, bits_prec = 40)
             Mt_vol = Mt.volume(verified=True, bits_prec = 40)
 
-            if abs(Ms_vol - Mt_vol) > RIF( (1/2)**(prec - 2) ):
+            if Ms_vol < Mt_vol or Mt_vol < Ms_vol:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
                 return (True, rigor)
             else:
@@ -686,7 +687,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
             Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
 
-            if abs(Ms_cpx_vol - Mt_cpx_vol) > RIF( (1/2)**(prec - 2) ):
+            if not Ms_cpx_vol.overlaps(Mt_cpx_vol):  # bounding boxes are disjoint
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
                 return (True, rigor)
             else:
