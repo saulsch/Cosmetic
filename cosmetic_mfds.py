@@ -51,8 +51,7 @@ def enhance_manifold(M, tries = 8, verbose = 4):
     install the geometric framing, record the original slopes, and
     record various slope data in M as methods.
     """
-
-    # Fix the framing on the copy N to be shortest
+    # Install shortest
     cob = M.set_peripheral_curves('shortest', return_matrices = True)
     # but remember the original meridian and longitude.
     M.meridian = cob[0][0]   # Original user-specified meridian
@@ -222,10 +221,6 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     return low_vol_slopes
 
 
-### Dave and Saul stopped here on 11 Nov 2023.
-
-
-
 # Volume differences under filling
 
 
@@ -243,8 +238,9 @@ def HK_vol_bound(L):
     Given a normalised length L (which is at least 9.93), returns an
     upper bound on the change of volume when filling a slope of that
     normalised length. 
+
     Reference: Hodgson-Kerckhoff 'Shape of DS space', Thm 5.12.
-    Reference: our Theorem 3.11, which is a secant line approx to the above.
+    Reference: Our Theorem 3.14, which is a secant line approx to the above.
     """
     assert L > RIF(9.93)
     z = 1 - (RIF(14.77))/L**2
@@ -264,8 +260,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
     """
     
     if not diff_vol > 0:
-        print("HK_vol_bound_inv error: need positive difference in volumes")
-        raise
+        raise ArithmeticError("HK_vol_bound_inv error: need positive difference in volumes")
     
     L = RIF(9.95)  # the lowest length we can return
     
@@ -288,7 +283,13 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
 # criterion on Casson invariant (second deriv of Alexander polynomial)
 
 
-def Casson_invt(M, verbose):
+def Casson_invt(M, verbose = 3):
+    """
+    Given a one-cusped (snappy) manifold M, return the Casson invariant.
+
+    Reference: Boyer-Lines "Surgery formulae for Casson's invariant..."
+    """
+
     P = M.alexander_polynomial()
     verbose_print(verbose, 10, [P, 'Alexander polynomial'])
     deg = P.degree()/2
@@ -304,12 +305,10 @@ def Casson_invt(M, verbose):
     return A(1)/2
 
 
-
-
 # hyperbolic invariants
 
 
-def is_amphichiral(M, tries=8, verbose=3):
+def is_amphichiral(M, tries = 8, verbose = 3):
     """
     Given an orientable hyperbolic cusped Snappy three-manifold,
     decides if it has an orientation reversing isometry.
@@ -342,19 +341,18 @@ def is_amphichiral(M, tries=8, verbose=3):
 
 def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
     """
-    Given a manifold M (assumed to be one-cusped and enhanced via enhance_manifold), 
-    we wish to update M.exceptions_table.  This is a database where the
-    keys are slopes (here s).  The fields are useful data about
-    exceptional fillings that we don't want to compute twice.  Remark:
-    If we fail to compute an invariant, we don't install anything in
-    the table and just return None.
-    """
-    # convention - no empty fields - aka no placeholders. 
+    Given a SnapPy manifold M (assumed to be one-cusped and enhanced
+    via enhance_manifold), we wish to update M.exceptions_table.  This
+    is a database where the keys are slopes (here s).  The fields are
+    useful data about exceptional fillings that we do not want to
+    compute twice.  
 
+    Remark: If we fail to compute an invariant, we do not install
+    anything in the table - instead we return None.
+    """
     verbose_print(verbose, 12, [M, s, "entering exceptions table", field])
     
     allowed_fields = ["fund_gp", "name", "atoroidal_sfs", "reducible", "toroidal"]
-    # The field "lens" used to be allowed, but it is no more.
     assert field in allowed_fields
     
     if not s in M.exceptions_table:
@@ -434,7 +432,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
         
 def fetch_volume(M, s, tries=8, verbose=4):
     """
-    Given a manifold M (assumed to be one-cusped, enhanced, and 
+    Given a SnapPy manifold M (assumed to be one-cusped, enhanced, and 
     equipped with a good triangulation) and a slope s (assumed to be 
     hyperbolic), fetch the volume. This means: pull the volume from the 
     table if it is there; else, try to compute it, and then store in the 
@@ -459,82 +457,26 @@ def fetch_volume(M, s, tries=8, verbose=4):
             return vol
     if not is_hyp:
         verbose_print(verbose, -1, [M, s, 'verified volume fail after', tries, 'tries'])
-        raise   
-        # verbose_print(verbose, -1, [N, 'positive triangulation fail - putting untrusted volume in the table'])
-        # R = RealIntervalField(10) # downgrade the precision!
-        # M.volumes_table[s] = R(N.volume())
+        raise AssertionError
 
     return M.volumes_table[s]
         
 
-# def is_hyperbolic_filling(M, s, tries, verbose):
-#     """
-#     Given a one-cusped manifold M (assumed hyperbolic and enhanced) and a slope s,
-#     try to determine if M(s) is hyperbolic or exceptional.  Returns
-#     True or False respectively, and returns None if we failed.
-#     """
-    
-#     # TODO: Check for Regina name earlier in the logic!!!
-    
-#     verbose_print(verbose, 12, [M, s, 'entering is_hyperbolic_filling'])
-#     p, q = s
-#     # We don't recompute cusp_invariants because it is slow
-#     # m, l, _ = cusp_invariants(C)
-#     if abs(p*M.mer_hol + q*M.long_hol) > RIF( 6 ): # six-theorem
-#         verbose_print(verbose, 10, [M, s, 'has length', abs(p*M.mer_hol + q*M.long_hol), 'hence the filling is hyperbolic by 6-theorem'])
-#         return True            
-
-#     N = M.copy()
-#     N.dehn_fill(s)
-
-#     for i in range(tries):
-
-#         for j in range(i + 1):
-#             N.randomize()  # Note: the randomized triangulation will stay with us until the next i
-#             is_except, _ = fetch_exceptional_data(M, s, "fund_gp", tries, verbose)
-#             if is_except:
-#                 return False
-            
-#         for j in range(1): # this is not a typo.  :P
-#             if dunfield.is_hyperbolic(N, 2*i + 1, verbose): # because Nathan randomises for us.
-#                 # at this moment we trust the volume so put it in the table?
-#                 return True
-            
-#         if i == 0: # this is trustworthy and expensive.
-#             # Check reducibility and maybe small SFS here, to prevent code from spinning its wheels
-#             is_tor, _ = fetch_exceptional_data(M, s, "toroidal", tries, verbose)
-#             if is_tor: 
-#                 return False
-            
-#     # ok, nothing "easy" worked
-
-#     name = fetch_exceptional_data(M, s, "name", tries, verbose)
-#     if name == None:
-#         # We have failed.  Very sad.
-#         return None
-#     elif name[:3] == 'SFS': # We trust regina_name.
-#         return False
-#     elif "#" in name:
-#         return False
-
-#     # We have failed.  Very sad.
-#     verbose_print(verbose, -1, [name, "Is_hyperbolic_filling failed. Think about how to handle it!"])
-#     return None
-
-    
 # dealing with a pair of slopes
 
 
 def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     """
-    Given a one-cusped manifolds M and N, equipped with slopes s and t,
-    (where we think that both M(s), N(t) are non-hyperbolic), try to  
-    distinguish the fillings. Invariants that we check include (in order):
+    Given a one-cusped SnapPy manifolds M and N, equipped with slopes
+    s and t, (where we think that both M(s), N(t) are non-hyperbolic),
+    try to distinguish the fillings. Invariants that we check are (in
+    order):
+
     1) Homology
     2) Regina names and Seifert invariants
-    2) Irreducibility (via Regina)
-    3) Toroidality (via Regina)
-    4) Homology groups of covers of small degree
+    3) Irreducibility (via Regina)
+    4) Toroidality (via Regina)
+    5) Homology groups of covers of small degree
     """
     verbose_print(verbose, 12, [M, s, N, t, 'entering are_distinguished_exceptionals'])
 
@@ -584,7 +526,8 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
             verbose_print(verbose, 6, [s_name, t_name, "only one is toroidal"])
             return True
     
-    # At this point, both manifolds should be reducible, or both toroidal (or we have failed to identify a SFS).    
+    # At this point, both manifolds should be reducible, or both
+    # toroidal (or we have failed to identify a SFS).    
     # We should probably compare reducible manifolds using their prime decompositions.
 
     # Tests that search for covers are pretty slow, but effective.                    
@@ -596,12 +539,11 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
 
 def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
     """
-    Given cusped manifolds M and N, and slopes s and t, try to prove that
-    M(s) is isometric to N(t).
+    Given cusped SnapPy manifolds M and N, and slopes s and t, try to
+    prove that M(s) is isometric to N(t).
     
     Return True if successful, or None otherwise
-    """
-    
+    """    
     Q = M.copy()
     Q.dehn_fill(s)
     R = N.copy()
@@ -628,9 +570,10 @@ def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
 
 def find_common_hyp_fillings(M, N, tries, verbose):
     """
-    Given one-cusped, enhanced manifolds M and N, compare every systole-short
-    Dehn filling of M to the appropriate volume-short set of fillings of N.
-    Find and return the ones that *might* produce the same 3-manifold.
+    Given one-cusped, enhanced SnapPy manifolds M and N, compare every
+    systole-short Dehn filling of M to the appropriate volume-short
+    set of fillings of N.  Find and return the ones that *might*
+    produce the same 3-manifold.
     
     Warning: This routine is asymmetric in M and N.
     """
@@ -641,12 +584,13 @@ def find_common_hyp_fillings(M, N, tries, verbose):
         reason = (M.name(), 'systole fail', N.name(), None, None, None)
         return [reason]
 
-    # Initialization for N. This includes homologies of meridional and longitudinal fillings.
+    # Initialization for N. This includes homologies of meridional and
+    # longitudinal fillings.
 
     N_vol = fetch_volume(N, (0,0), tries, verbose)
     Q = N.copy()
     Q.dehn_fill(N.m_hom)
-    N_mer_base = ft.order_of_torsion(Q) # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
+    N_mer_base = ft.order_of_torsion(Q)  # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
     Q.dehn_fill(N.l_hom)
     N_long_homology = str(Q.homology())
     N_long_order = ft.order_of_torsion(Q)
@@ -655,7 +599,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     # Searching through homology hashes for M 
     common_uns = []
     for hom_hash in M.slopes_hyp:
-        s0 = list(M.slopes_hyp[hom_hash])[0]    # a representative slope 
+        s0 = list(M.slopes_hyp[hom_hash])[0]  # a representative slope 
         Q = M.copy()
         Q.dehn_fill(s0)
         tor_order = ft.order_of_torsion(Q)
@@ -683,25 +627,28 @@ def find_common_hyp_fillings(M, N, tries, verbose):
                 verbose_print(verbose, 2, [reason])
                 common_uns.append(reason)
                     
-        # Compare each fillings M(s) for s in M.slopes_hyp[hom_hash] to a set of fillings of N.
-        # Every member of this set should have intersection number p with N.l_hom.
         p = int(tor_order / N_mer_base)  # This will be an integer once we've landed here
         point = (p*N.m_hom[0], p*N.m_hom[1])
         verbose_print(verbose, 25, ['p', p])
         verbose_print(verbose, 25, ['point on Dehn surgery line', point])
+
+        # Compare each filling M(s) for s in M.slopes_hyp[hom_hash] to a set of fillings of N.
+        # Every member of this set should have intersection number p with N.l_hom.
         for s in M.slopes_hyp[hom_hash]:
             # find coords of slope s in original framing
             s_orig = gt.preferred_rep((gt.alg_int(s, M.longitude), gt.alg_int(M.meridian, s))) 
             M_s_vol = fetch_volume(M, s, tries, verbose)
+
             if M_s_vol > N_vol:
                 verbose_print(verbose, 12, [M, s, M_s_vol, 'volume too high for common fillings with', N, N_vol])
                 continue
-            if not M_s_vol < N_vol:
+            if M_s_vol.overlaps(N_vol):
                 reason = (M.name(), s_orig, N.name(), None, M_s_vol, N_vol)
                 common_uns.append(reason)
                 verbose_print(verbose, 12, [M, s, M_s_vol, 'cannot distinguish volume from', N, N_vol])
                 continue
-            # At this point, we have M_s_vol < N_vol
+            assert M_s_vol < N_vol
+
             N_low_vol_slopes = find_low_volume_slopes(N, point, hom_gp, M_s_vol, tries, verbose)
             if len(N_low_vol_slopes) > 0:
                 verbose_print(verbose, 6, [M.name(), s, hom_hash, N.name(), N_low_vol_slopes, 'low volume slopes'])
@@ -717,7 +664,8 @@ def find_common_hyp_fillings(M, N, tries, verbose):
                 # find coordinates of t in original framings
                 t_orig = gt.preferred_rep((gt.alg_int(t, N.longitude), gt.alg_int(N.meridian, t)))
                 
-                # Now that we have tried and failed to distinguish, try to prove tha they are the same
+                # Now that we have tried and failed to distinguish,
+                # try to prove that they are the same
                 if are_isometric_fillings(M, s, N, t, tries, verbose):
                     reason = (M.name(), s_orig, N.name(), t_orig, M_s_vol, 'isometric')
                 else:
@@ -730,15 +678,17 @@ def find_common_hyp_fillings(M, N, tries, verbose):
 
 def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
     """
-    Given one-cusped manifolds M and N, we search for common Dehn fillings,
-    that is, pairs of slopes s,t such that M(s) might be homeomorphic to N(t).
+    Given one-cusped SnapPy manifolds M and N, we search for common
+    Dehn fillings, that is, pairs of slopes s,t such that M(s) might
+    be homeomorphic to N(t).
     
     Return a list of tuples - (M, s, N, t, 'reason') where M(s) and N(t)
     are possibly the same manifold. The output should contain the list of
     potential pairs, but might have some fluff (non-distinguished pairs).
     
-    If ExcludeS3==True, then the program does not report an S^3 common filling 
-    (presumably because we already know M and N to be knot complements).
+    If ExcludeS3 == True, then the program does not report an S^3
+    common filling (presumably because we already know M and N to be
+    knot complements).
     
     This routine is designed for the situation when M != N. If M == N, use 
     check_cosmetic instead.
@@ -770,16 +720,12 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
         verbose_print(verbose, 3, [M.name(), N.name(), 'are isometric'])    
         return [(M.name(), None, N.name(), None, 'isometric parent manifolds')]
 
-
     # Step two - compute the list of exceptional fillings of both M and N.
 
     for P in mfds:
         enhance_manifold(P, tries, verbose)  
         find_exceptionals(P, tries, verbose)
-    
-    # TODO: remember the initial framings of M and N that we were handed, and 
-    # report shared fillings in initial framing.
-
+        
     # Step three: check for (non-hyperbolic) homeomorphic pairs in 
     # M.slopes_non_hyp and N.slopes_non_hyp.
     # Note that slopes_bad automatically gets recorded and reported.
@@ -850,10 +796,13 @@ def find_common_fillings(M, N, ExcludeS3 = False, tries=8, verbose=4):
 
 
 def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=4):
+    ### TODO: We really should return the cosmetic slopes in the
+    ### original, user-specified, framing.  Currently we return them
+    ### in the geometric (aka shortest) framing.
     """
-    Given a one-cusped manifold M we equip it with a shortest framing
-    and then return a list of tuples - (name, s, t, 'reason') where s
-    and t are possibly a cosmetic pair.
+    Given a one-cusped SnapPy manifold M we equip it with a shortest
+    framing and then return a list of tuples - (name, s, t, 'reason')
+    where s and t are possibly a cosmetic pair.
     
     If use_BoyerLines==True, then we apply the Boyer-Lines theorem:
     the Casson invariant obstructs purely cosmetic surgeries.
@@ -862,7 +811,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     surgeries. 
 
     If check_chiral==True, then we check for chirally cosmetic surgeries
-    as well as purely cosmetic ones. 
+    as well as purely cosmetic ones.
     """
 
     verbose_print(verbose, 12, [M, "entering check_cosmetic"])
@@ -874,7 +823,8 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     if not M.num_cusps() == 1:
         return [(M.name(), None, None, 'wrong number of cusps')]
         
-    # If H_1(M) = Z, we can apply the Boyer-Lines criterion to rule out cosmetic surgeries
+    # If H_1(M) == ZZ, we can apply the Boyer-Lines criterion to rule
+    # out purely cosmetic surgeries
 
     if use_BoyerLines and not check_chiral:
         h = M.homology()
@@ -904,7 +854,6 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     enhance_manifold(M, tries, verbose)  
     find_exceptionals(M, tries, verbose)
 
-    
     # Step two: check for (non-hyperbolic) cosmetic pairs in slopes_non_hyp.
     # Note that slopes_bad automatically gets recorded and reported.
 
@@ -925,7 +874,6 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
 
             verbose_print(verbose, 7, [M.name(), "comparing filling", s, "to", t])
 
-            # Most of the work is now in this routine
             if are_distinguished_exceptionals(M, s, M, t, tries=tries, verbose=verbose):
                 continue
 
@@ -950,8 +898,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     continue
             
             verbose_print(verbose, 2, [reason])
-            bad_uns.append(reason)
-    
+            bad_uns.append(reason)    
 
     # Step three: Get the systole of M. Find the systole-short hyperbolic slopes,
     # and split them by homology.
@@ -979,7 +926,6 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         if verbose > 25:
             print('hom_hash, max_vol[hom_hash]', hom_hash, vol_max)
             print('l_max_normalized', HK_vol_bound_inv(M.volume() - vol_max))
-            # print('normalized length endpoints', (l_max/M.norm_fac).endpoints(),)
             print('norm_fac', M.norm_fac.endpoints())
 
         hom_gp = hom_hash
@@ -989,12 +935,12 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
         
         point = (p*M.m_hom[0], p*M.m_hom[1])
         out = find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose)
-        if len(out) > 0:      # This should never fail -- see next assert
-            slopes_low_volume[hom_hash] = out
-        
-        # Sanity check: M.slopes_hyp[hom_hash] should be a subset of slopes_low_volume[hom_hash]
-        for t in M.slopes_hyp[hom_hash]:
-            assert t in slopes_low_volume[hom_hash]
+
+        # This must be non-empty
+        assert len(out) > 0  
+        slopes_low_volume[hom_hash] = out
+        # and must have M.slopes_hyp[hom_hash] as a subset
+        assert (M.slopes_hyp[hom_hash]).issubset(slopes_low_volume[hom_hash])
 
     num_low_volume = sum(len(slopes_low_volume[hash]) for hash in slopes_low_volume)
     verbose_print(verbose, 3, [M.name(), num_low_volume, 'low volume slopes found'])
@@ -1043,19 +989,23 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     verbose_print(verbose, 1, [M.name(), 'non-distinguished pairs', bad_uns])
     
     return bad_uns
-    
+
+### Dave and Saul here 2023-12-12
+
 
 def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, verbose=4, report=20):
     """
-    Given a cusped SnapPy manifold M, and a list called 'manifolds', check for common
-    Dehn fillings of M and one of the manifolds in the list.
+    Given a cusped SnapPy manifold M, and a list called 'manifolds',
+    check for common Dehn fillings of M and one of the manifolds in
+    the list.
     
-    Returns a list of tuples containing the slopes that give (confirmed or suspected) common fillings.
+    Returns a list of tuples containing the slopes that give
+    (confirmed or suspected) common fillings.
     
-    If ExcludeS3==True, then the program does not report an S^3 common filling 
-    (presumably because the user already knows M and N to be knot complements).
+    If ExcludeS3==True, then the program does not report an S^3 common
+    filling (presumably because the user already knows M and N to be
+    knot complements).
     """
-    
     verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
     
     M = snappy.Manifold(M)
