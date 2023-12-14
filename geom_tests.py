@@ -35,12 +35,40 @@ from sage.rings.real_mpfi import RIF
 
 # The following test is non-rigorous. It is designed to produce a flag that
 # none of the rigorous tests have succeeded. We should not rely on it beyond that.
-def is_exceptional_due_to_volume(M, verbose):
+def is_exceptional_due_to_volume(M, verbose = 3):
     verbose_print(verbose, 12, [M.name(), "entering is_exceptional_due_to_volume"])
     if M.volume() < 0.9:  # smaller than volume of Weeks manifold
         verbose_print(verbose, -1, [M.name(), "has volume too small...(NON-RIGOROUS)"])
         verbose_print(verbose, 6, [M.fundamental_group()])
         return True
+
+def is_likely_hyperbolic(M, verbose = 3):
+    """
+    Given a SnapPy manifold M (or name) does a quick and dirty test to
+    see if M is probably hyperbolic.  If it is, return (True, None).
+    If it isn't, return (False, reason).
+    """    
+    M = snappy.Manifold(M)    
+    sol_type = M.solution_type()
+    
+    if sol_type == 'all tetrahedra positively oriented' or sol_type == 'contains negatively oriented tetrahedra':
+        return (True, None)
+
+    # So M is probably not a hyperbolic manifold. Try to identify it.
+        
+    kind, found_name = dunfield.identify_with_bdy_from_isosig(M)
+    if kind != 'unknown':
+        verbose_print(verbose, 2, [M.name(), kind, found_name])
+        reason = found_name
+    elif is_exceptional_due_to_volume(M, verbose):   
+        verbose_print(verbose, 2, [M.name(), 'NON-RIGOROUS TEST says volume is too small']) 
+        reason = 'small volume'
+    else:
+        verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons.'])
+        reason = 'bad solution type for unclear reasons'
+
+    return (False, reason)
+
 
 def is_knot_manifold(M):
     """
