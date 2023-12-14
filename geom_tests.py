@@ -30,9 +30,17 @@ from sage.rings.real_mpfr import RR
 from sage.rings.real_mpfi import RIF
 
 
+# sanity checks
 
-# sanity check
 
+# The following test is non-rigorous. It is designed to produce a flag that
+# none of the rigorous tests have succeeded. We should not rely on it beyond that.
+def is_exceptional_due_to_volume(M, verbose):
+    verbose_print(verbose, 12, [M.name(), "entering is_exceptional_due_to_volume"])
+    if M.volume() < 0.9:  # smaller than volume of Weeks manifold
+        verbose_print(verbose, -1, [M.name(), "has volume too small...(NON-RIGOROUS)"])
+        verbose_print(verbose, 6, [M.fundamental_group()])
+        return True
 
 def is_knot_manifold(M):
     """
@@ -103,14 +111,12 @@ def sanity_check_cusped(M, tries=10, verbose=3):
             return (None, 'toroidal mfd: ' + str(out[1]))
         # Anything else is confusing
         if is_exceptional_due_to_volume(M, verbose):   
-            verbose_print(verbose, 2, [name, 'NON-RIGOROUS TEST says volume is too small']) 
-            return (None, 'small volume')
-        verbose_print(verbose, 2, [M, 'bad solution type for unclear reasons...'])
-        return (None, 'bad solution type - strange!')
+            verbose_print(verbose, -1, [name, 'NON-RIGOROUS TEST says volume is too small']) 
+            return (None, "volume too small")
+        verbose_print(verbose, -1, [M, 'bad solution type for unclear reasons...'])
+        return (None, "bad solution type")
 
-
-
-
+    
 # cusp utilities
 
 

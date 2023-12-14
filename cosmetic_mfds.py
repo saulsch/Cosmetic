@@ -2,9 +2,13 @@
 # cosmetic_mfds.py
 #
 # This program does the following top-level tasks:
-# 1. Check a given one-cusped hyperbolic three-manifold for cosmetic fillings
-# 2. Check a given pair of cusped hyperbolic manifolds for common fillings
-# Add examples of usage.
+
+# 1. Check a given one-cusped hyperbolic three-manifold for cosmetic
+# fillings.
+# 2. Check a given pair of cusped hyperbolic manifolds for common
+# fillings.
+
+# TODO: Add examples of usage.
 
 
 # Imports 
@@ -316,7 +320,7 @@ def is_amphichiral(M, tries = 8, verbose = 3):
     Returns a Boolean and (if amphichiral) an orientation-reversing
     change of basis matrix for the cusp.
     """
-    verbose_print(verbose, 12, [M, 'entering is_amphichiral'])
+    verbose_print(verbose, 12, [M, "entering is_amphichiral"])
 
     assert M.is_orientable()
     assert M.num_cusps() > 0
@@ -990,21 +994,20 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     
     return bad_uns
 
-### Dave and Saul here 2023-12-12
-
 
 def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, verbose=4, report=20):
     """
-    Given a cusped SnapPy manifold M, and a list called 'manifolds',
-    check for common Dehn fillings of M and one of the manifolds in
-    the list.
+    Given a cusped SnapPy manifold M (or name), and a list 'manifolds'
+    of SnapPy manifolds (or names), check for common Dehn fillings of
+    M and one of the manifolds in the list.
     
     Returns a list of tuples containing the slopes that give
     (confirmed or suspected) common fillings.
     
-    If ExcludeS3==True, then the program does not report an S^3 common
-    filling (presumably because the user already knows M and N to be
-    knot complements).
+    If ExcludeS3 == True, then the program does not report an S^3
+    common filling (presumably because the user already knows M and N 
+    are knot complements).
+
     """
     verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
     
@@ -1026,10 +1029,17 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
     Checks a list of manifolds for purely cosmetic surgeries.
     
     Returns two lists of pairs of slopes that the program could not distinguish:
-    * amphichiral_uns is a list of undistinguished amphichiral pairs (M,s) and (M,t), where s,t
-        are exchanged by an orientation-reversing symmetry of M, and M(s) looks similar to (M,t)
-    * bad_uns is a list of pairs (M,s) and (M,t), where s,t are *not* exchanged by an orientation-
-        reversing symmetry of M, and (M,s) looks similar to (M,t)
+
+    * amphichiral_uns is a list of undistinguished amphichiral pairs
+        (M, s) and (M, t) where s and t are exchanged by an
+        orientation-reversing symmetry of M and where M(s) was not
+        distinguished from M(t).
+
+    * bad_uns is a list of pairs (M, s) and (M, t) where s and t are
+        _not_ exchanged by an orientation-reversing symmetry of M
+        where M(s) was not distinguished from M(t).  The cosmetic
+        surgery conjecture predicts that the list bad_uns should be
+        empty.
     """
     
     verbose_print(verbose, 12, ["entering check_mfds"])
@@ -1066,21 +1076,18 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
 
 def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     """
-    Checks a list of manifolds for both purely and chirally cosmetic surgeries.
+    Checks a list of SnapPy manifolds (or names) for both purely and
+    chirally cosmetic surgeries.
     
-    Returns a list of amphichiral manifolds (which are not checked) and a list of pairs 
-    of slopes (M,s) and (M,t), where M is chiral, such that the program could not 
-    distinguish M(s) from M(t).
+    Returns a list of amphichiral manifolds (which are not checked)
+    and a list of pairs of slopes (M, s) and (M, t), where M is chiral,
+    such that the program could not distinguish M(s) from M(t).
     
-    This routine is designed to be used for chiral parent manifolds.
-    Amphichiral parent manifolds are discarded, because they have infinitely
-    many pairs of chirally cosmetic surgeries, of the form M(s) and M(-s).
-    
-    We note that if M is amphichiral, and M(s),M(t) are a chirally cosmetic pair,
-    then M(s), M(-t) will be a purely cosmetic pair. Thus any "exotic" chirally cosmetic
-    pair of slopes can still be found by running M through check_mfds(...).
-    """
-    
+    We note that if M is amphichiral, and M(s), M(t) is a chirally
+    cosmetic pair, then M(s), M(-t) will be a purely cosmetic
+    pair. Thus any "exotic" chirally cosmetic pair of slopes can still
+    be found by running M through check_mfds(...).
+    """    
     verbose_print(verbose, 12, ["entering check_mfds_chiral"])
     bad_uns = []
     amphichiral_uns = []
@@ -1096,7 +1103,7 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
             if kind != 'unknown':
                 verbose_print(verbose, 2, [M.name(), kind, found_name])
                 bad_uns.append((M.name(), None, None, found_name))
-            elif is_exceptional_due_to_volume(M, verbose):   
+            elif gt.is_exceptional_due_to_volume(M, verbose):   
                 verbose_print(verbose, 2, [M.name(), 'NON-RIGOROUS TEST says volume is too small']) 
                 bad_uns.append((M.name(), None, None, 'small volume'))
             else:
@@ -1120,17 +1127,18 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
 
 def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
     """
-    Given a list of tuples of the form (M,s,t) where M is a manifold (or a name) and s,t
-    are slopes, checks to see whether M(s) can be distinguished from M(t) using
-    geodesic length spectra up to a large cutoff. 
+    Given a list of tuples of the form (M, s, t) where M is a manifold
+    (or a name) and s and t are slopes, checks whether M(s) can be
+    distinguished from M(t) using geodesic length spectra up to
+    'cutoff'.  This routine is not yet rigorous.
     
-    This program tries to distinguish M(s) from M(t) as unoriented manifolds.
+    This program tries to distinguish M(s) from M(t) as unoriented
+    manifolds.
     
-    We presume that M and M(s), M(t) are all hyperbolic.
+    We presume that M, M(s), and M(t) are all hyperbolic.
     
     Returns a list of tuples that could not be distinguished.
     """
-    
     verbose_print(verbose, 12, ["entering check_using_lengths"])
     bad_uns = []
     for n, line in enumerate(slopelist):
@@ -1152,5 +1160,3 @@ def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
             verbose_print(verbose, 0, ['report', n])
             verbose_print(verbose, 0, [bad_uns])
     return bad_uns
-           
-            
