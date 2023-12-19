@@ -1107,13 +1107,18 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
     Example of usage: 
 
     sage: import snappy
-    sage: L = snappy.AlternatingKnotExteriors()
-    sage: M = snappy.Manifold("4_1")
     sage: import cosmetic_mfds as mfds
-    sage: mfds.check_mfds(L[0:5])
+    sage: L = snappy.OrientableCuspedCensus(num_cusps=1)
+    sage: mfds.check_mfds(L[0:200], verbose=5)
+    
+	This returns the following output:
 
-    Dave and Saul got here 2023-12-14
-
+	([('m135', (1, 3), (3, 1), 'Not distinguished by hyperbolic invariants or covers'),
+      ('m207', (0, 1), (1, 0), 'L(3,1) # L(3,1)', 'L(3,1) # L(3,1)')],
+     [('m172', (0, 1), (1, 1), 'L(49,18)', 'L(49,18)')])
+     
+    Note that none of the above is a purely cosmetic filling.
+    Compare Theorem 4.4 (and its proof) in "Excluding cosmetic surgeries on hyperbolic 3-manifolds".
     """
     
     verbose_print(verbose, 12, ["entering check_mfds"])
@@ -1167,6 +1172,18 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     cosmetic pair, then M(s), M(-t) will be a purely cosmetic
     pair. Thus any "exotic" chirally cosmetic pair of slopes should
     have already been found by running M through check_mfds(...).
+    
+    Example of usage:
+    
+    sage: import snappy
+	sage: import cosmetic_mfds as mfds
+	sage: L = snappy.OrientableCuspedCensus(num_cusps=1)
+	sage: mfds.check_mfds_chiral(L[0:200], verbose=5)
+    
+	This returns the following output:
+
+    (['m003', 'm004', 'm135', 'm136', 'm206', 'm207'],
+     [('m172', (0, 1), (1, 1), 'L(49,18)', 'L(49,18)')])    
     """    
     verbose_print(verbose, 12, ["entering check_mfds_chiral"])
     bad_uns = []
