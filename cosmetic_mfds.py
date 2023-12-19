@@ -1,8 +1,8 @@
 #
 # cosmetic_mfds.py
 #
-# This program does the following top-level tasks:
 
+# This program does the following top-level tasks:
 # 1. Check a given one-cusped hyperbolic three-manifold for cosmetic
 # fillings.
 # 2. Check a given pair of cusped hyperbolic manifolds for common
@@ -817,7 +817,6 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     If check_chiral==True, then we check for chirally cosmetic surgeries
     as well as purely cosmetic ones.
     """
-
     verbose_print(verbose, 12, [M, "entering check_cosmetic"])
     
     # Be liberal in what you accept
@@ -1011,6 +1010,20 @@ def check_using_lengths(slopelist, cutoff=3.1, verbose=4, report=20):
     We presume that M, M(s), and M(t) are all hyperbolic.
     
     Returns a list of tuples that could not be distinguished.
+
+    Example of usage
+
+    sage: import cosmetic_mfds as mfds
+    sage: out = mfds.check_mfds(["m135"], verbose=5)
+    
+    The output tells us that the slopes (1, 3) and (3, 1) are 'not
+    distinguished by hyperbolic invariants or covers'.  So we now use
+    the (non-rigorous) test check_using_lengths.
+
+    sage: mfds.check_using_lengths([("m135", (1, 3), (3, 1))], verbose = 12)
+
+    The returned value is the empty list, because the length spectrum
+    (computed up to length 1.8) distinguishes the two fillings.
     """
     verbose_print(verbose, 12, ["entering check_using_lengths"])
     bad_uns = []
@@ -1071,7 +1084,7 @@ def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, ver
     figure-eight knot) and 5a1 (the 5_2 knot).  The program fails to
     show that 5a1(8, 1) is not isometric to a filling of the
     figure-eight knot.  See Theorem 5.1 (and its proof) in our paper
-    "Excluding cosmetic surgeries on hyperbolic 3-manifolds".
+    'Excluding cosmetic surgeries on hyperbolic 3-manifolds'.
     """
     verbose_print(verbose, 12, ["entering check_list_for_common_fillings"])
     
@@ -1089,7 +1102,8 @@ def check_list_for_common_fillings(M, manifolds, ExcludeS3 = False, tries=7, ver
 
 
 def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
-    """Checks a list of manifolds for purely cosmetic surgeries.
+    """
+    Checks a list of manifolds for purely cosmetic surgeries.
     
     Returns two lists of pairs of slopes that the program could not distinguish:
 
@@ -1111,9 +1125,9 @@ def check_mfds(manifolds, use_BoyerLines=True, tries=7, verbose=4, report=20):
     sage: L = snappy.OrientableCuspedCensus(num_cusps=1)
     sage: mfds.check_mfds(L[0:200], verbose=5)
     
-	This returns the following output:
+    This returns the following output:
 
-	([('m135', (1, 3), (3, 1), 'Not distinguished by hyperbolic invariants or covers'),
+    ([('m135', (1, 3), (3, 1), 'Not distinguished by hyperbolic invariants or covers'),
       ('m207', (0, 1), (1, 0), 'L(3,1) # L(3,1)', 'L(3,1) # L(3,1)')],
      [('m172', (0, 1), (1, 1), 'L(49,18)', 'L(49,18)')])
      
@@ -1176,11 +1190,11 @@ def check_mfds_chiral(manifolds, tries=7, verbose=4, report=20):
     Example of usage:
     
     sage: import snappy
-	sage: import cosmetic_mfds as mfds
-	sage: L = snappy.OrientableCuspedCensus(num_cusps=1)
-	sage: mfds.check_mfds_chiral(L[0:200], verbose=5)
+    sage: import cosmetic_mfds as mfds
+    sage: L = snappy.OrientableCuspedCensus(num_cusps=1)
+    sage: mfds.check_mfds_chiral(L[0:200], verbose=5)
     
-	This returns the following output:
+    This returns the following output:
 
     (['m003', 'm004', 'm135', 'm136', 'm206', 'm207'],
      [('m172', (0, 1), (1, 1), 'L(49,18)', 'L(49,18)')])    
