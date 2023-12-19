@@ -28,6 +28,7 @@ from string import ascii_letters
 # IO
 
 
+# To be deleted:
 def get_knots_from_file(filename):
     f = open(filename, "r")
     data = f.readlines()
@@ -65,24 +66,38 @@ def get_DTs_from_regina(filename):
 def link_from_manifold(M, verbose = 3):
     """
     Given a snappy manifold M, try to extract the associated link K
-    Return K if successful, or None otherwise.
-    Part of the point of the function is error trapping: snappy crashes
-    if no link is found, but we do not want to crash.
+    Return K if successful, or None otherwise.  Part of the point of
+    the function is error trapping: snappy crashes if no link is
+    found, but we do not want to crash.
     """
-    K = None
     try:
         K = M.link()  # get the underlying knot or link
-    except Exception as e:
-        names = M.identify()
-        for name in names:
-            try:
-                K = name.link()
-                break
-            except Exception as f:
-                pass
+        return K
+    except ValueError:
+        pass
+    verbose_print(verbose, 3, [M.name(), 'could not get link via M.link()'])
+    
+    names = M.identify()
+    for name in names:
+        try:
+            K = name.link()
+            return K
+        except ValueError:
+            pass
+    verbose_print(verbose, 3, [M.name(), 'could not get link via M.identity()'])
+
+    ### FIX - TODO - HERE - BROKEN - 2023-12-19
+    
+    try:
+        K = M.exterior_to_link()
+        return K
+    except:
+        pass
+            
     if K == None:
         verbose_print(verbose, 3, [M.name(), 'could not get link'])
-    # Perhaps try to retriangulate, using tries
+
+    # TODO: Perhaps try to retriangulate, using tries
     return K
 
 
@@ -91,8 +106,7 @@ def name_manifold_and_link(in_obj, verbose=3):
     Given in_obj, which is either a snappy Manifold, a spherogram Link, or
     a string containing a name, return all three objects: the name,
     the manifold, and the link.
-    """
-        
+    """        
     if type(in_obj) is snappy.Manifold:
         M = in_obj
         name = M.name()
@@ -367,29 +381,28 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
     '''
     verbose_print(verbose, 12, [M.name(), s, 'entering check_knot_cosmetic_slope'])
 
-    name = M.name()
     sn = (s[0], -s[1])
     # if s and sn are parallel, skip
     if gt.alg_int(s, sn) == 0:
-        verbose_print(verbose, 12, [name, s, sn, 'are parallel'])
+        verbose_print(verbose, 12, [M.name(), s, sn, 'are parallel'])
         return None
 
     s_hyp = gt.is_hyperbolic_filling(M, s, m, l, tries, verbose)
     sn_hyp = gt.is_hyperbolic_filling(M, sn, m, l, tries, verbose)
 
     if s_hyp == None:
-        verbose_print(verbose, 6, [name, s, 'could not determine type'])
+        verbose_print(verbose, 6, [M.name(), s, 'could not determine type'])
     if sn_hyp == None:
-        verbose_print(verbose, 6, [name, sn, 'could not determine type'])
+        verbose_print(verbose, 6, [M.name(), sn, 'could not determine type'])
     if s_hyp == None or sn_hyp == None:
-        verbose_print(verbose, 6, [name, s, sn, 'one of them is not recognized as hyp or except'])
-        return (name, s, sn, 'one of them is not recognized as hyp or except')
+        verbose_print(verbose, 6, [M.name(), s, sn, 'one of them is not recognized as hyp or except'])
+        return (M.name(), s, sn, 'one of them is not recognized as hyp or except')
 
     if (s_hyp and not sn_hyp) or (not s_hyp and sn_hyp):
-        verbose_print(verbose, 6, [name, s, sn, 'only one is hyperbolic'])
+        verbose_print(verbose, 6, [M.name(), s, sn, 'only one is hyperbolic'])
         return None
     elif (s_hyp and sn_hyp):
-        verbose_print(verbose, 6, [name, s, sn, 'both hyperbolic'])
+        verbose_print(verbose, 6, [M.name(), s, sn, 'both hyperbolic'])
         for i in range(tries):
             M = snappy.Manifold(M.triangulation_isosig())
             # Why do we replace M here??? 
@@ -397,12 +410,12 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             if distinguished and rigorous:
                 return None
             if distinguished and not rigorous:
-                return (name, s, sn, 'seem to have different length spectra')
-        return (name, s, sn, 'complex_vol_fail')
+                return (M.name(), s, sn, 'seem to have different length spectra')
+        return (M.name(), s, sn, 'complex_vol_fail')
     else:
         assert( not s_hyp and not sn_hyp ) 
         if not( gt.preferred_rep(s) == (1,1) or gt.preferred_rep(s) == (1,-1) ):
-            verbose_print(verbose, 6, [name, s, sn, 'exceptionals distinguished by Ravelomanana'])
+            verbose_print(verbose, 6, [M.name(), s, sn, 'exceptionals distinguished by Ravelomanana'])
             return None
         else:
             P = M.copy()
@@ -412,17 +425,15 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
             out = rt.torus_decomp_wrapper(P, tries, verbose)
             outn = rt.torus_decomp_wrapper(Pn, tries, verbose)
             if out[0] != outn[0]:
-                verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
+                verbose_print(verbose, 2, [M.name(), s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
             elif not out[0] or not outn[0]:
                 # At least one of the fillings is atoroidal
-                verbose_print(verbose, 2, [name, s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
+                verbose_print(verbose, 2, [M.name(), s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
                 return None
             else:
-                verbose_print(verbose, 0, [name, s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
-                return (name, s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
-
-
+                verbose_print(verbose, 0, [M.name(), s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
+                return (M.name(), s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
 
 
 def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
