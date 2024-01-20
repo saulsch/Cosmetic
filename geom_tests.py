@@ -598,7 +598,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if rt.is_reducible_wrapper(N, tries, verbose)[0]:
                 return False 
             name = dunfield.regina_name(N)
-            if name[:3] == 'SFS': # We trust the regina_name.
+            if name != None and name[:3] == 'SFS': # We trust the regina_name.
                 return False
     return None
 
