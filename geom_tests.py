@@ -590,7 +590,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
                 return False
         for j in range(1): # this is not a typo,
             # because Nathan iterates and randomizes for us
-            if dunfield.is_hyperbolic(N, i+1, verbose): 
+            if dunfield.is_hyperbolic(N, i+2, verbose): 
                 return True
         if i > 0: # gosh, this is a tricky one... so
             if rt.is_toroidal_wrapper(N, verbose)[0]:
