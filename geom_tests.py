@@ -585,8 +585,9 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
         for j in range(i+1):
             if i > 0:
                 N.randomize()
-            is_except, _ = ft.is_exceptional_due_to_fundamental_group(N, 3, verbose)
+            is_except, reason = ft.is_exceptional_due_to_fundamental_group(N, 3, verbose)
             if is_except:
+                verbose_print(verbose, 5, [N, "Is exceptional due to group,", reason])
                 return False
         for j in range(1): # this is not a typo,
             # because Nathan iterates and randomizes for us
