@@ -59,8 +59,19 @@ def is_toroidal_wrapper(M, verbose=3):
     Returns a Boolean and a list of two pieces (not necessarily minimal).
     """    
     verbose_print(verbose, 12, [M, 'entering is_toroidal_wrapper'])
-    N = M.filled_triangulation() # this is harmless for a cusped manifold
-    T = regina.Triangulation3(N) 
+    # We used to do this, but it is slow:
+    # N = M.filled_triangulation() # this is harmless for a cusped manifold
+    # T = regina.Triangulation3(N)
+    if set(M.cusp_info('complete?')) == {False}: # M is closed
+        verbose_print(verbose, 15, [M, 'is closed, generating isosigs'])
+        isosigs = dunfield.closed_isosigs(M, tries = 25, max_tets = 50)
+        if isosigs == []:
+            return (None, None)
+        verbose_print(verbose, 15, [M, isosigs[0]])
+        T = dunfield.to_regina(isosigs[0])
+    else:
+        verbose_print(verbose, 15, [M, 'has boundary/cusp, passing straight to regina'])
+        T = regina.Triangulation3(M) 
     T.simplifyToLocalMinimum() # this makes it more likely to be zero-efficient
     out = dunfield.is_toroidal(T) # returns a boolean and the JSJ decomposition (if true)
     verbose_print(verbose, 6, [M, out, 'from is_toroidal_wrapper'])
