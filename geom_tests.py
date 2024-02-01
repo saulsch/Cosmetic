@@ -593,9 +593,9 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if dunfield.is_hyperbolic(N, i+2, verbose): 
                 return True
         if i > 0: # gosh, this is a tricky one... so
-            if rt.is_toroidal_wrapper(N, verbose)[0]:
-                return False 
             if rt.is_reducible_wrapper(N, tries, verbose)[0]:
+                return False 
+            if rt.is_toroidal_wrapper(N, verbose)[0]:
                 return False 
             name = dunfield.regina_name(N)
             if name != None and name[:3] == 'SFS': # We trust the regina_name.
