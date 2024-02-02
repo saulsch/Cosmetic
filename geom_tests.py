@@ -7,8 +7,7 @@
 # geometric type of the filling. It also contains code for
 # distinguishing two fillings from one another using geometry.  The
 # main organizing principle is: routines land here if they use
-# geometry, and especially if geometrization they are needed for both
-# knot complements and general cusped manifolds.
+# geometry, and especially if geometrization is used. 
 
 import snappy
 import regina
