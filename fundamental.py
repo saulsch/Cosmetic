@@ -4,8 +4,10 @@
 
 # Goal - Recognize and distinguish manifolds using their fundamental group and covers.
 
+import snappy
 from sage.interfaces.gap import gap
 from verbose import verbose_print
+from dunfield import closed_isosigs
 
 
 # Arithmetic
@@ -45,8 +47,8 @@ def get_syls(w):
 
 
 # Standing assumptions: relations have non-zero length.  Also,
-# generators are letters.  (If there are more the 26 generators then
-# something is very wrong in any case...) 
+# generators are letters.  (If there are more than 26 generators then
+# something is very wrong in any case...)
 
 # Strings are not a commutative monoid, so the notation python uses is
 # "wrong"; it uses a + b for concatenation, instead of a*b, and uses
@@ -58,7 +60,7 @@ def get_syls(w):
 
 def is_cyclic_relation(rel):
     # if rel == a^n
-    syls = get_syls(w)
+    syls = get_syls(rel)
     return len(syls) == 1
 
 
@@ -92,13 +94,13 @@ def is_four_syllable_relation(rel):
     # if rel == a^p b^q a^r b^s
 
     syls = get_syls(rel)
+    lets = [syl[0].lower() for syl in syls]
 
     if len(syls) != 4:
         return False
 
-    [P, Q, R, S] = syls
-
-    if P[0].lower() == R[0].lower() and Q[0].lower() == S[0].lower():
+    a, b, c, d = lets
+    if a == c and b == d:
         return True
 
     return False
@@ -114,19 +116,18 @@ def has_cyclic_free_factor(G, verbose):
     # ZZ
     for gen in gens:
         if all(gen not in rel for rel in rels):
-            if verbose > 12: print(str(G), 'has ZZ as free factor')
+            if verbose > 12: print(str(G), "has ZZ as free factor")
             return True
 
     # ZZ/nZZ
     for rel in rels:
         if is_cyclic_relation(rel):
             # get the lucky generator
-            x = rel[0]
-            X = x.swapcase()
+            a = rel[0]
             # and make sure it does not appear elsewhere.
-            rels_other = [relo for relo in rels_other if relo != rel]
-            if all(x not in relo and X not in relo for relo in rels_other):
-                if verbose > 12: print(str(G), 'has finite cyclic free factor')
+            rels_other = [relo for relo in rels if relo != rel]
+            if all(a not in relo and a.swapcase() not in relo for relo in rels_other):
+                if verbose > 12: print(str(G), "has finite cyclic free factor")
                 return True
 
     return False
@@ -153,7 +154,7 @@ def is_free_product(G, verbose):
         # update
         letters_list = [letters for letters in letters_list if not letters.issubset(amoeba)]
     if len(amoeba) < len(gens):
-        if verbose > 12: print(str(G), 'splits as free product')
+        if verbose > 12: print(str(G), "splits as free product")
         return True
     return False
 
@@ -165,7 +166,7 @@ def is_torus_link_group_quotient(G, verbose):
     rels = G.relators()
 
     if len(gens) == 2 and any(is_torus_link_relation(rel) for rel in rels):
-        if verbose > 12: print(str(G), 'has torus link relation')
+        if verbose > 12: print(str(G), "has torus link relation")
         return True
 
     return False
@@ -181,7 +182,7 @@ def is_milley_group_quotient(G, verbose):
     rels = G.relators()
 
     if len(gens) == 2 and any(is_milley_relation(rel) for rel in rels):
-        if verbose > 12: print(str(G), 'has milley relation')
+        if verbose > 12: print(str(G), "has milley relation")
         return True
 
     return False
@@ -198,7 +199,7 @@ def is_four_syllable_group_quotient(G, verbose):
     rels = G.relators()
 
     if len(gens) == 2 and any(is_four_syllable_relation(rel) for rel in rels):
-        if verbose > 12: print(str(G), 'has four_syllable relation')
+        if verbose > 12: print(str(G), "has four_syllable relation")
         return True
 
     return False
@@ -207,36 +208,36 @@ def is_four_syllable_group_quotient(G, verbose):
 # working with manifolds
 
 
-def is_connect_sum(M, verbose):
-    if verbose > 12: print(M, 'entering is_connect_sum')
-    G = M.fundamental_group()
+def is_connect_sum(N, verbose):
+    if verbose > 12: print(N, "entering is_connect_sum")
+    G = N.fundamental_group()
     if len(G.generators()) < 2:
         # cyclic fundamental group, so not a connect sum
         return False
     return is_free_product(G, verbose)
 
-        
-def is_torus_link_filling(M, verbose):
-    if verbose > 12: print(M, 'entering is_torus_link_filling')
-    G = M.fundamental_group()
+
+def is_torus_link_filling(N, verbose):
+    if verbose > 12: print(N, "entering is_torus_link_filling")
+    G = N.fundamental_group()
     return is_torus_link_group_quotient(G, verbose)
 
 
-def is_milley_manifold_filling(M, verbose):
-    if verbose > 12: print(M, 'entering is_milley_manifold_filling')
-    G = M.fundamental_group()
+def is_milley_manifold_filling(N, verbose):
+    if verbose > 12: print(N, "entering is_milley_manifold_filling")
+    G = N.fundamental_group()
     return is_milley_group_quotient(G, verbose)
 
 
-def is_four_syllable_manifold_filling(M, verbose):
-    if verbose > 12: print(M, 'entering is_four_syllable_manifold_filling')
-    G = M.fundamental_group()
+def is_four_syllable_manifold_filling(N, verbose):
+    if verbose > 12: print(N, "entering is_four_syllable_manifold_filling")
+    G = N.fundamental_group()
     return is_four_syllable_group_quotient(G, verbose)
 
 
 def has_lens_space_summand(N, verbose):
-    # We allow sphere and disk bundles over circles as "lens spaces"
-    if verbose > 12: print(N, 'entering has_lens_space_summand')
+    # We allow sphere and disk bundles over circles as 'lens spaces'
+    if verbose > 12: print(N, "entering has_lens_space_summand")
     G = N.fundamental_group()
     return has_cyclic_free_factor(G, verbose)
 
@@ -247,57 +248,52 @@ def has_lens_space_summand(N, verbose):
 def is_exceptional_due_to_fundamental_group(N, tries, verbose):
     # Tries a few sanity checks that imply that N is a non-hyperbolic manifold.
     # Returns a boolean and the type (if any)
-    if verbose > 12: print(N, 'entering is_exceptional_due_to_fundamental_group')
+    if verbose > 12: print(N, "entering is_exceptional_due_to_fundamental_group")
 
-    # almost certainly better to vary over a collection of isosigs.
+    sigs = closed_isosigs(N, tries, max_tets = 50)
     # possibly add the best isosig to the table?
-    for i in range(tries):
-        P = N.filled_triangulation()
+    
+    for sig in sigs:
+        P = snappy.Manifold(sig)
         G = P.fundamental_group()
         rels = G.relators()
         gens = G.generators()
 
         if len(gens) == 0:
-            if verbose > 6: print(N, 'has trivial fundamental group')
-            return (True, 'S3')
+            if verbose > 6: print(N, "has trivial fundamental group")
+            return (True, "S3")
 
         if len(gens) == 1 and len(rels) == 0:
-            if verbose > 6: print(N, 'is S2 x S1')
-            return (True, 'S2 x S1')  ### Warning: expects closed manifold
+            if verbose > 6: print(N, "is S2 x S1")
+            return (True, "S2 x S1")  ### Warning: expects closed manifold
 
         if len(rels) == 0:
-            if verbose > 6: print(N, 'has free fundamental group')
-            return (True, 'Free group')
-
-        if len(rels) == 0:
-            if verbose > 6: print(N, 'has free fundamental group')
-            return (True, 'Free group')
+            if verbose > 6: print(N, "has free fundamental group")
+            return (True, "Free group")
 
         if len(gens) == 1 and len(rels) == 1:
-            if verbose > 6: print(N, 'is a lens space')
-            return (True, 'Lens')
+            if verbose > 6: print(N, "is a lens space")
+            return (True, "Lens")
 
         if has_lens_space_summand(N, verbose):
-            if verbose > 6: print(N, 'has lens space summand')
-            return (True, 'Has lens space summand')
+            if verbose > 6: print(N, "has 'lens space' summand")
+            return (True, "Has 'lens space' summand")
         
         if is_connect_sum(N, verbose):
-            if verbose > 6: print(N, 'is a connect sum')
-            return (True, 'Connect sum')
+            if verbose > 6: print(N, "is a connect sum")
+            return (True, "Connect sum")
 
         if is_torus_link_filling(N, verbose):
-            if verbose > 6: print(N, 'is torus link filling')
-            return (True, 'Torus link filling')
+            if verbose > 6: print(N, "is torus link filling")
+            return (True, "Torus link filling")
 
         if is_milley_manifold_filling(N, verbose):
-            if verbose > 6: print(N, 'is Milley manifold filling')
-            return (True, 'Milley manifold filling')
+            if verbose > 6: print(N, "is Milley manifold filling")
+            return (True, "Milley manifold filling")
 
         if is_four_syllable_manifold_filling(N, verbose):
-            if verbose > 6: print(N, 'is four-syllable manifold')
-            return (True, 'four-syllable manifold')
-
-        N.randomize()
+            if verbose > 6: print(N, "is four-syllable manifold")
+            return (True, "four-syllable manifold")
 
     return (None, None)
 
@@ -395,16 +391,16 @@ def are_distinguished_by_normcore_homology(M, N, tries, verbose):
     M_subs = GM.LowIndexSubgroupsFpGroup(degree_bound + 1)
     N_subs = GN.LowIndexSubgroupsFpGroup(degree_bound + 1)
     
-    '''
-    for deg in range(1, degree_bound + 1):
-        M_subs, M_data = subgroup_abels(GM, deg)
-        N_subs, N_data = subgroup_abels(GN, deg)
-        verbose_print(verbose, 8, [M, deg, M_data])
-        verbose_print(verbose, 8, [N, deg, N_data])
-        if M_data != N_data:
-            verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
-            return True
-    '''
+    
+    # for deg in range(1, degree_bound + 1):
+    #     M_subs, M_data = subgroup_abels(GM, deg)
+    #     N_subs, N_data = subgroup_abels(GN, deg)
+    #     verbose_print(verbose, 8, [M, deg, M_data])
+    #     verbose_print(verbose, 8, [N, deg, N_data])
+    #     if M_data != N_data:
+    #         verbose_print(verbose, 6, [M, N, "cover homology distinguishes in degree", deg])
+    #         return True
+
 
     # Now, compute the homology and index of each normal core (for each degree separately)
     for deg in range(1, degree_bound + 1):
