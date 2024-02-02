@@ -274,7 +274,7 @@ def closed_isosigs(snappy_manifold, tries = 20, max_tets = 50):
                     ans.add((n, T.triangulation_isosig(decorated=False)))
             N.randomize()
 
-    return [iso for n, iso in sorted(ans)]
+    return [iso for (n, iso) in sorted(ans)]
 
 def best_match(matches):
     """
