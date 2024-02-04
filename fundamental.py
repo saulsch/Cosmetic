@@ -138,7 +138,7 @@ def is_free_product(G, verbose):
     rels = G.relators()
 
     # free groups are free products
-    if len(gens) == 0 or len(rels) == 0:
+    if len(rels) == 0:
         return True
 
     syls_list = [get_syls(rel) for rel in rels]
@@ -199,13 +199,13 @@ def is_four_syllable_group_quotient(G, verbose):
     rels = G.relators()
 
     if len(gens) == 2 and any(is_four_syllable_relation(rel) for rel in rels):
-        if verbose > 12: print(str(G), "has four_syllable relation")
+        if verbose > 12: print(str(G), "has four-syllable relation")
         return True
 
     return False
 
 
-# working with manifolds
+# translating from manifolds to groups
 
 
 def is_connect_sum(N, verbose):
@@ -276,8 +276,8 @@ def is_exceptional_due_to_fundamental_group(N, tries, verbose):
             return (True, "Lens")
 
         if has_lens_space_summand(N, verbose):
-            if verbose > 6: print(N, "has 'lens space' summand")
-            return (True, "Has 'lens space' summand")
+            if verbose > 6: print(N, "has lens or S2 x S1 summand")
+            return (True, "Has lens or S2 x S1 summand")
 
         if is_connect_sum(N, verbose):
             if verbose > 6: print(N, "is a connect sum")
