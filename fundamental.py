@@ -134,6 +134,16 @@ def has_cyclic_free_factor(G, verbose):
 
 
 def is_free_product(G, verbose):
+    """
+    Given a snappy group G, returns True if G is obviously a free
+    product.
+    
+    In more detail: Suppose that G = \group{X}{R}. Suppose that X = Y
+    \sqcup Z and R = S \sqcup T are partitions so that (i) Y and Z are
+    non-empty, (ii) the generators of Y do not appear in S, and (iii)
+    the generators of Z do not appear in T.  Then G is isomorphic to
+    the free product of \group{Y}{S} and \group{Z}{T}.
+    """
     gens = G.generators()
     rels = G.relators()
 
@@ -143,6 +153,13 @@ def is_free_product(G, verbose):
 
     syls_list = [get_syls(rel) for rel in rels]
     letters_list = [set(syl[0].lower() for syl in syls) for syls in syls_list]
+
+    # A quick sketch of the algorithm.  Consider the hypergraph where
+    # vertices are generators and we have one hyperedge {a, b, c...}
+    # for each relation (if a^{-1} appears in a relation we instead
+    # place a in the hyperedge).  We now compute the connected
+    # component of the first generator.  If this not all of the
+    # generators, return True.
 
     empty = set()
     amoeba = set([gens[0]])
