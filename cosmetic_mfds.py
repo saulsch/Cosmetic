@@ -956,6 +956,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     # counterexamples and difficult cases to be returned to calling
     # function.
 
+    pairs_checked = 0
     for hom_hash in M.slopes_hyp:
         for s in M.slopes_hyp[hom_hash]:
             for t in slopes_low_volume[hom_hash]:
@@ -965,6 +966,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     continue 
                 if gt.alg_int(s,t) == 0:
                     continue
+                pairs_checked = pairs_checked + 1
                 s_vol = fetch_volume(M, s, tries, verbose)
                 t_vol = fetch_volume(M, t, tries, verbose)
                 verbose_print(verbose, 12, [M, s, t, s_vol, t_vol, 'volumes'])
@@ -989,6 +991,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 
+    verbose_print(verbose, 4, [M.name(), pairs_checked, 'hyperbolic pairs of slopes checked'])
     verbose_print(verbose, 1, [M.name(), 'non-distinguished pairs', bad_uns])
     
     return bad_uns
