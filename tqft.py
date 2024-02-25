@@ -3,6 +3,7 @@
 #
 
 # Goal - implement the TQFT invariant coming from Detcherry.
+# This code is currently unreliable, and should not be used.
 
 import snappy
 
@@ -13,39 +14,40 @@ from sage.arith.misc import gcd
 
 from verbose import verbose_print
 
-# Jones polynomial and related invariants
-
-def Jones_tests(K, name, verbose=3):
-    """
-    Given a snappy link K and its name, compute the Jones polynomial
-    V(K), in the original normalization. Then, return the following data:
-    * V'''(1), the Ichihara-Wu invariant
-    * (V'''(1)+3*V''(1))/-36, the Ito invariant (times four)
-    * V(exp(2*Pi*I/5)), the Detcherry invariant  
-    
-    All of these are relevant to obstructing cosmetic surgeries.
-    """
-    
-    if K == None:
-        return None, None
-        
-    V = K.jones_polynomial(new_convention=False)
-    # The 'new_convention=False' ensures we get classical Jones polynomial
-    verbose_print(verbose, 10, [name, V, "Jones polynomial"])
-    P = V.derivative().derivative() # Second derivative
-    Q = V.derivative().derivative().derivative() # Third derivative
-    
-    Ito = int((Q(1)+3*P(1))/(-36)) # 4 times Ito's invariant v_3
-    IchiharaWu = int(Q(1)) # Ichihara-Wu invariant
-    
-    w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
-    Detcherry = V(w)
-
-    verbose_print(verbose, 10, [IchiharaWu, "Jones third derivative at 1"])
-    verbose_print(verbose, 10, [Ito, "Four times Ito invariant v_3"])
-    verbose_print(verbose, 10, [Detcherry, "Jones poly evaluated at exp(2*Pi*I/5)"])
-    
-    return IchiharaWu, Ito, Detcherry
+# # Jones polynomial and related invariants
+# The routine below can go here, if and when the rest of this code becomes reliable.
+# 
+# def Jones_tests(K, name, verbose=3):
+#     """
+#     Given a snappy link K and its name, compute the Jones polynomial
+#     V(K), in the original normalization. Then, return the following data:
+#     * V'''(1), the Ichihara-Wu invariant
+#     * (V'''(1)+3*V''(1))/-36, the Ito invariant (times four)
+#     * V(exp(2*Pi*I/5)), the Detcherry invariant  
+#     
+#     All of these are relevant to obstructing cosmetic surgeries.
+#     """
+#     
+#     if K == None:
+#         return None, None
+#         
+#     V = K.jones_polynomial(new_convention=False)
+#     # The 'new_convention=False' ensures we get classical Jones polynomial
+#     verbose_print(verbose, 10, [name, V, "Jones polynomial"])
+#     P = V.derivative().derivative() # Second derivative
+#     Q = V.derivative().derivative().derivative() # Third derivative
+#     
+#     Ito = int((Q(1)+3*P(1))/(-36)) # 4 times Ito's invariant v_3
+#     IchiharaWu = int(Q(1)) # Ichihara-Wu invariant
+#     
+#     w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
+#     Detcherry = V(w)
+# 
+#     verbose_print(verbose, 10, [IchiharaWu, "Jones third derivative at 1"])
+#     verbose_print(verbose, 10, [Ito, "Four times Ito invariant v_3"])
+#     verbose_print(verbose, 10, [Detcherry, "Jones poly evaluated at exp(2*Pi*I/5)"])
+#     
+#     return IchiharaWu, Ito, Detcherry
 
 def quantum_int(n):
     """
