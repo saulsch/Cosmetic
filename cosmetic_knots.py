@@ -21,6 +21,8 @@ from sage.functions.other import sqrt, ceil, floor
 from sage.symbolic.constants import pi
 from sage.arith.misc import gcd
 from sage.symbolic.ring import SR
+from sage.rings.number_field.number_field import CyclotomicField
+
 
 from string import ascii_letters
 
@@ -84,7 +86,7 @@ def link_from_manifold(M, verbose = 3):
             return K
         except ValueError:
             pass
-    verbose_print(verbose, 3, [M.name(), 'could not get link via M.identity()'])
+    verbose_print(verbose, 3, [M.name(), 'could not get link via M.identify()'])
 
     ### FIX - TODO - HERE - BROKEN - 2023-12-19
     
