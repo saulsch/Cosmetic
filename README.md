@@ -34,23 +34,17 @@ remainder = cosmetic_knots.prune_using_invariants(Cen)
 ```
 
 With the default settings, this will make a report every 100 knots.
-After dealing with all 1267 knots in the census, "remainder" should
-contain the following names:
+The program can eliminate all 1267 knots in the census, so "remainder" 
+will be empty. Note that computing diagrammatic invariants for some of 
+these knots requires the exterior_to_link() function recently added to SnapPy.
 
+The program can also exclude cosmetic surgeries on these knots
+using hyperbolic methods.
 ```
-['K7_54', 'K8_94', 'K8_96', 'K9_446', 'K9_652', 'K9_659']
-```
-
-These six census knots do not come equipped with diagrams, so are not
-dealt with by diagrammatic invariants.  Instead we can use hyperbolic
-geometry to eliminate these knots.
-
-```
-remainder = cosmetic_knots.check_knots(remainder)
+remainder = cosmetic_knots.check_knots(Cen, slope_method='FPS')
 ```
 
-Now remainder is empty - these six knots have no cosmetic surgery
-pairs.
+Again, the remainder is empty: all 1267 knots have been eliminated.
 
 One can also check manifolds instead of knots.
 
