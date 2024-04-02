@@ -74,7 +74,7 @@ def enhance_manifold(M, tries = 8, verbose = 4):
     
     M.sys = None
     M.slopes_hyp = {}        # Dictionary of hyperbolic systole-short slopes, organized by homology
-        
+    
     return None
 
 # Finding sets of slopes that satisfy various properties
