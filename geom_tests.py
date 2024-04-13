@@ -704,9 +704,8 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
         try:
             # Try ordinary volume first
-            bits_prec = prec
-            Ms_vol = Ms.volume(verified=True, bits_prec = 40)
-            Mt_vol = Mt.volume(verified=True, bits_prec = 40)
+            Ms_vol = Ms.volume(verified=True, bits_prec = prec)
+            Mt_vol = Mt.volume(verified=True, bits_prec = prec)
 
             if Ms_vol < Mt_vol or Mt_vol < Ms_vol:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
@@ -717,11 +716,23 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             verbose_print(verbose, 6, [M, s, t, e])
             
         try:
-            # Now, try complex volume, ie, Vol + i*CS
+            # now try complex volume
             Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
             Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-
-            if not Ms_cpx_vol.overlaps(Mt_cpx_vol):  # bounding boxes are disjoint
+            diff = Ms_cpx_vol - Mt_cpx_vol
+            # since we are here, the real part of diff is basically zero.
+            # We check that:
+            RIF = diff.real().parent()
+            eps = RIF(10**-(prec/8)) # starts at 10 and doubles each loop
+            assert -eps < diff.real() < eps
+            # Now use the imaginary part (up to scale, this is the difference of CS invariants)
+            diff = diff.imag()
+            RIF = diff.parent()
+            Pi = RIF(pi)
+            multiple = Pi**2 / 2
+            ratio = diff / multiple
+            frac = ratio - ratio.floor()
+            if eps < frac < 1 - eps: 
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
                 return (True, rigor)
             else:
