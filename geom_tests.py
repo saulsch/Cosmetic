@@ -725,7 +725,11 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             RIF = diff.real().parent()
             eps = RIF(10**-(prec/8)) # starts at 10 and doubles each loop
             assert -eps < diff.real() < eps
-            # Now use the imaginary part (up to scale, this is the difference of CS invariants)
+
+            # The imaginary part is, up to scale, the CS
+            # invariant.  However, it is only defined up to adding
+            # copies of i*pi^2/2.  So we need to show that the
+            # difference is not close to a multiple of i*pi^2/2.
             diff = diff.imag()
             RIF = diff.parent()
             Pi = RIF(pi)
