@@ -341,8 +341,8 @@ def are_distinguished_by_homology(M, s, N, t, verbose=5):
     """
 
     verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_homology"])
-    Ms = M.copy()
-    Nt = N.copy()
+    Ms = snappy.Manifold(M)
+    Nt = snappy.Manifold(N)
     Ms.dehn_fill(s)
     Nt.dehn_fill(t)
 
@@ -480,8 +480,8 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     """
 
     verbose_print(verbose, 12, [M, s, N, t, "entering are_distinguished_by_covers"])
-    Ms = M.copy()
-    Nt = N.copy()
+    Ms = snappy.Manifold(M)
+    Nt = snappy.Manifold(N)
     Ms.dehn_fill(s)
     Nt.dehn_fill(t)
     if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
