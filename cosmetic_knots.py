@@ -16,13 +16,11 @@ import regina_tests as rt
 from verbose import verbose_print
 
 # Math
-
 from sage.functions.other import sqrt, ceil, floor
 from sage.symbolic.constants import pi
 from sage.arith.misc import gcd
 from sage.symbolic.ring import SR
 from sage.rings.number_field.number_field import CyclotomicField
-
 
 from string import ascii_letters
 
@@ -129,7 +127,6 @@ def name_manifold_and_link(in_obj, verbose=3):
             M = snappy.Manifold(name)
             K = link_from_manifold(M, verbose)
     return name, M, K
-
 
 
 # Framing issues
@@ -416,60 +413,57 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
     [Ravelomanana, "Exceptional Cosmetic surgeries on S3"]
     [Futer-Purcell-Schleimer, "Effective Bilipschitz Bounds on Drilling and Filling"] 
     '''
-    verbose_print(verbose, 12, [M.name(), s, 'entering check_knot_cosmetic_slope'])
+    verbose_print(verbose, 12, [M, s, 'entering check_knot_cosmetic_slope'])
 
     sn = (s[0], -s[1])
     # if s and sn are parallel, skip
     if gt.alg_int(s, sn) == 0:
-        verbose_print(verbose, 12, [M.name(), s, sn, 'are parallel'])
+        verbose_print(verbose, 12, [M, s, sn, 'are parallel'])
         return None
 
     s_hyp = gt.is_hyperbolic_filling(M, s, m, l, tries, verbose)
     sn_hyp = gt.is_hyperbolic_filling(M, sn, m, l, tries, verbose)
 
     if s_hyp == None:
-        verbose_print(verbose, 6, [M.name(), s, 'could not determine type'])
+        verbose_print(verbose, 6, [M, s, 'could not determine type'])
     if sn_hyp == None:
-        verbose_print(verbose, 6, [M.name(), sn, 'could not determine type'])
+        verbose_print(verbose, 6, [M, sn, 'could not determine type'])
     if s_hyp == None or sn_hyp == None:
-        verbose_print(verbose, 6, [M.name(), s, sn, 'one of them is not recognized as hyp or except'])
+        verbose_print(verbose, 6, [M, s, sn, 'one of them is not recognized as hyp or except'])
         return (M.name(), s, sn, 'one of them is not recognized as hyp or except')
 
     if (s_hyp and not sn_hyp) or (not s_hyp and sn_hyp):
-        verbose_print(verbose, 6, [M.name(), s, sn, 'only one is hyperbolic'])
+        verbose_print(verbose, 6, [M, s, sn, 'only one is hyperbolic'])
         return None
     elif (s_hyp and sn_hyp):
-        verbose_print(verbose, 6, [M.name(), s, sn, 'both hyperbolic'])
-        for i in range(tries):
-            M = snappy.Manifold(M.triangulation_isosig())
-            # Why do we replace M here??? 
-            distinguished, rigorous = gt.are_distinguished_by_hyp_invars(M, s, sn, i+1, verbose)
-            if distinguished and rigorous:
-                return None
-            if distinguished and not rigorous:
-                return (M.name(), s, sn, 'seem to have different length spectra')
+        verbose_print(verbose, 6, [M, s, sn, 'both hyperbolic'])
+        distinguished, rigorous = gt.are_distinguished_by_hyp_invars(M, s, sn, tries, verbose)
+        if distinguished and rigorous:
+            return None
+        if distinguished and not rigorous:
+            return (M.name(), s, sn, 'seem to have different length spectra')
         return (M.name(), s, sn, 'complex_vol_fail')
     else:
         assert( not s_hyp and not sn_hyp ) 
         if not( gt.preferred_rep(s) == (1,1) or gt.preferred_rep(s) == (1,-1) ):
-            verbose_print(verbose, 6, [M.name(), s, sn, 'exceptionals distinguished by Ravelomanana'])
+            verbose_print(verbose, 6, [M, s, sn, 'exceptionals distinguished by Ravelomanana'])
             return None
         else:
-            P = M.copy()
-            Pn = M.copy()
+            P = snappy.Manifold(M)
+            Pn = snappy.Manifold(M)
             P.dehn_fill(s)
             Pn.dehn_fill(sn)
             out = rt.torus_decomp_wrapper(P, tries, verbose)
             outn = rt.torus_decomp_wrapper(Pn, tries, verbose)
             if out[0] != outn[0]:
-                verbose_print(verbose, 2, [M.name(), s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
+                verbose_print(verbose, 2, [M, s, sn, 'exceptionals distinguished by Regina: only one is toroidal'])
                 return None
             elif not out[0] or not outn[0]:
                 # At least one of the fillings is atoroidal
-                verbose_print(verbose, 2, [M.name(), s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
+                verbose_print(verbose, 2, [M, s, sn, 'exceptionals distinguished by Regina and Ravelomanana'])
                 return None
             else:
-                verbose_print(verbose, 0, [M.name(), s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
+                verbose_print(verbose, 0, [M, s, sn, out, outn, 'toroidal manifolds -- examine the pieces'])
                 return (M.name(), s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
 
 
@@ -486,23 +480,20 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     slopes using the Ni-Wu constraint that p divides (q^2 + 1).
     Reference: [Ni-Wu, "Cosmetic surgeries on knots in S3"]
     '''
-    
-    name = M.name()
-
     sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if sys == None:
         return None
 
     # get the translation lengths and the normalisation factor and bounds on p and q
-    verbose_print(verbose, 2, [name, 'systole is at least', sys])
+    verbose_print(verbose, 2, [M, 'systole is at least', sys])
     # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
     norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
-    verbose_print(verbose, 4, [name, 'norm_len_cutoff', norm_len_cutoff])
+    verbose_print(verbose, 4, [M, 'norm_len_cutoff', norm_len_cutoff])
     
     # Build list of short slopes in the homological framing. Note that the list we
     # receive from find_short_slopes is already in preferred_rep form.
     short_slopes_all = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
-    verbose_print(verbose, 4, [name, len(short_slopes_all), 'short slopes found'])
+    verbose_print(verbose, 4, [M, len(short_slopes_all), 'short slopes found'])
     verbose_print(verbose, 10, [short_slopes_all])
 
     # remove duplicate slopes, meridian, and longitude.
@@ -520,9 +511,9 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
             continue
         if gt.preferred_rep((s[0], -s[1])) not in short_slopes:
             # That is, we have not yet added the negative of this slope
-            verbose_print(verbose, 10, [name, s, 'adding to list of short slopes to check'])
+            verbose_print(verbose, 10, [M, s, 'adding to list of short slopes to check'])
             short_slopes.add(gt.preferred_rep(s))
-    verbose_print(verbose, 2, [name, len(short_slopes), 'short slopes left after pruning'])
+    verbose_print(verbose, 2, [M, len(short_slopes), 'short slopes left after pruning'])
     verbose_print(verbose, 4, [short_slopes])
     return short_slopes
 
@@ -572,7 +563,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
         if reason == 'is a torus knot':
             # M is a torus knot, so it has non-zero tau invariant, and
             # so by Ni-Wu satisfies the cosmetic surgery conjecture
-            verbose_print(verbose, 3, [M.name(), 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
+            verbose_print(verbose, 3, [M, 'is a torus knot; no cosmetic surgeries by Ni-Wu'])
             # Note: torus knots should get caught by the Casson_invt test above, so we should
             # not end up in this branch.
             return []
