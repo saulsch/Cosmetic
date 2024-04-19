@@ -35,9 +35,9 @@ from sage.rings.real_mpfi import RIF
 # The following test is non-rigorous. It is designed to produce a flag that
 # none of the rigorous tests have succeeded. We should not rely on it beyond that.
 def is_exceptional_due_to_volume(M, verbose = 3):
-    verbose_print(verbose, 12, [M.name(), "entering is_exceptional_due_to_volume"])
+    verbose_print(verbose, 12, [M, "entering is_exceptional_due_to_volume"])
     if M.volume() < 0.9:  # smaller than volume of Weeks manifold
-        verbose_print(verbose, -1, [M.name(), "has volume too small...(NON-RIGOROUS)"])
+        verbose_print(verbose, -1, [M, "has volume too small...(NON-RIGOROUS)"])
         verbose_print(verbose, 6, [M.fundamental_group()])
         return True
 
@@ -100,23 +100,21 @@ def sanity_check_cusped(M, tries=10, verbose=3):
     If M is hyperbolic, returns M (with positive triangulation).
     If M seems non-hyperbolic, returns None and an error code.
     """
-
-    name = M.name()
     if not M.num_cusps() == 1:
         return (None, 'wrong number of cusps')
 
     sol_type = M.solution_type()
     if sol_type == 'all tetrahedra positively oriented':
-        verbose_print(verbose, 10, [name, 'already positively oriented'])
+        verbose_print(verbose, 10, [M, 'already positively oriented'])
         return (M, None)
         
     elif sol_type == 'contains negatively oriented tetrahedra':
         X = dunfield.find_positive_triangulation(M, tries=tries, verbose=verbose)
         if X == None:
-            verbose_print(verbose, 5, [name, 'positive triangulation fail'])
+            verbose_print(verbose, 5, [M, 'positive triangulation fail'])
             return (None, 'positive triangulation fail')
         else: # we have succeeded
-            verbose_print(verbose, 10, [name, 'found positive triangulation'])
+            verbose_print(verbose, 10, [M, 'found positive triangulation'])
             return (X, None)
         
     else:   
@@ -125,25 +123,25 @@ def sanity_check_cusped(M, tries=10, verbose=3):
 
         if ft.is_torus_link_filling(M, verbose):
             # This is useful information for cosmetic surgeries
-            verbose_print(verbose, 4, [name, 'is a torus link filling'])
+            verbose_print(verbose, 4, [M, 'is a torus link filling'])
             return (None, 'is a torus knot')
         if ft.is_exceptional_due_to_fundamental_group(M, tries, verbose):
-            verbose_print(verbose, 4, [name, 'exceptional due to fundamental group'])
+            verbose_print(verbose, 4, [M, 'exceptional due to fundamental group'])
             return (None, 'exceptional due to fundamental group')
             
         out = rt.is_toroidal_wrapper(M, verbose)
         if out[0]:
             # M is toroidal so use the torus decomposition as the 'reason'
-            verbose_print(verbose, 4, [name, 'is toroidal'])
+            verbose_print(verbose, 4, [M, 'is toroidal'])
             return (None, 'toroidal mfd: ' + str(out[1]))
         # Anything else is confusing
         if is_exceptional_due_to_volume(M, verbose):   
-            verbose_print(verbose, -1, [name, 'NON-RIGOROUS TEST says volume is too small']) 
+            verbose_print(verbose, -1, [M, 'NON-RIGOROUS TEST says volume is too small']) 
             return (None, "volume too small")
         verbose_print(verbose, -1, [M, 'bad solution type for unclear reasons...'])
         return (None, "bad solution type")
 
-    
+
 # cusp utilities
 
 
@@ -236,7 +234,7 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
     Note that if len_cutoff is not given, then the normalized flag is
     ignored.
     """
-    verbose_print(verbose, 12, [M.name(), 'entering find_short_slopes'])
+    verbose_print(verbose, 12, [M, 'entering find_short_slopes'])
 
     if len_cutoff == None:
         # Go up to Euclidean length 6
@@ -295,10 +293,8 @@ def systole_with_covers(M, tries=10, verbose=3):
     The idea is that the systole of M is at least (1/n) times
     the systole of an n-fold cover.
     We only care about systoles that are shorter than 0.15.
-    """
-    
-    name = M.name()
-    verbose_print(verbose, 12, [name, "entering systole_with_covers"])
+    """    
+    verbose_print(verbose, 12, [M, "entering systole_with_covers"])
 
     retriang_attempts = 2*tries
     # This is a hack. In our context, tries is at most 8. But here, we want 
@@ -312,7 +308,6 @@ def systole_with_covers(M, tries=10, verbose=3):
                 for j in range(i):
                     N.randomize() # This should probably be done with isosigs.
                 try:
-                    # Q = N.copy()
                     sys = systole(N, verbose = verbose)
                     verbose_print(verbose, 10, ['systole of', deg, 'fold cover', N, 'is at least', sys])
                     return (sys/deg)
@@ -321,7 +316,7 @@ def systole_with_covers(M, tries=10, verbose=3):
                     verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
 
     if sys == None:
-        verbose_print(verbose, 6, [name, 'systole fail'])
+        verbose_print(verbose, 6, [M, 'systole fail'])
         return None
 
 
@@ -330,19 +325,16 @@ def systole_with_tries(M, tries=10, verbose=3):
     Given a snappy Manifold M, tries and tries again to compute a lower
     bound for the systole. Builds in randomization.
     """
-
-    name = M.name()
-
-    verbose_print(verbose, 12, [name, 'entering systole_with_tries'])
+    verbose_print(verbose, 12, [M, 'entering systole_with_tries'])
 
     # Before trying hard things, see if we get lucky.
     try:
         sys = systole(M, verbose=verbose)
-        verbose_print(verbose, 10, [name, sys, 'systole computed on first attempt'])
+        verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
         return sys
     except:
         sys = None
-        verbose_print(verbose, 10, [name, 'systole failed on first attempt'])
+        verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
     
     # Build a database of isosigs
     N = snappy.Manifold(M)
@@ -351,18 +343,18 @@ def systole_with_tries(M, tries=10, verbose=3):
     for i in range(retriang_attempts):
         N.randomize()
         isosigs.add(N.triangulation_isosig())
-    verbose_print(verbose, 15, [name, 'isosigs:', isosigs])
-    verbose_print(verbose, 10, [name, len(isosigs), 'isosigs found'])
+    verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
+    verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
         
     for sig in isosigs:
         N = snappy.Manifold(sig)
         try:
             sys = systole(N, verbose=verbose)
-            verbose_print(verbose, 10, [name, sys, 'systole computed from', sig])
+            verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
             return sys
         except:
             sys = None
-            verbose_print(verbose, 10, [name, 'systole failed on', sig])
+            verbose_print(verbose, 10, [M, 'systole failed on', sig])
 #         try:
 #             D = N.dirichlet_domain()
 #             spec = D.length_spectrum_dicts(0.15)
@@ -370,14 +362,14 @@ def systole_with_tries(M, tries=10, verbose=3):
 #                 sys = 0.15 # any systole larger than this gets ignored. 
 #             else:
 #                 sys = spec[0].length.real()
-#             verbose_print(verbose, 10, [name, sys, 'systole computed using domain and dicts from', sig])
+#             verbose_print(verbose, 10, [M, sys, 'systole computed using domain and dicts from', sig])
 #             return sys
 #         except:
 #             sys = None
-#             verbose_print(verbose, 10, [name, 'systole via domain and dicts failed on', sig])
+#             verbose_print(verbose, 10, [M, 'systole via domain and dicts failed on', sig])
 
     if sys == None:
-        verbose_print(verbose, 2, [name, 'systole fail'])
+        verbose_print(verbose, 2, [M, 'systole fail'])
         return None
 
 
@@ -390,11 +382,10 @@ def systole(M, verbose = 3):
     
     N.length_spectrum() might cause this routine to crash, so usage should be wrapped in a 'try'.
     """
-    name = M.name()
     N = M.high_precision()
-    verbose_print(verbose, 12, [name, "entering systole"])
+    verbose_print(verbose, 12, [M, "entering systole"])
     spec = N.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
-    verbose_print(verbose, 12, [name, "computed length spectrum"])
+    verbose_print(verbose, 12, [M, "computed length spectrum"])
     if spec == []:
         return 0.15 # any systole larger than this gets ignored. 
     else:
@@ -419,7 +410,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
         return None, is_knot, geometrically_easy, regina_easy
 
     # Before doing anything else, check if (1,0) slope does it
-    N = M.copy()
+    N = snappy.Manifold(M)
     r=(1,0)
     N.dehn_fill(r)
     exceptional, type_except = ft.is_exceptional_due_to_fundamental_group(N, tries, verbose)
@@ -432,7 +423,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     M = dunfield.find_positive_triangulation(M, tries, verbose)
     
     if M.solution_type() != 'all tetrahedra positively oriented':
-        verbose_print(verbose, 10, ['Bad triangulation:', M.name(), M.solution_type()])
+        verbose_print(verbose, 10, ['Bad triangulation:', M, M.solution_type()])
         geometrically_easy = False
             
     six_theorem_length = 6.01 # All exceptionals shorter than this
@@ -454,7 +445,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
             short_slopes.append(r)
             
     for r in short_slopes:
-        N = M.copy()
+        N = snappy.Manifold(M)
         N.dehn_fill(r)
 
         # Fundamental group
@@ -508,7 +499,7 @@ def get_S3_slope_hyp(M, verify_on=True, covers_on=True, regina_on=True, tries = 
     # Now, try the hard stuff.
     regina_easy = False
     for r in short_slopes_hard:
-        N = M.copy()
+        N = snappy.Manifold(M)
         N.dehn_fill(r)
         if regina_on:
             verbose_print(verbose, 10, ['Using Regina sphere recognition on', M, r])
@@ -577,7 +568,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     if abs(p*m + q*l) > RIF( 6 ): # six-theorem
         return True
 
-    N = M.copy()
+    N = snappy.Manifold(M)
     N.dehn_fill(s)
 
     for i in range(tries):
@@ -624,8 +615,7 @@ def are_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3
     Returns True if the manifolds are distinguished, and False if not. 
     A True answer is only as rigorous as the length spectrum (so, not entirely).
     """
-    name = M.name()
-    verbose_print(verbose, 12, [name, s, t, 'entering are_distinguished_by_length_spectrum'])
+    verbose_print(verbose, 12, [M, s, t, 'entering are_distinguished_by_length_spectrum'])
     Ms = M.high_precision()
     Mt = M.high_precision()
     
@@ -673,21 +663,17 @@ def are_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3
 
 def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     """
-    Given a cusped manifold M and two slopes (where we think that both
-    fillings are hyperbolic), try to prove that M(s) is not
-    orientation-preservingly homeomorphic to M(t). 
+    Given a cusped manifold M and two slopes s and t (where we think
+    that both fillings are hyperbolic), try to prove that M(s) is not
+    orientation-preservingly homeomorphic to M(t).
     
     Returns a tuple of booleans (distinguished, rigor).
     distinguished is True if we can tell the manifolds apart.
     rigor is True if we did so using rigorous verified invariants.
     """
-    name = M.name()
-    verbose_print(verbose, 12, [name, s, t, 'entering are_distinguished_by_hyp_invars'])
-    Ms = M.copy()
-    Mt = M.copy()
-    
-    Ms.chern_simons() # must initialise - see docs
-    Mt.chern_simons()
+    verbose_print(verbose, 12, [M, s, t, 'entering are_distinguished_by_hyp_invars'])
+    Ms = snappy.Manifold(M)
+    Mt = snappy.Manifold(M)
     Ms.dehn_fill(s)
     Mt.dehn_fill(t)
     Ms = dunfield.find_positive_triangulation(Ms, tries) 
@@ -698,7 +684,6 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         return (None, None)
     
     prec = 40 # note the magic number 40.  Fix.
-    rigor = True
     for i in range(tries):
         prec = prec * 2
 
@@ -709,7 +694,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
             if Ms_vol < Mt_vol or Mt_vol < Ms_vol:
                 verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
-                return (True, rigor)
+                return (True, True)
             else:
                 verbose_print(verbose, 6, [M, s, t, 'volumes very close at precision', prec])
         except Exception as e:
@@ -723,7 +708,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             # since we are here, the real part of diff is basically zero.
             # We check that:
             RIF = diff.real().parent()
-            eps = RIF(10**-(prec/8)) # starts at 10 and doubles each loop
+            eps = RIF(2**-(prec/2)) 
             assert -eps < diff.real() < eps
 
             # The imaginary part is, up to scale, the CS
@@ -738,7 +723,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             frac = ratio - ratio.floor()
             if eps < frac < 1 - eps: 
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
-                return (True, rigor)
+                return (True, True)
             else:
                 verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
         except Exception as e:
@@ -746,9 +731,8 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         
             # Let us not randomize, since we already have a good triangulation...
 
-    rigor = False
     if are_distinguished_by_length_spectrum(M, s, t, cutoff = 1.1, verbose=verbose):
-        return (True, rigor)
+        return (True, False)
     else:
         return (False, None)
     
