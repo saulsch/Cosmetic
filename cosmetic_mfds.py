@@ -142,7 +142,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     M.slopes_hyp = {}
     m, l = M.mer_hol, M.long_hol
     for s in short_slopes:
-        Q = M.copy()
+        Q = snappy.Manifold(M)
         Q.dehn_fill(s)
         hom_hash = str(Q.homology())
         
@@ -201,7 +201,7 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
         if gcd(a, b) > 1:
             verbose_print(verbose, 25, [M.name(), hom_gp, k, t, 'excluded because gcd'])
             continue
-        Q = M.copy()
+        Q = snappy.Manifold(M)
         Q.dehn_fill(t)
         hom_gp_t = str(Q.homology())
         if hom_gp_t != hom_gp:
@@ -368,7 +368,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
     
     # We did not find the field, so we have to install and return it.
 
-    N = M.copy()
+    N = snappy.Manifold(M)
     N.dehn_fill(s)
     
     if field == "fund_gp":
@@ -450,7 +450,7 @@ def fetch_volume(M, s, tries=8, verbose=4):
                 
     assert M.solution_type() == 'all tetrahedra positively oriented'
 
-    N = M.copy() 
+    N = snappy.Manifold(M) 
     N.dehn_fill(s)
 
     for i in range(tries):
@@ -548,9 +548,9 @@ def are_isometric_fillings(M, s, N, t, tries=8, verbose=4):
     
     Return True if successful, or None otherwise
     """    
-    Q = M.copy()
+    Q = snappy.Manifold(M)
     Q.dehn_fill(s)
-    R = N.copy()
+    R = snappy.Manifold(N)
     R.dehn_fill(t)
     
     for i in range(tries):
@@ -592,7 +592,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     # longitudinal fillings.
 
     N_vol = fetch_volume(N, (0,0), tries, verbose)
-    Q = N.copy()
+    Q = snappy.Manifold(N)
     Q.dehn_fill(N.m_hom)
     N_mer_base = ft.order_of_torsion(Q)  # Every non-longitudinal filling of N will have torsion homology some multiple of this order.
     Q.dehn_fill(N.l_hom)
@@ -604,7 +604,7 @@ def find_common_hyp_fillings(M, N, tries, verbose):
     common_uns = []
     for hom_hash in M.slopes_hyp:
         s0 = list(M.slopes_hyp[hom_hash])[0]  # a representative slope 
-        Q = M.copy()
+        Q = snappy.Manifold(M)
         Q.dehn_fill(s0)
         tor_order = ft.order_of_torsion(Q)
         verbose_print(verbose, 12, [M.name(), hom_hash, tor_order])
