@@ -303,13 +303,12 @@ def best_match(matches):
 
 def identify_with_torus_boundary(regina_tri):
     """
-    Use the combined power of Regina and SnapPy to try to give a name
-    to the input manifold.
+    Use Regina and SnapPy to (try to) give a name to the input manifold.
     """
     
     kind, name = "unknown", None
     
-    P = regina.Triangulation3(regina_tri) # a clone of the triangulation
+    P = regina.Triangulation3(regina_tri)
     P.finiteToIdeal()
     P.intelligentSimplify()
     M = snappy.Manifold(P.isoSig())
