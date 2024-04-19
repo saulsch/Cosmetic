@@ -683,22 +683,22 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         verbose_print(verbose, 6, [M, s, t, 'positive triangulation fail'])
         return (None, None)
     
-    prec = 40 # note the magic number 40.  Fix.
+    prec = 40 # note the magic number 20.  Fix.
     for i in range(tries):
-        prec = prec * 2
-
         try:
             # Try ordinary volume first
             Ms_vol = Ms.volume(verified=True, bits_prec = prec)
             Mt_vol = Mt.volume(verified=True, bits_prec = prec)
 
             if Ms_vol < Mt_vol or Mt_vol < Ms_vol:
-                verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes at precision', prec])
+                verbose_print(verbose, 6, [M, s, t, "verified volume distinguishes at precision", prec])
                 return (True, True)
             else:
-                verbose_print(verbose, 6, [M, s, t, 'volumes very close at precision', prec])
+                verbose_print(verbose, 6, [M, s, t, "volumes very close at precision", prec])
         except Exception as e:
-            verbose_print(verbose, 6, [M, s, t, e])
+            verbose_print(verbose, 6, [M, s, t, "failed to compute volume at precision", prec, str(e)])
+
+        prec = prec * 2 # seems that complex volume needs more precision than regular...
             
         try:
             # now try complex volume
@@ -727,7 +727,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             else:
                 verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
         except Exception as e:
-            verbose_print(verbose, 6, [M, s, t, e])
+            verbose_print(verbose, 6, [M, s, t, "failed to compute complex volume at precision", prec, str(e)])
         
             # Let us not randomize, since we already have a good triangulation...
 
