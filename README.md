@@ -8,7 +8,7 @@ conjecture.
 
 We work inside of SageMath.
 We also assume that the user has snappy and regina installed inside of sage.
-We are currently running sage 9.2, snappy 3.1, and regina 7.3.
+We are currently running sage 10.4, snappy 3.1, and regina 7.3.
 You can find installation instructions for those programs here:
 
 https://doc.sagemath.org/html/en/installation/  \
