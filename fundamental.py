@@ -10,7 +10,7 @@ from verbose import verbose_print
 from dunfield import closed_isosigs
 
 
-# Arithmetic
+# arithmetic
 
 
 def product(nums):
@@ -48,7 +48,7 @@ def get_syls(w):
 
 # Standing assumptions: relations have non-zero length.  Also,
 # generators are letters.  (If there are more than 26 generators then
-# something is very wrong in any case...)
+# something is probably very wrong...)
 
 # Strings are not a commutative monoid, so the notation python uses is
 # "wrong"; it uses a + b for concatenation, instead of a*b, and uses
