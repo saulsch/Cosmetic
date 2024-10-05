@@ -27,15 +27,28 @@ from string import ascii_letters
 
 # IO
 
-
-# To be deleted:
-def get_knots_from_file(filename):
+def get_knots_from_file(filename, header=True):
+    """
+    Given a CSV file (eg, from regina), read the file and return the list of lines.
+    If header==True, remove the header line.
+    """
     f = open(filename, "r")
     data = f.readlines()
+    if header:
+        data = data[1:]
     data = [line.strip() for line in data]
     data = [line for line in data if line != ""]
     f.close()
     return data
+
+def full_dt(short_dt):
+    """
+    Given short DT code, as in Regina,
+    build and return the full DT code in snappy notation.
+    """
+    p = ascii_letters[len(short_dt) - 1]
+    full_dt_code = "DT:" + p + "a" + p + short_dt
+    return full_dt_code
 
 def get_DTs_from_regina(filename):
     """
@@ -43,20 +56,12 @@ def get_DTs_from_regina(filename):
     snappy notation.  CSV files can be found here:
     https://regina-normal.github.io/data.html
     """
-    f = open(filename, "r")
-    data = f.readlines()
-    data = data[1:]
-    data = [line.strip() for line in data]
-    data = [line for line in data if line != ""]
-    f.close()
+    data = get_knots_from_file(filename, header=True)
 
     DT_codes = []
     for line in data:
         stuff = line.split(",")
-        short_dt = stuff[2]
-        p = ascii_letters[len(short_dt) - 1]
-        full_dt = "DT:" + p + "a" + p + short_dt
-        DT_codes.append(full_dt)
+        DT_codes.append(full_dt(stuff[2]))
     return DT_codes
 
 
