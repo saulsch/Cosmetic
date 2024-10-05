@@ -610,11 +610,11 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
 
 
 
-def prune_using_invariants(knots, Alex=False, Casson=True, Genus_thick_quick=True, Jones_deriv=True, Jones_fifth=True, Tau_test=True, Wang=True, Hanselman_HFK=True, verbose=3, report=100):
+def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quick=True, Jones_deriv=True, Jones_fifth=True, Tau_test=True, Wang=True, Hanselman_HFK=True, verbose=3, report=100):
     '''
     Given a list of knots or knot complements, tries to
     rule out cosmetic surgeries using the followifng tests:
-    * Daemi-Eismeier-Lidman test (Alexander polynomial)
+    * Daemi-Lidman-Miller Eismeier test (Alexander polynomial)
     * Boyer-Lines test (second derivative of Alexander polynomial at 1) 
     * Quick genus-thickness test (span(Alexander) and Turaev genus)
     * Ichihara-Wu test (third derivative of Jones polynomial at 1)
@@ -630,7 +630,7 @@ def prune_using_invariants(knots, Alex=False, Casson=True, Genus_thick_quick=Tru
     '''
 
     bad_uns = []
-    Alex_ruled_out = 0
+    Alexander_ruled_out = 0
     Casson_ruled_out = 0
     Quick_GT_ruled_out = 0
     Jones_ruled_out = 0
@@ -641,7 +641,7 @@ def prune_using_invariants(knots, Alex=False, Casson=True, Genus_thick_quick=Tru
 
     for n, knot in enumerate(knots):
         if verbose > 0 and n % report == 0:
-            print('report', n, ':', Alex_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
+            print('report', n, ':', Alexander_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
             print(Quick_GT_ruled_out, 'ruled out by quick genus-thickness test,', Jones_ruled_out, 'ruled out by Jones derivative,', Detcherry_ruled_out, 'ruled out by Jones 5th root of 1,')
             print(Tau_ruled_out, 'ruled out by tau invariant,', Wang_ruled_out, 'ruled out b/c genus=1,', Hanselman_ruled_out, 'ruled out by HFK thickness and genus')
             print('Last few difficult knots', bad_uns[-5:])
@@ -653,17 +653,17 @@ def prune_using_invariants(knots, Alex=False, Casson=True, Genus_thick_quick=Tru
         # but this is slower for large examples.
 
         # Collect Alexander polynomial data. Use the knot if possible
-        if Alex or Casson or Genus_thick_quick: # if we need the Alexander polynomial
+        if Alexander or Casson or Genus_thick_quick: # if we need the Alexander polynomial
             if K != None:
                 A, C, genus_bound = Alexander_tests(K, name, verbose=verbose)
             else:
                 A, C, genus_bound = Alexander_tests(M, name, verbose=verbose)
 
-        # Daemi-Eismeier-Lidman test, nontriviality of the Alexander polynomial:
-        if Alex:
+        # Daemi-Lidman-Miller Eismeier test, nontriviality of the Alexander polynomial:
+        if Alexander:
             if A != None and A != 1:
-                verbose_print(verbose, 3, [name, 'has nontrivial Alexander poly, no cosmetic surgeries by Daemi-Eismeier-Lidman'])
-                Alex_ruled_out = Alex_ruled_out + 1
+                verbose_print(verbose, 3, [name, 'has nontrivial Alexander poly, no cosmetic surgeries by Daemi-Lidman-Miller Eismeier'])
+                Alexander_ruled_out = Alexander_ruled_out + 1
                 continue            
 
         # Boyer-Lines test via Casson invt, second derivative of the Alexander polynomial
@@ -758,7 +758,7 @@ def prune_using_invariants(knots, Alex=False, Casson=True, Genus_thick_quick=Tru
         bad_uns.append(name)
         
     if verbose > 0:
-            print('report', n+1, ':', Alex_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
+            print('report', n+1, ':', Alexander_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
             print(Quick_GT_ruled_out, 'ruled out by quick genus-thickness test,', Jones_ruled_out, 'ruled out by Jones derivative,', Detcherry_ruled_out, 'ruled out by Jones 5th root of 1,')
             print(Tau_ruled_out, 'ruled out by tau invariant,', Wang_ruled_out, 'ruled out b/c genus=1,', Hanselman_ruled_out, 'ruled out by HFK thickness and genus')
     return bad_uns
