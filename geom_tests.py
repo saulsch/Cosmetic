@@ -355,18 +355,6 @@ def systole_with_tries(M, tries=10, verbose=3):
         except:
             sys = None
             verbose_print(verbose, 10, [M, 'systole failed on', sig])
-#         try:
-#             D = N.dirichlet_domain()
-#             spec = D.length_spectrum_dicts(0.15)
-#             if spec == []:
-#                 sys = 0.15 # any systole larger than this gets ignored. 
-#             else:
-#                 sys = spec[0].length.real()
-#             verbose_print(verbose, 10, [M, sys, 'systole computed using domain and dicts from', sig])
-#             return sys
-#         except:
-#             sys = None
-#             verbose_print(verbose, 10, [M, 'systole via domain and dicts failed on', sig])
 
     if sys == None:
         verbose_print(verbose, 2, [M, 'systole fail'])
@@ -384,12 +372,120 @@ def systole(M, verbose = 3):
     """
     N = M.high_precision()
     verbose_print(verbose, 12, [M, "entering systole"])
-    spec = N.length_spectrum(0.15, full_rigor = True) # Ok - what does 'full-rigor' actually mean?
+    spec = N.length_spectrum(0.15, full_rigor = True) # Not actually rigorous
     verbose_print(verbose, 12, [M, "computed length spectrum"])
     if spec == []:
         return 0.15 # any systole larger than this gets ignored. 
     else:
         return spec[0].length.real()
+
+
+### Verified versions
+
+def verified_systole_with_tries(M, bits_prec=60, tries=10, verbose=3):
+    """
+    Given a snappy Manifold M, tries and tries again to compute a 
+    verified systole. Builds in randomization.
+    """
+    verbose_print(verbose, 12, [M, 'entering verified systole_with_tries'])
+
+    # Before trying hard things, see if we get lucky.
+    try:
+        sys = verified_systole(M, bits_prec=bits_prec, verbose=verbose)
+        verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
+        return sys
+    except:
+        sys = None
+        verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
+    
+    # Build a database of isosigs
+    N = snappy.Manifold(M)
+    retriang_attempts = 10*tries # Magic constant
+    isosigs = set()
+    for i in range(retriang_attempts):
+        N.randomize()
+        isosigs.add(N.triangulation_isosig())
+    verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
+    verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
+        
+    for sig in isosigs:
+        N = snappy.Manifold(sig)
+        try:
+            sys = verified_systole(N, bits_prec=bits_prec, verbose=verbose)
+            verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
+            return sys
+        except:
+            sys = None
+            verbose_print(verbose, 10, [M, 'systole failed on', sig])
+
+    if sys == None:
+        verbose_print(verbose, 2, [M, 'systole fail'])
+        return None
+
+
+def verified_systole_with_drilling(M, bits_prec=60, tries=10, verbose=3):
+    """
+    Given a snappy Manifold M, tries to compute a verified interval 
+    containing the systole of M.
+    Returns the systole in RIF form.
+    
+    If M a short geodesic shows up among M.dual_curves(), we drill
+    and fill that short geodesic. This speeds things up a lot.
+    """
+    verbose_print(verbose, 12, [M, 'entering verified systole_with_drilling'])
+    
+    # The list of curves in the dual 1-skeleton of triangulation is a
+    # crude approximation to the length spectrum.
+    duals = M.dual_curves() 
+    first_dual = 1.0
+    if duals != []:
+        first_dual = duals[0].complete_length.real()
+    
+    if first_dual < 0.15:
+       # If there is a short dual curve, we should drill and fill it.
+       # (It might make sense to call ourselves recursively, but this is not currently implemented.)
+        N = M.drill(duals[0])
+        N.dehn_fill((1,0),-1)
+        # assert N.is_isometric_to(M) 
+        # The isometry verification sometimes fails for computational reasons, so it was removed.
+        try:
+            # sys = verified_systole_with_drilling(N, bits_prec=bits_prec, verbose=verbose)
+            sys = verified_systole(N, bits_prec=bits_prec, verbose=verbose)
+            verbose_print(verbose, 10, [M, sys, 'systole computed via drilling'])
+            return sys
+        except: 
+            sys = None
+            return None
+
+    else:
+        try:
+            sys = verified_systole(M, bits_prec=bits_prec, verbose=verbose)
+            verbose_print(verbose, 10, [M, sys, 'systole computed without drilling'])
+            return sys
+        except: 
+            sys = None
+            return None
+    
+
+def verified_systole(M, bits_prec=60, verbose = 3):
+    """
+    Given a snappy Manifold M, tries to compute a verified interval 
+    containing the systole of M.
+    Returns the systole in RIF form.
+    The bits_prec variable controls precision.
+    We only care about systoles that are shorter than 0.15.
+    
+    This might crash, and might also run for a very long time.
+    """
+    verbose_print(verbose, 12, [M, "entering verified_systole"])
+    spec = M.length_spectrum_alt(max_len = 0.15, bits_prec = bits_prec, verified = True)
+    if spec == []:  # no geodesics shorter than 0.15
+        return RIF(0.15)
+    else:
+        return spec[0].length.real()
+    
+
+
 
 
 # Finding S3 slope
