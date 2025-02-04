@@ -615,7 +615,7 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
 
 
 
-def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quick=True, Jones_deriv=True, Jones_fifth=True, Tau_test=True, Wang=True, Hanselman_HFK=True, verbose=3, report=100):
+def prune_using_invariants(knots, Alexander=True, Casson=True, Genus_thick_quick=True, Jones_deriv=True, Jones_fifth=True, Tau_test=True, Hanselman_HFK=True, verbose=3, report=100):
     '''
     Given a list of knots or knot complements, tries to
     rule out cosmetic surgeries using the followifng tests:
@@ -625,7 +625,6 @@ def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quic
     * Ichihara-Wu test (third derivative of Jones polynomial at 1)
     * Detcherry test (Jones polynomial at 5th root of 1) 
     * Ni-Wu test (tau invariant)
-    * Wang test (genus one knots)
     * HFK Hanselman test (exact genus and HFK thickness)
 
     The tests are ordered according to speed, for a typical non-alternating knot. 
@@ -641,14 +640,13 @@ def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quic
     Jones_ruled_out = 0
     Detcherry_ruled_out = 0
     Tau_ruled_out = 0
-    Wang_ruled_out = 0
     Hanselman_ruled_out = 0
 
     for n, knot in enumerate(knots):
         if verbose > 0 and n % report == 0:
             print('report', n, ':', Alexander_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
             print(Quick_GT_ruled_out, 'ruled out by quick genus-thickness test,', Jones_ruled_out, 'ruled out by Jones derivative,', Detcherry_ruled_out, 'ruled out by Jones 5th root of 1,')
-            print(Tau_ruled_out, 'ruled out by tau invariant,', Wang_ruled_out, 'ruled out b/c genus=1,', Hanselman_ruled_out, 'ruled out by HFK thickness and genus')
+            print(Tau_ruled_out, 'ruled out by tau invariant,', Hanselman_ruled_out, 'ruled out by HFK genus-thickness test')
             print('Last few difficult knots', bad_uns[-5:])
 
         # Be somewhat generous in what we accept
@@ -731,7 +729,7 @@ def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quic
                 continue
 
         # Compute knot floer homology plus related numbers, if needed
-        if Tau_test or Wang or Hanselman_HFK:
+        if Tau_test or Hanselman_HFK:
             tau, g, th = HFK_tests(K, name, verbose)
         
         # Ni-Wu test, tau invariant
@@ -741,16 +739,16 @@ def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quic
                 Tau_ruled_out = Tau_ruled_out + 1
                 continue
             
-        # Wang test, genus one knots
-        if Wang:
-            if g == 1:
-                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang'])
-                Wang_ruled_out = Wang_ruled_out + 1
-                continue
 
         # Hanselman HFK test: use the real genus and thickness
+        # This incorporates the Wang test of genus one knots
         if Hanselman_HFK and th != None and g != None:
             verbose_print(verbose, 6, [name, 'Full Hanselman test', th, 2*g*(g-2)])
+            # Wang portion of the test
+            if g == 1: 
+                verbose_print(verbose, 3, [name, 'has no cosmetic surgeries by Wang'])
+                Hanselman_ruled_out = Hanselman_ruled_out + 1
+                continue
             if th < 2*g*(g-2):
                 # The above inequality is never true when g=0,1,2, because th >= 0.
                 # For g >= 2, it is equivalent to (th + 2*g)/(2*g*(g-1)) < 1, which is the
@@ -765,7 +763,7 @@ def prune_using_invariants(knots, Alexander=False, Casson=True, Genus_thick_quic
     if verbose > 0:
             print('report', n+1, ':', Alexander_ruled_out, 'Ruled out by Alexander polynomial,', Casson_ruled_out, 'ruled out by Casson invariant,')
             print(Quick_GT_ruled_out, 'ruled out by quick genus-thickness test,', Jones_ruled_out, 'ruled out by Jones derivative,', Detcherry_ruled_out, 'ruled out by Jones 5th root of 1,')
-            print(Tau_ruled_out, 'ruled out by tau invariant,', Wang_ruled_out, 'ruled out b/c genus=1,', Hanselman_ruled_out, 'ruled out by HFK thickness and genus')
+            print(Tau_ruled_out, 'ruled out by tau invariant,', Hanselman_ruled_out, 'ruled out by HFK genus-thickness test')
     return bad_uns
 
 
