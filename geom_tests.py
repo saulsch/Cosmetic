@@ -280,10 +280,9 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
     return set(slopes)
 
 
-# systole
+# unverified systole
 
-# This function is never called by our top routines. It does not seem to be
-# all that useful...
+# The next set of functions should get ripped out.
 
 def systole_with_covers(M, tries=10, verbose=3):
     """
@@ -380,110 +379,113 @@ def systole(M, verbose = 3):
         return spec[0].length.real()
 
 
-### Verified versions
+### Verified systole
 
-def verified_systole_with_tries(M, bits_prec=60, tries=10, verbose=3):
+def surgery_description(M, drilling_length=0.4, tries=10, verbose=3):
     """
-    Given a snappy Manifold M, tries and tries again to compute a 
-    verified systole. Builds in randomization.
-    """
-    verbose_print(verbose, 12, [M, 'entering verified systole_with_tries'])
-
-    # Before trying hard things, see if we get lucky.
-    try:
-        sys = verified_systole(M, bits_prec=bits_prec, verbose=verbose)
-        verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
-        return sys
-    except:
-        sys = None
-        verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
+    Given a snappy Manifold M, tries to find a surgery description of M by 
+    drilling and filling generators of the fundamental group.
+    The parameter drilling_length controls what should be drilled.
     
-    # Build a database of isosigs
-    N = snappy.Manifold(M)
-    retriang_attempts = 10*tries # Magic constant
-    isosigs = set()
-    for i in range(retriang_attempts):
-        N.randomize()
-        isosigs.add(N.triangulation_isosig())
-    verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
-    verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
-        
-    for sig in isosigs:
-        N = snappy.Manifold(sig)
+    Returns surgery description if successful or M itself if not.
+    """
+
+    verbose_print(verbose, 12, [M, "entering surgery_description"])
+    G = M.fundamental_group(False)
+    verbose_print(verbose, 10, [M, G])
+    real_len, g = min((real_len, g) for g in G.generators() if (real_len := G.complex_length(g).real()) > 1e-6)
+    verbose_print(verbose, 10, [M, real_len, g])
+    if real_len < drilling_length:
         try:
-            sys = verified_systole(N, bits_prec=bits_prec, verbose=verbose)
-            verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
-            return sys
+            N = M.drill_word(g, verified=True, bits_prec=1000)
         except:
-            sys = None
-            verbose_print(verbose, 10, [M, 'systole failed on', sig])
-
-    if sys == None:
-        verbose_print(verbose, 2, [M, 'systole fail'])
-        return None
-
-
-def verified_systole_with_drilling(M, bits_prec=60, tries=10, verbose=3):
-    """
-    Given a snappy Manifold M, tries to compute a verified interval 
-    containing the systole of M.
-    Returns the systole in RIF form.
-    
-    If M a short geodesic shows up among M.dual_curves(), we drill
-    and fill that short geodesic. This speeds things up a lot.
-    """
-    verbose_print(verbose, 12, [M, 'entering verified systole_with_drilling'])
-    
-    # The list of curves in the dual 1-skeleton of triangulation is a
-    # crude approximation to the length spectrum.
-    duals = M.dual_curves() 
-    first_dual = 1.0
-    if duals != []:
-        first_dual = duals[0].complete_length.real()
-    
-    if first_dual < 0.15:
-       # If there is a short dual curve, we should drill and fill it.
-       # (It might make sense to call ourselves recursively, but this is not currently implemented.)
-        N = M.drill(duals[0])
+            return M
         N.dehn_fill((1,0),-1)
-        # assert N.is_isometric_to(M) 
-        # The isometry verification sometimes fails for computational reasons, so it was removed.
-        try:
-            # sys = verified_systole_with_drilling(N, bits_prec=bits_prec, verbose=verbose)
-            sys = verified_systole(N, bits_prec=bits_prec, verbose=verbose)
-            verbose_print(verbose, 10, [M, sys, 'systole computed via drilling'])
-            return sys
-        except: 
-            sys = None
-            return None
+        N = dunfield.find_positive_triangulation(N, tries, verbose)
+        if N.solution_type() == 'all tetrahedra positively oriented':
+            return N
+    return M
 
-    else:
-        try:
-            sys = verified_systole(M, bits_prec=bits_prec, verbose=verbose)
-            verbose_print(verbose, 10, [M, sys, 'systole computed without drilling'])
-            return sys
-        except: 
-            sys = None
-            return None
-    
-
-def verified_systole(M, bits_prec=60, verbose = 3):
+def verified_systole(M, cutoff=None, bits_prec=200, verbose = 3):
     """
     Given a snappy Manifold M, tries to compute a verified interval 
     containing the systole of M.
     Returns the systole in RIF form.
     The bits_prec variable controls precision.
-    We only care about systoles that are shorter than 0.15.
+    If cutoff != None, only looks for systoles up to the given value.
+    (In many applications, we only care about systoles that are shorter than 0.15.)
     
-    This might crash, and might also run for a very long time.
+    If M contains short geodesics that are not filled cusps, this might also run 
+    for a very long time. So it is best to precondition M via surgery descriptions.
     """
-    verbose_print(verbose, 12, [M, "entering verified_systole"])
-    spec = M.length_spectrum_alt(max_len = 0.15, bits_prec = bits_prec, verified = True)
-    if spec == []:  # no geodesics shorter than 0.15
-        return RIF(0.15)
-    else:
-        return spec[0].length.real()
     
+    verbose_print(verbose, 12, [M, "entering verified_systole"])
+    if cutoff == None:
+        try:
+            spec = M.length_spectrum_alt(count=1, bits_prec=bits_prec, verified=True)
+            verbose_print(verbose, 10, [M, 'length spectrum up to first curve', spec])
+            return spec[0].length.real()
+        except:
+            verbose_print(verbose, 10, [M, 'systole failed to compute'])
+            return None
+    else:
+        spec = M.length_spectrum_alt(max_len=cutoff, bits_prec = bits_prec, verified = True)
+        verbose_print(verbose, 10, [M, 'length spectrum up to cutoff', cutoff, spec])
+        
+    if spec != []: # some geodesics were found
+        return spec[0].length.real()
+    else:  # no geodesics shorter than 0.15
+        return RIF(cutoff)
+
+
+def verified_systole_with_drilling(M, cutoff=None, bits_prec=200, tries=10, verbose=3):
+
+    verbose_print(verbose, 12, [M, "entering verified_systole"])
+    N = surgery_description(M, tries=tries, verbose = verbose)
+    return verified_systole(N, cutoff=cutoff, bits_prec=200, verbose=verbose)
+
+
+
+
+# def verified_systole_with_tries(M, bits_prec=60, tries=10, verbose=3):
+#     """
+#     Given a snappy Manifold M, tries and tries again to compute a 
+#     verified systole. Builds in randomization.
+#     """
+#     verbose_print(verbose, 12, [M, 'entering verified systole_with_tries'])
+# 
+#     # Before trying hard things, see if we get lucky.
+#     try:
+#         sys = verified_systole(M, bits_prec=bits_prec, verbose=verbose)
+#         verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
+#         return sys
+#     except:
+#         sys = None
+#         verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
+#     
+#     # Build a database of isosigs
+#     N = snappy.Manifold(M)
+#     retriang_attempts = 10*tries # Magic constant
+#     isosigs = set()
+#     for i in range(retriang_attempts):
+#         N.randomize()
+#         isosigs.add(N.triangulation_isosig())
+#     verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
+#     verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
+#         
+#     for sig in isosigs:
+#         N = snappy.Manifold(sig)
+#         try:
+#             sys = verified_systole(N, bits_prec=bits_prec, verbose=verbose)
+#             verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
+#             return sys
+#         except:
+#             sys = None
+#             verbose_print(verbose, 10, [M, 'systole failed on', sig])
+# 
+#     if sys == None:
+#         verbose_print(verbose, 2, [M, 'systole fail'])
+#         return None
 
 
 

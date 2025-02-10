@@ -118,22 +118,24 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     """
     Takes as in input a snappy manifold M, assumed cusped and enhanced, 
     and equipped with M.slopes_exclude (a calculated set of exceptional fillings).
-    Given such M, compute the systole of M and calculate the set of systole-short 
-    hyperbolic fillings. Filter that set by homology, and
+    Given such M, compute the verified systole of M and calculate the set of 
+    systole-short hyperbolic fillings. Filter that set by homology, and
     install it as M.slopes_hyp.
     
     Returns True if everything works as expected, or None if the systole 
     computation fails. 
     """
 
-    M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+    # M.sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
         return None
-    M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
+    # M.sys = 0.99 * M.sys # In lieu of verification, allow for numerical error
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     
-    norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0).n(200)) 
+    norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0)) 
+    # norm_len_cutoff = max(9.97, sqrt((2*pi/M.sys) + 56.0).n(200))
     short_slopes = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
     verbose_print(verbose, 4, [M.name(), 'norm_len_cutoff', norm_len_cutoff])
     verbose_print(verbose, 3, [M.name(), len(short_slopes), 'short slopes found'])
