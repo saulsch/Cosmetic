@@ -469,7 +469,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
                 return (M.name(), s, sn, 'toroidal manifolds '+str(out[1])+', '+str(outn[1]))
 
 
-def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
+def systole_short_slopes(M, tries=10, verbose=3):
     '''
     Given a knot complement M, presumed to be hyperbolic and equipped with
     the homological framing, compute the systole and use it to build a list of short
@@ -477,19 +477,17 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     
     References: Thm 1.10 of EffectiveBilipschitz, plus strengthened theorem (currently 
     Thm 3.1) of the CosmeticByComputer paper.
-    
-    The flag 'use_NiWu' decides whether we prune the list of geometrically short
-    slopes using the Ni-Wu constraint that p divides (q^2 + 1).
-    Reference: [Ni-Wu, "Cosmetic surgeries on knots in S3"]
     '''
-    sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    
+    sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+    # sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if sys == None:
         return None
 
     # get the translation lengths and the normalisation factor and bounds on p and q
     verbose_print(verbose, 2, [M, 'systole is at least', sys])
     # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
-    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0).n(200)) 
+    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0)) 
     verbose_print(verbose, 4, [M, 'norm_len_cutoff', norm_len_cutoff])
     
     # Build list of short slopes in the homological framing. Note that the list we
@@ -499,7 +497,6 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     verbose_print(verbose, 10, [short_slopes_all])
 
     # remove duplicate slopes, meridian, and longitude.
-    # If use_NiWu==True, also remove all slopes that fail the Ni-Wu test.
     short_slopes = set()
     for s in short_slopes_all:
         p = s[0]
@@ -507,9 +504,6 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
         if p == 0 or q ==0: 
             # No need to check (0,1) or (1,0) slopes - they cannot be cosmetic
             # by Gordon-Luecke and homology.
-            continue
-        if use_NiWu == True and (q**2 + 1) % p:  
-            # Ni-Wu say p divides (q^2 + 1) in all cosmetics
             continue
         if gt.preferred_rep((s[0], -s[1])) not in short_slopes:
             # That is, we have not yet added the negative of this slope
@@ -519,22 +513,17 @@ def systole_short_slopes(M, use_NiWu=True, tries=10, verbose=3):
     verbose_print(verbose, 4, [short_slopes])
     return short_slopes
 
-def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tries=10, verbose=3):
+def check_knot_cosmetic(knot, use_HFK = True, tries=10, verbose=3):
     '''
     Given a knot complement in S^3, install the homological framing on M
     and then check a list of slopes for being possibly a cosmetic pair.
-    The list of slopes is determined by slope_method, which is one of:
-    * 'Hanselman': check slope (2,1) and (1,q), where q obeys Hanselman's bound
-    * 'FPS': check slopes that are shorter than a normalized length cutoff,
-        determined by the systole as in FPS theorem
-    * 'All': Do both of the above, and only check slopes in the overlap
-    
-    The flag 'use_HFK' decides how hard one works to form a list of Hanselman slopes.
-    If true, we compute K.knot_floer_homology(); if not, we only use the
-    Alexander polynomial and Turaev genus.
-    The flag 'use_NiWu' decides whether we prune the list of geometrically short
-    slopes using the Ni-Wu constraint that p divides (q^2 + 1).
-    
+
+    The flag 'use_HFK' what theorems are used form a list of slopes to check.
+    If use_HFK == True, we apply the theorems of Hanselman and Daemi-Lidman-Miller Eismeier, 
+    which says that the only potentially cosmemtic surgery pair is (2,1) and (2,-1).
+    If use_HFK == False, we check all slopes that are shorter than a normalized length cutoff,
+    determined by the systole as in FPS theorem. Each (p,q) slope is compared to (p,-q).
+        
     We do *not* pre-screen M using knot invariants. That pre-screening should
     happen in prune_using_invariants(...) instead.
     '''
@@ -550,11 +539,9 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     hom_slopes = None
     short_slopes = None
     
-    if slope_method=='Hanselman' or slope_method=='All':
-        hom_slopes = Hanselman_slopes(K, name, use_HFK, verbose)
-        if hom_slopes == set():
-            # We already know K has no cosmetic surgeries
-            return []
+    if use_HFK == True:
+        slopes = set()
+        slopes.add((2,1))
 
     # From now on, we need geometry. Install a good hyperbolic metric,
     # or give up if we cannot find one.
@@ -581,22 +568,9 @@ def check_knot_cosmetic(knot, slope_method, use_NiWu = True, use_HFK = True, tri
     m, l, norm_fac = gt.cusp_invariants(M)
     verbose_print(verbose, 5, [name, 'cusp_stuff', 'merid', m, 'long', l, 'norm_fac', norm_fac])
 
-    if slope_method=='FPS' or slope_method=='All':
-        short_slopes = systole_short_slopes(M, use_NiWu, tries, verbose)
+    if use_HFK == False:
+        slopes = systole_short_slopes(M, tries, verbose)
     
-    if hom_slopes == None and short_slopes == None:
-        verbose_print(verbose, 3, [name, 'could not get list of slopes using '+slope_method])
-        return [(name, None, None, 'could not get list of slopes using '+slope_method)] 
-    if hom_slopes == None and short_slopes != None:
-        slopes = short_slopes
-    if hom_slopes != None and short_slopes == None:
-        slopes = hom_slopes
-    if hom_slopes != None and short_slopes != None:
-        # Take the intersection of the two lists
-        slopes = set()
-        for s in hom_slopes:
-            if (s in short_slopes) or ((s[0], -s[1]) in short_slopes):
-                slopes.add(s)
     verbose_print(verbose, 3, [name, 'checking these slopes:', slopes])
 
     bad_uns = []
@@ -768,11 +742,11 @@ def prune_using_invariants(knots, Alexander=True, Casson=True, Genus_thick_quick
 
 
 
-def check_knots(knots, slope_method = 'All', use_NiWu = True, use_HFK = True, tries=10, verbose=4, report=20):
+def check_knots(knots, use_HFK = True, tries=10, verbose=4, report=20):
     
     bad_uns = []
     for n, knot in enumerate(knots): 
-        out = check_knot_cosmetic(knot, slope_method, use_NiWu, use_HFK, tries, verbose)
+        out = check_knot_cosmetic(knot, use_HFK, tries, verbose)
         bad_uns.extend(out)
         if n % report == 0: 
             verbose_print(verbose, 0, ['report', n, bad_uns])
