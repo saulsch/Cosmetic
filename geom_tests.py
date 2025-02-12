@@ -406,7 +406,7 @@ def surgery_description(M, drilling_length=0.4, tries=10, verbose=3):
             return N
     return M
 
-def verified_systole(M, cutoff=None, bits_prec=200, verbose = 3):
+def verified_systole(M, cutoff=None, bits_prec=300, verbose = 3):
     """
     Given a snappy Manifold M, tries to compute a verified interval 
     containing the systole of M.
@@ -438,11 +438,11 @@ def verified_systole(M, cutoff=None, bits_prec=200, verbose = 3):
         return RIF(cutoff)
 
 
-def verified_systole_with_drilling(M, cutoff=None, bits_prec=200, tries=10, verbose=3):
+def verified_systole_with_drilling(M, cutoff=None, bits_prec=300, tries=10, verbose=3):
 
     verbose_print(verbose, 12, [M, "entering verified_systole"])
     N = surgery_description(M, tries=tries, verbose = verbose)
-    return verified_systole(N, cutoff=cutoff, bits_prec=200, verbose=verbose)
+    return verified_systole(N, cutoff=cutoff, bits_prec=bits_prec, verbose=verbose)
 
 
 
