@@ -205,14 +205,25 @@ def shortest_complement(t, m, l):
     return a_shortest_lattice_point_on_line((a, b), (c, d), m, l)
 
 
-def cusp_invariants(M):
+def cusp_invariants(M, tries=10, verbose=3):
     """
     Given a snappy manifold with one cusp, returns the holonomies of
     the current meridian and longitude, and also the square root of
     the area.
     """
     # Note - this uses the current framing, whatever it is
-    [(m,l)] = M.cusp_translations(verified = True, bits_prec = 100)
+    prec = 40 # note the magic number 40.  Fix.
+    for i in range(tries):
+        prec = prec * 2
+        try:
+            [(m,l)] = M.cusp_translations(verified = True, bits_prec = prec)
+            verbose_print(verbose, 12, [M, 'managed to find cusp translations at precision', prec])
+            break
+        except:
+            verbose_print(verbose, 10, [M, 'failed to find cusp translations at precision', prec])
+
+    # [(m,l)] = M.cusp_translations(verified = True, bits_prec = 100)
+
     norm_fac = sqrt(l * m.imag())
     return m, l, norm_fac
 
@@ -249,7 +260,7 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
         # Note that by Chebyshev's Theorem, we have p < 2*floor(len_cutoff^2). This is a massive over-estimate.
         verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of norm_length less than', len_cutoff])
         
-        _, _, norm_fac = cusp_invariants(M)            
+        _, _, norm_fac = cusp_invariants(M, tries=tries, verbose=verbose)            
         len_cutoff = len_cutoff * norm_fac.center()  
         # norm_fac.center is a hackity-hack which stays until the
         # systole is verified.  Once it becomes verified, we can feed
@@ -262,7 +273,7 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
         # Agol's Lemma says: find the next prime p, then the number of slopes is at most  p + 1.
         verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of length less than', len_cutoff])
 
-    prec = 40 # note the magic number 40.  Fix.
+    prec = 80 # note the magic number 40.  Fix.
     for i in range(tries):
         prec = prec * 2
         try:
@@ -659,9 +670,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
     """
     verbose_print(verbose, 12, [M, s, "entering is_hyperbolic_filling"])
     p, q = s
-    # m, l, _ = cusp_invariants(M) [or geom_tests.cusp_invariants(M)]
-    # Computing cusp_invariants(M) is slow, so we do not do it here.
-    #
+
     # It is not clear that we should bother with the six-theorem
     if abs(p*m + q*l) > RIF( 6 ): # six-theorem
         return True

@@ -565,7 +565,7 @@ def check_knot_cosmetic(knot, use_HFK = True, tries=10, verbose=3):
         assert mfd.solution_type() == 'all tetrahedra positively oriented'
         M = mfd
             
-    m, l, norm_fac = gt.cusp_invariants(M)
+    m, l, norm_fac = gt.cusp_invariants(M, tries=tries, verbose=verbose)
     verbose_print(verbose, 5, [name, 'cusp_stuff', 'merid', m, 'long', l, 'norm_fac', norm_fac])
 
     if use_HFK == False:

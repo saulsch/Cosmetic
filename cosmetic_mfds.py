@@ -62,7 +62,7 @@ def enhance_manifold(M, tries = 8, verbose = 4):
     M.longitude = cob[0][1]  # Original user-specified longitude
 
     # The following are holonomies in the new (shortest) framing
-    M.mer_hol, M.long_hol, M.norm_fac = gt.cusp_invariants(M)
+    M.mer_hol, M.long_hol, M.norm_fac = gt.cusp_invariants(M, tries=tries, verbose=verbose)
     M.l_hom = gt.preferred_rep(M.homological_longitude())
     M.m_hom = gt.shortest_complement(M.l_hom, M.mer_hol, M.long_hol) 
     
