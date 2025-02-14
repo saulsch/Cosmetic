@@ -273,7 +273,7 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
             else:
                 verbose_print(verbose, 12, [M, 'managed to find', len(slopes), 'short slopes at precision', prec])
                 break
-        except ValueError:
+        except:
             verbose_print(verbose, 10, [M, 'failed to find short slopes at precision', prec])
             
     slopes = [preferred_rep(s) for s in slopes]
