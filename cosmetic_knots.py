@@ -479,14 +479,14 @@ def systole_short_slopes(M, tries=10, verbose=3):
     Thm 3.1) of the CosmeticByComputer paper.
     '''
     
-    sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+    sys = gt.verified_systole_with_drilling(M, tries=tries, verbose=verbose)
+    # sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
     # sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
     if sys == None:
         return None
 
     # get the translation lengths and the normalisation factor and bounds on p and q
     verbose_print(verbose, 2, [M, 'systole is at least', sys])
-    # norm_len_cutoff = max(10.1, sqrt((2*pi/sys) + 58.0).n(200)) # Thm:CosmeticOneCusp
     norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0)) 
     verbose_print(verbose, 4, [M, 'norm_len_cutoff', norm_len_cutoff])
     
