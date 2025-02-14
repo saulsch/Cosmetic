@@ -126,7 +126,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     computation fails. 
     """
 
-    M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+    M.sys = gt.verified_systole_with_drilling(M, tries=tries, verbose=verbose)
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
         return None
