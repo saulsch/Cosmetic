@@ -222,8 +222,6 @@ def cusp_invariants(M, tries=10, verbose=3):
         except:
             verbose_print(verbose, 10, [M, 'failed to find cusp translations at precision', prec])
 
-    # [(m,l)] = M.cusp_translations(verified = True, bits_prec = 100)
-
     norm_fac = sqrt(l * m.imag())
     return m, l, norm_fac
 
@@ -273,7 +271,7 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
         # Agol's Lemma says: find the next prime p, then the number of slopes is at most  p + 1.
         verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of length less than', len_cutoff])
 
-    prec = 80 # note the magic number 40.  Fix.
+    prec = 40 # note the magic number 40.
     for i in range(tries):
         prec = prec * 2
         try:
