@@ -177,7 +177,7 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     cusped_vol = fetch_volume(M, (0,0), tries, verbose)
     l_max = HK_vol_bound_inv(cusped_vol - vol_max) * M.norm_fac  # length on cusp
     
-    verbose_print(verbose, 12, ["Entering find_low_volume_slopes"])
+    verbose_print(verbose, 12, ["Entering find_low_volume_slopes", point, hom_gp])
     low_vol_slopes = set()
     len_l_hom = abs(M.l_hom[0]*M.mer_hol + M.l_hom[1]*M.long_hol)
     
