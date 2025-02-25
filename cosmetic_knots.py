@@ -262,7 +262,6 @@ def thickness_upper_bound(K, name, verbose=3):
     We get an upper bound on g_T(K) by computing the Turaev genus of the diagram.
     A very cheap upper bound is: g_T(K) <= c(K)/2, where c(K) is crossing number.
     We compute this, but do not return it.
-    Another bound we do not use is: g_T(K) <= c(K) - span V(K).
     '''
     
     if K == None:
@@ -290,6 +289,7 @@ def Jones_tests(K, name, verbose=3):
     * V'''(1), the Ichihara-Wu invariant
     * (V'''(1)+3*V''(1))/-36, the Ito invariant (times four)
     * V(exp(2*Pi*I/5)), the Detcherry invariant  
+    * c(K) - span(V(K)), an upper bound on the Turaev genus g_T(K)
     
     All of these are relevant to obstructing cosmetic surgeries.
     """
@@ -308,12 +308,17 @@ def Jones_tests(K, name, verbose=3):
     
     w = CyclotomicField(5).gen() # so w = exp(2*Pi*I/5)
     Detcherry = V(w)
+    
+    cross = len(K.crossings) # crossing number of the given diagram
+    Vspan = max(V.exponents()) - min(V.exponents())
+    Turaev = cross - Vspan
 
     verbose_print(verbose, 10, [IchiharaWu, "Jones third derivative at 1"])
     verbose_print(verbose, 10, [Ito, "Four times Ito invariant v_3"])
     verbose_print(verbose, 10, [Detcherry, "Jones poly evaluated at exp(2*Pi*I/5)"])
+    verbose_print(verbose, 10, [Turaev, "upper bound on Turaev genus from span(Jones)"])
     
-    return IchiharaWu, Ito, Detcherry
+    return IchiharaWu, Ito, Detcherry, Turaev
 
 
 # Knot Floer homology and related invariants
