@@ -142,6 +142,13 @@ def sanity_check_cusped(M, tries=10, verbose=3):
         return (None, "bad solution type")
 
 
+def is_reasonable_interval(x, precision = 0.01):
+    """
+    Given a real interval x, check whether the endpoints of x are closer than precision.
+    """
+    return (x.upper() - x.lower() < precision)
+
+
 # cusp utilities
 
 
@@ -165,7 +172,7 @@ def preferred_rep(t):
     return out
 
 
-def a_shortest_lattice_point_on_line(point, direction, m, l):
+def a_shortest_lattice_point_on_line(point, direction, m, l, verbose=3):
     """
     Given a pair of lattice points (point, direction) and holonomies
     m, l, returns the lattice_point on the determined line closest to
@@ -183,12 +190,22 @@ def a_shortest_lattice_point_on_line(point, direction, m, l):
     # d*l))/(c*m + d*l), for k an integer.  We must minimise the real
     # part.
     real_part = ((a*m + b*l)/(c*m + d*l)).real()
-    rounded_part = real_part.round() # not the floor, not the ceiling...
-    left, right = rounded_part.endpoints()
-    # if left and right are separated (say, because real_part contains
-    # a half integer) we could give up, but instead:
-    # Old: assert 0.0 <= right - left < 0.1 
-    k = int(left)
+    rounded_part = real_part.round() #
+    # We want the closest integer to rounded_part, but the left and round endpoints got rounded separately.
+    left = int(rounded_part.lower())
+    right = int(rounded_part.upper())
+    verbose_print(verbose, 12, ["Real_part", real_part.endpoints(), "left", left, "right", right])
+    # If left and right are too separated (because real_part is a
+    # giant interval), we give up and crash.
+    if right - left > 1:
+        verbose_print(verbose, 5, ["Not enough precision to get single slope"])
+        raise
+    # If left and right are separated by 1 (because real_part contains
+    # a half integer), we compute both slopes and figure out which is shorter.
+    candidates = [(abs((a-k*c)*m + (b-k*d)*l).endpoints(), k) for k in range(left, right+1)]
+    candidates.sort()
+    
+    k = candidates[0][-1] # Whichever of left or right has the shorter slope
     return preferred_rep((a - k*c, b - k*d))
 
 
@@ -205,20 +222,21 @@ def shortest_complement(t, m, l):
     return a_shortest_lattice_point_on_line((a, b), (c, d), m, l)
 
 
-def cusp_invariants(M, tries=10, verbose=3):
+def cusp_invariants(M, prec=80, tries=10, verbose=3):
     """
     Given a snappy manifold with one cusp, returns the holonomies of
     the current meridian and longitude, and also the square root of
     the area.
     """
     # Note - this uses the current framing, whatever it is
-    prec = 40 # note the magic number 40.  Fix.
+    # Precision gets doubled before we do anything.
     for i in range(tries):
         prec = prec * 2
         try:
             [(m,l)] = M.cusp_translations(verified = True, bits_prec = prec)
-            verbose_print(verbose, 12, [M, 'managed to find cusp translations at precision', prec])
-            break
+            verbose_print(verbose, 12, [M, 'computed cusp translations at precision', prec])
+            if is_reasonable_interval(m.real()) and is_reasonable_interval(m.imag()) and is_reasonable_interval(l.real()) and is_reasonable_interval(l.imag()):
+                break
         except:
             verbose_print(verbose, 10, [M, 'failed to find cusp translations at precision', prec])
 
