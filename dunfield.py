@@ -46,6 +46,7 @@ def find_positive_triangulation(manifold, tries = 3, verbose = 2):
                 X.randomize()
     except snappy.SnapPeaFatalError: 
         print(M, "we failed to drill and fill... why?")
+        # raise
         return None
     
     # In the closed case, here is another trick.
