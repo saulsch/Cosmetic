@@ -444,12 +444,9 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         return None
     elif (s_hyp and sn_hyp):
         verbose_print(verbose, 6, [M, s, sn, 'both hyperbolic'])
-        distinguished, rigorous = gt.are_distinguished_by_hyp_invars(M, s, sn, tries, verbose)
-        if distinguished and rigorous:
+        if gt.are_distinguished_by_hyp_invars(M, s, sn, tries, verbose)
             return None
-        if distinguished and not rigorous:
-            return (M.name(), s, sn, 'seem to have different length spectra')
-        return (M.name(), s, sn, 'complex_vol_fail')
+        return (M.name(), s, sn, 'unable to distinguish')
     else:
         assert( not s_hyp and not sn_hyp ) 
         if not( gt.preferred_rep(s) == (1,1) or gt.preferred_rep(s) == (1,-1) ):

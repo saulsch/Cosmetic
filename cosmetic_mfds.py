@@ -126,7 +126,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     computation fails. 
     """
 
-    M.sys = gt.verified_systole_with_drilling(M, tries=tries, verbose=verbose)
+    M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
         return None
@@ -186,6 +186,7 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
     middle = gt.a_shortest_lattice_point_on_line(point, M.l_hom, M.mer_hol, M.long_hol)
     lower = int( (-l_max / len_l_hom).floor().lower() )
     upper = int( (l_max / len_l_hom).ceil().upper() )
+    verbose_print(verbose, 25, ['middle', middle])
     verbose_print(verbose, 25, ['lower, upper', lower, upper])
     
     # Now, scan the interval to determine low-volume comparison slopes
@@ -212,7 +213,8 @@ def find_low_volume_slopes(M, point, hom_gp, vol_max, tries, verbose):
         # Thus t is a hyperbolic filling, so 
         # First, check length
         verbose_print(verbose, 25, ['lengths', abs(a*M.mer_hol + b*M.long_hol), l_max])
-        if abs(a*M.mer_hol + b*M.long_hol) <= l_max:
+        verbose_print(verbose, 25, ['lengths', abs(a*M.mer_hol + b*M.long_hol).lower(), abs(a*M.mer_hol + b*M.long_hol).upper(), l_max.lower(), l_max.upper()])
+        if not abs(a*M.mer_hol + b*M.long_hol) > l_max: # We need the 'not' because we are comparing intervals
             # Then, check the volume
             t_vol = fetch_volume(M, t, tries, verbose)
             verbose_print(verbose, 25, ['t_vol', t_vol])
@@ -972,21 +974,15 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 if s_vol > t_vol or t_vol > s_vol:
                     verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes'])
                     continue
-                looks_distinct, rigorous = False, False
                 if not check_chiral:
                     # Try to distinguish by oriented hyperbolic invariants
-                    looks_distinct, rigorous = gt.are_distinguished_by_hyp_invars(M, s, t, tries, verbose)
-                    if looks_distinct and rigorous:
+                    if gt.are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
                         continue
                     
                 if ft.are_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
                     
-                if looks_distinct and not rigorous:
-                    reason = (M.name(), s, t, 'distinguished by non-rigorous length spectrum')
-                    verbose_print(verbose, -1, [M.name(), s, t, 'distinguished by non-rigorous length spectrum'])
-                if not looks_distinct:
-                    reason = (M.name(), s, t, 'Not distinguished by hyperbolic invariants or covers')
+                reason = (M.name(), s, t, 'Not distinguished by hyperbolic invariants or covers')
                 verbose_print(verbose, 2, [reason])
                 bad_uns.append(reason)
 

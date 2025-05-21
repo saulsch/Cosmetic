@@ -277,9 +277,10 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
         verbose_print(verbose, 12, [M, 'expecting at most', slopes_expected, 'slopes of norm_length less than', len_cutoff])
         
         _, _, norm_fac = cusp_invariants(M, tries=tries, verbose=verbose)            
-        len_cutoff = len_cutoff * norm_fac.center()  
-        # norm_fac.center is a hackity-hack which stays until the
-        # systole is verified.  Once it becomes verified, we can feed
+        len_cutoff = len_cutoff * norm_fac
+        # len_cutoff = len_cutoff * norm_fac.center()  
+        # norm_fac.center is a hackity-hack which stayed until the
+        # systole became verified.  Now that it becomes verified, we can feed
         # M.short_slopes an RIF as a length.
     else:
         p = next_prime(floor(len_cutoff**2 /3.35))
@@ -443,7 +444,8 @@ def verified_systole(M, cutoff=None, bits_prec=300, verbose = 3):
     (In many applications, we only care about systoles that are shorter than 0.15.)
     
     If M contains short geodesics that are not filled cusps, this might also run 
-    for a very long time. So it is best to precondition M via surgery descriptions.
+    for a very long time. If this is a possibility, we recommend running 
+    verified_systole_with_drilling.
     """
     
     verbose_print(verbose, 12, [M, "entering verified_systole"])
@@ -466,13 +468,32 @@ def verified_systole(M, cutoff=None, bits_prec=300, verbose = 3):
 
 
 def verified_systole_with_drilling(M, cutoff=None, bits_prec=300, tries=10, verbose=3):
+    """
+    Given a snappy Manifold M, drills and re-fills short curves, then
+    tries to compute a verified interval containing the systole of M.
+    Returns the systole in RIF form.
+    If cutoff != None, only looks for systoles up to the given value.
+    (In many applications, we only care about systoles that are shorter than 0.15.)
+    """
 
     verbose_print(verbose, 12, [M, "entering verified_systole"])
     N = surgery_description(M, tries=tries, verbose = verbose)
     return verified_systole(N, cutoff=cutoff, bits_prec=bits_prec, verbose=verbose)
 
 
+def verified_spectrum_with_tries(M, cutoff, initial_prec=100, tries=8, verbose=3):
 
+    prec = initial_prec
+    for i in range(tries):
+        try:
+            M_spec = M.length_spectrum_alt(max_len = cutoff, bits_prec = prec, verified=True)
+            verbose_print(verbose, 10, [M, 'found spectrum at precision', prec])
+            return M_spec
+        except Exception as e:
+            verbose_print(verbose, 10, [M, 'precision =', prec, e])
+        prec = prec + 100
+    return None
+            
 
 # def verified_systole_with_tries(M, bits_prec=60, tries=10, verbose=3):
 #     """
@@ -719,68 +740,61 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
 
 # Dealing with a pair of slopes
 
-
-def are_distinguished_by_length_spectrum(M, s, t, check_chiral=False, cutoff = 3.1, verbose=5):
+def distinct_sets_of_rifs(set1, set2):
     """
-    Given a cusped manifold M and two slopes (where we think that both
-    fillings are hyperbolic), try to distinguish M(s) from M(t) using the 
-    complex length spectra.
+	Given two sets of (real or complex) RIFs, checks whether there is an element
+	of one set that is verifiably distinct from all elements of the other.
+	"""
+	
+    for v1 in set1:
+       if all(v1 != v2 for v2 in set2):
+           return True
+    for v2 in set2:
+       if all(v1 != v2 for v1 in set1):
+           return True
+    return False
+
+
+def are_distinguished_by_length_spectrum(Ms, Mt, check_chiral=False, tries=5, cutoff = 1.0, verbose=5):
+    """
+    Given a pair of hyperbolic manifold Ms and Mt, try to distinguish them 
+    using the (verified) complex length spectra.
     
     If check_chiral==False, then we only check for orientation-preserving
     isometries.
-    
     If check_chiral==True, then we check for both orientation-preserving and
     orientation-reversing isometries.
     
     The cutoff variable determines how far into the length spectrum we bother checking.
-    To save computer time, we creep up on the cutoff rather than jumping straight there.
+    To save computer time, try lower cutoffs before trying higher ones.
     
     Returns True if the manifolds are distinguished, and False if not. 
-    A True answer is only as rigorous as the length spectrum (so, not entirely).
     """
-    verbose_print(verbose, 12, [M, s, t, 'entering are_distinguished_by_length_spectrum'])
-    Ms = M.high_precision()
-    Mt = M.high_precision()
-    
-    Ms.dehn_fill(s)
-    Mt.dehn_fill(t)
-    try:
-        Ms_domain = Ms.dirichlet_domain()
-        Mt_domain = Mt.dirichlet_domain()
-    except Exception as e:
-        verbose_print(verbose, 6, [M, s, t, e])
 
-    length_step = 0.2
-    current_length = min(1.0, cutoff)
+    verbose_print(verbose, 12, [Ms, Mt, 'entering are_distinguished_by_length_spectrum'])
+        
+    Ms_spec = verified_spectrum_with_tries(Ms, cutoff, tries=tries, verbose=verbose)
+    Mt_spec = verified_spectrum_with_tries(Mt, cutoff, tries=tries, verbose=verbose)
     
-    norm_cutoff = 0.1 # If vector norms differ by this much, the vectors really are different
+    if Ms_spec == None or Mt_spec == None:
+        verbose_print(verbose, 6, [Ms, Mt, 'could not compute spectra'])
+        return False
+
+    Ms_lengths = [line.length for line in Ms_spec]
+    Mt_lengths = [line.length for line in Mt_spec]
+    Mt_conjugates = [length.conjugate() for length in Mt_lengths]
     
-    while current_length <= cutoff:
-        # Compute length spectra without multiplicity
-        Ms_spec = Ms_domain.length_spectrum_dicts(current_length, grouped = False)
-        Mt_spec = Mt_domain.length_spectrum_dicts(current_length, grouped = False)
-        # Throw away all but the complex lengths
-        Ms_spec = [line.length for line in Ms_spec]
-        Mt_spec = [line.length for line in Mt_spec]
+    verbose_print(verbose, 15, [Ms, Ms_lengths])
+    verbose_print(verbose, 15, [Mt, Mt_lengths])
+    
+    if not(check_chiral) and distinct_sets_of_rifs(Ms_lengths, Mt_lengths):
+        verbose_print(verbose, 6, [Ms, Mt, 'length spectrum up to', cutoff, 'distinguishes oriented manifolds'])
+        return True
+    if check_chiral and distinct_sets_of_rifs(Ms_lengths, Mt_lengths) and distinct_sets_of_rifs(Ms_lengths, Mt_conjugates):
+        verbose_print(verbose, 6, [Ms, Mt, 'length spectrum up to', cutoff, 'distinguishes un-oriented manifolds'])
+        return True
         
-        minlen = min(len(Ms_spec), len(Mt_spec))
-        
-        M_diff = [Ms_spec[i] - Mt_spec[i] for i in range(minlen)]
-        M_norm = vector(M_diff).norm()
-        
-        M_conjdiff = [Ms_spec[i] - Mt_spec[i].conjugate() for i in range(minlen)]
-        M_conjnorm = vector(M_conjdiff).norm()
-        
-        if not(check_chiral) and M_norm > norm_cutoff:
-            verbose_print(verbose, 6, [M, s, t, 'length spectrum up to', current_length, 'distinguishes oriented manifolds'])
-            return True
-        if check_chiral and M_norm > norm_cutoff and M_conjnorm > norm_cutoff:
-            verbose_print(verbose, 6, [M, s, t, 'length spectrum up to', current_length, 'distinguishes un-oriented manifolds'])
-            return True
-        else:
-            verbose_print(verbose, 10, [M, s, t, 'length spectrum up to', current_length, 'fails to distinguish'])
-        current_length += length_step
-            
+    verbose_print(verbose, 8, [Ms, Mt, 'length spectrum up to', cutoff, 'failed to distinguish'])
     return False
 
 
@@ -790,10 +804,9 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     that both fillings are hyperbolic), try to prove that M(s) is not
     orientation-preservingly homeomorphic to M(t).
     
-    Returns a tuple of booleans (distinguished, rigor).
-    distinguished is True if we can tell the manifolds apart.
-    rigor is True if we did so using rigorous verified invariants.
+    Returns True if we can rigorously tell the manifolds apart.
     """
+
     verbose_print(verbose, 12, [M, s, t, 'entering are_distinguished_by_hyp_invars'])
     Ms = snappy.Manifold(M)
     Mt = snappy.Manifold(M)
@@ -804,7 +817,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
     if Ms == None or Mt == None:
         verbose_print(verbose, 6, [M, s, t, 'positive triangulation fail'])
-        return (None, None)
+        return None
     
     prec = 40 # note the magic number 20.  Fix.
     for i in range(tries):
@@ -815,7 +828,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
             if Ms_vol < Mt_vol or Mt_vol < Ms_vol:
                 verbose_print(verbose, 6, [M, s, t, "verified volume distinguishes at precision", prec])
-                return (True, True)
+                return True
             else:
                 verbose_print(verbose, 6, [M, s, t, "volumes very close at precision", prec])
         except Exception as e:
@@ -846,7 +859,7 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
             frac = ratio - ratio.floor()
             if eps < frac < 1 - eps: 
                 verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
-                return (True, True)
+                return True
             else:
                 verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
         except Exception as e:
@@ -854,8 +867,15 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
         
             # Let us not randomize, since we already have a good triangulation...
 
-    if are_distinguished_by_length_spectrum(M, s, t, cutoff = 1.1, verbose=verbose):
-        return (True, False)
-    else:
-        return (False, None)
+    # Length spectra are slow, but worth trying in a pinch
+    # We creep up on higher and higher length cutoffs
+    
+    cutoff = 1.0
+    step = 0.2
+    for i in range(tries):
+        if are_distinguished_by_length_spectrum(Ms, Mt, tries=tries, cutoff = cutoff, verbose=verbose):
+            return True
+        cutoff += step
+        
+    return False
     
