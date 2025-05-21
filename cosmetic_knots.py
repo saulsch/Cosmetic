@@ -481,9 +481,7 @@ def systole_short_slopes(M, tries=10, verbose=3):
     Thm 3.1) of the CosmeticByComputer paper.
     '''
     
-    sys = gt.verified_systole_with_drilling(M, tries=tries, verbose=verbose)
-    # sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
-    # sys = gt.systole_with_tries(M, tries=tries, verbose=verbose)
+    sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
     if sys == None:
         return None
 
@@ -572,6 +570,11 @@ def check_knot_cosmetic(knot, use_HFK = True, tries=10, verbose=3):
 
     if use_HFK == False:
         slopes = systole_short_slopes(M, tries, verbose)
+
+    if slopes == None:
+        verbose_print(verbose, 0, [M.name(), 'systole fail!'])
+        return [(name, None, None, 'could not compute systole')]
+
     
     verbose_print(verbose, 3, [name, 'checking these slopes:', slopes])
 

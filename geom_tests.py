@@ -742,7 +742,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
 
 def distinct_sets_of_rifs(set1, set2):
     """
-	Given two sets of (real or complex) RIFs, checks whether there is an element
+	Given two (sets or lists) of (real or complex) RIFs, checks whether there is an element
 	of one set that is verifiably distinct from all elements of the other.
 	"""
 	
@@ -766,7 +766,7 @@ def are_distinguished_by_length_spectrum(Ms, Mt, check_chiral=False, tries=5, cu
     orientation-reversing isometries.
     
     The cutoff variable determines how far into the length spectrum we bother checking.
-    To save computer time, try lower cutoffs before trying higher ones.
+    To save computer time, we recommend tring lower cutoffs before trying higher ones.
     
     Returns True if the manifolds are distinguished, and False if not. 
     """
