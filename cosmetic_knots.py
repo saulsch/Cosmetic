@@ -444,7 +444,7 @@ def check_knot_cosmetic_slope(M, s, m, l, tries, verbose):
         return None
     elif (s_hyp and sn_hyp):
         verbose_print(verbose, 6, [M, s, sn, 'both hyperbolic'])
-        if gt.are_distinguished_by_hyp_invars(M, s, sn, tries, verbose)
+        if gt.are_distinguished_by_hyp_invars(M, s, sn, tries, verbose):
             return None
         return (M.name(), s, sn, 'unable to distinguish')
     else:
