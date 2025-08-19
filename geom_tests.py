@@ -800,8 +800,8 @@ def are_distinguished_by_hyp_invars(M, s, t, check_chiral=False, tries=5, verbos
         verbose_print(verbose, 6, [M, s, t, 'positive triangulation fail'])
         return None
     
-    prec = 40 # note the magic number 20.  Fix.
-    for i in range(tries):
+    prec = 80 # note the magic number 80. 
+    for i in range(ceil(tries/2)):
         try:
             # Try ordinary volume first
             Ms_vol = Ms.volume(verified=True, bits_prec = prec)
@@ -811,7 +811,7 @@ def are_distinguished_by_hyp_invars(M, s, t, check_chiral=False, tries=5, verbos
                 verbose_print(verbose, 6, [M, s, t, "verified volume distinguishes at precision", prec])
                 return True
             else:
-                verbose_print(verbose, 6, [M, s, t, "volumes very close at precision", prec])
+                verbose_print(verbose, 8, [M, s, t, "volumes very close at precision", prec])
         except Exception as e:
             verbose_print(verbose, 6, [M, s, t, "failed to compute volume at precision", prec, str(e)])
 
