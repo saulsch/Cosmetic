@@ -461,7 +461,7 @@ def verified_systole(M, cutoff=None, bits_prec=200, verbose = 3):
             return None
     else:
         try:
-            spec = M.length_spectrum_alt(max_len=cutoff, bits_prec = bits_prec, verified = True)
+            spec = M.length_spectrum_alt(count=1, max_len=cutoff, bits_prec = bits_prec, verified = True)
             verbose_print(verbose, 10, [M, 'length spectrum up to cutoff', cutoff, spec])
             if spec != []: # some geodesics were found
                 return spec[0].length.real()
@@ -718,10 +718,10 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
 
 def distinct_sets_of_rifs(set1, set2):
     """
-	Given two (sets or lists) of (real or complex) RIFs, checks whether there is an element
-	of one set that is verifiably distinct from all elements of the other.
-	"""
-	
+    Given two (sets or lists) of (real or complex) RIFs, checks whether there is an element
+    of one set that is verifiably distinct from all elements of the other.
+    """
+    
     for v1 in set1:
        if all(v1 != v2 for v2 in set2):
            return True
@@ -774,13 +774,18 @@ def are_distinguished_by_length_spectrum(Ms, Mt, check_chiral=False, tries=5, cu
     return False
 
 
-def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
+def are_distinguished_by_hyp_invars(M, s, t, check_chiral=False, tries=5, verbose=5):
     """
     Given a cusped manifold M and two slopes s and t (where we think
     that both fillings are hyperbolic), try to prove that M(s) is not
     orientation-preservingly homeomorphic to M(t).
     
     Returns True if we can rigorously tell the manifolds apart.
+    
+    If check_chiral==False, then we only check for orientation-preserving
+    isometries.
+    If check_chiral==True, then we check for both orientation-preserving and
+    orientation-reversing isometries.
     """
 
     verbose_print(verbose, 12, [M, s, t, 'entering are_distinguished_by_hyp_invars'])
@@ -812,34 +817,35 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
 
         prec = prec * 2 # seems that complex volume needs more precision than regular...
             
-        try:
-            # now try complex volume
-            Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-            Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
-            diff = Ms_cpx_vol - Mt_cpx_vol
-            # since we are here, the real part of diff is basically zero.
-            # We check that:
-            RIF = diff.real().parent()
-            eps = RIF(2**-(prec/2)) 
-            assert -eps < diff.real() < eps
-
-            # The imaginary part is, up to scale, the CS
-            # invariant.  However, it is only defined up to adding
-            # copies of i*pi^2/2.  So we need to show that the
-            # difference is not close to a multiple of i*pi^2/2.
-            diff = diff.imag()
-            RIF = diff.parent()
-            Pi = RIF(pi)
-            multiple = Pi**2 / 2
-            ratio = diff / multiple
-            frac = ratio - ratio.floor()
-            if eps < frac < 1 - eps: 
-                verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
-                return True
-            else:
-                verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
-        except Exception as e:
-            verbose_print(verbose, 6, [M, s, t, "failed to compute complex volume at precision", prec, str(e)])
+        if check_chiral == False:
+            try:
+                # now try complex volume
+                Ms_cpx_vol = Ms.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+                Mt_cpx_vol = Mt.complex_volume(verified_modulo_2_torsion=True, bits_prec = prec)
+                diff = Ms_cpx_vol - Mt_cpx_vol
+                # since we are here, the real part of diff is basically zero.
+                # We check that:
+                RIF = diff.real().parent()
+                eps = RIF(2**-(prec/2)) 
+                assert -eps < diff.real() < eps
+    
+                # The imaginary part is, up to scale, the CS
+                # invariant.  However, it is only defined up to adding
+                # copies of i*pi^2/2.  So we need to show that the
+                # difference is not close to a multiple of i*pi^2/2.
+                diff = diff.imag()
+                RIF = diff.parent()
+                Pi = RIF(pi)
+                multiple = Pi**2 / 2
+                ratio = diff / multiple
+                frac = ratio - ratio.floor()
+                if eps < frac < 1 - eps: 
+                    verbose_print(verbose, 6, [M, s, t, 'verified complex volume distinguishes at precision', prec])
+                    return True
+                else:
+                    verbose_print(verbose, 6, [M, s, t, 'complex volumes very close at precision', prec])
+            except Exception as e:
+                verbose_print(verbose, 6, [M, s, t, "failed to compute complex volume at precision", prec, str(e)])
         
             # Let us not randomize, since we already have a good triangulation...
 
@@ -847,9 +853,9 @@ def are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
     # We creep up on higher and higher length cutoffs
     
     cutoff = 1.0
-    step = 0.2
+    step = 0.5
     for i in range(tries):
-        if are_distinguished_by_length_spectrum(Ms, Mt, tries=tries, cutoff = cutoff, verbose=verbose):
+        if are_distinguished_by_length_spectrum(Ms, Mt, check_chiral=check_chiral, tries=tries, cutoff = cutoff, verbose=verbose):
             return True
         cutoff += step
         

@@ -974,10 +974,8 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                 if s_vol > t_vol or t_vol > s_vol:
                     verbose_print(verbose, 6, [M, s, t, 'verified volume distinguishes'])
                     continue
-                if not check_chiral:
-                    # Try to distinguish by oriented hyperbolic invariants
-                    if gt.are_distinguished_by_hyp_invars(M, s, t, tries, verbose):
-                        continue
+                if gt.are_distinguished_by_hyp_invars(M, s, t, check_chiral, tries, verbose):
+                    continue
                     
                 if ft.are_distinguished_by_covers(M, s, M, t, tries, verbose):
                     continue
