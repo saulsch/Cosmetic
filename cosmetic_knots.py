@@ -21,6 +21,7 @@ from sage.symbolic.constants import pi
 from sage.arith.misc import gcd
 from sage.symbolic.ring import SR
 from sage.rings.number_field.number_field import CyclotomicField
+from sage.rings.real_mpfi import RIF
 
 from string import ascii_letters
 
@@ -487,7 +488,7 @@ def systole_short_slopes(M, tries=10, verbose=3):
 
     # get the translation lengths and the normalisation factor and bounds on p and q
     verbose_print(verbose, 2, [M, 'systole is at least', sys])
-    norm_len_cutoff = max(9.97, sqrt((2*pi/sys) + 56.0)) 
+    norm_len_cutoff = max(RIF(9.97), sqrt((2*pi/sys) + 56.0)) 
     verbose_print(verbose, 4, [M, 'norm_len_cutoff', norm_len_cutoff])
     
     # Build list of short slopes in the homological framing. Note that the list we
@@ -598,6 +599,7 @@ def prune_using_invariants(knots, Alexander=True, Casson=True, Genus_thick_quick
     '''
     Given a list of knots or knot complements, tries to
     rule out cosmetic surgeries using the followifng tests:
+    
     * Daemi-Lidman-Miller Eismeier test (Alexander polynomial)
     * Boyer-Lines test (second derivative of Alexander polynomial at 1) 
     * Quick genus-thickness test (span(Alexander) and Turaev genus)

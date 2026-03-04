@@ -849,6 +849,8 @@ def are_distinguished_by_hyp_invars(M, s, t, check_chiral=False, tries=5, verbos
         
             # Let us not randomize, since we already have a good triangulation...
 
+    # We should interleave covers and length spectra.
+
     # Length spectra are slow, but worth trying in a pinch
     # We creep up on higher and higher length cutoffs
     
