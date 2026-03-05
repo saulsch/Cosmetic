@@ -425,7 +425,8 @@ def surgery_description(M, drilling_length=0.4, tries=10, verbose=3):
     verbose_print(verbose, 12, [M, real_len, g])
     if real_len < drilling_length:
         try:
-            N = M.drill_word(g, verified=True, bits_prec=1000)
+            verbose_print(verbose, 12, [M, "drilling generator", g])
+            N = M.drill_word(g, verified=True, bits_prec=1500)
         except:
             return M
         N.dehn_fill((1,0),-1)
