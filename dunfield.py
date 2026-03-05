@@ -45,7 +45,7 @@ def find_positive_triangulation(manifold, tries = 3, verbose = 2):
                     return X
                 X.randomize()
     except snappy.SnapPeaFatalError: 
-        print(M, "we failed to drill and fill... why?")
+        verbose_print(verbose, 0, [M, "we failed to drill and fill... why?"])
         # raise
         return None
     
@@ -78,7 +78,7 @@ def verify_hyperbolic_basic(manifold, tries = 3, verbose = 2):
                     return True
             except RuntimeError:
                 verbose_print(verbose, 12, [M, "had a RuntimeError"])
-                print(M, 'Treating exception in verify code as a failure')
+                verbose_print(verbose, 0, [M, 'Treating exception in verify code as a failure'])
     return False
 
 def verify_hyperbolic_basic_with_volume(manifold, tries = 3, verbose = 2):
@@ -94,7 +94,7 @@ def verify_hyperbolic_basic_with_volume(manifold, tries = 3, verbose = 2):
                     return (True, M.volume(verified = True, bits_prec = prec))
             except RuntimeError:
                 verbose_print(verbose, 12, [M, "had a RuntimeError"])
-                print(M, 'Treating exception in verify code as a failure')
+                verbose_print(verbose, 0, [M, 'Treating exception in verify code as a failure'])
     return (False, None)
 
 def is_hyperbolic(manifold, tries = 10, verbose = 2):
@@ -115,23 +115,17 @@ def is_hyperbolic(manifold, tries = 10, verbose = 2):
 
                 
 def is_hyperbolic_with_volume(manifold, tries = 10, verbose = 2):
-    verbose_print(verbose, 12, [])
-    if verbose > 12:
-        print(manifold, "entering is_hyperbolic_with_volume")
+    verbose_print(verbose, 12, [manifold, "entering is_hyperbolic_with_volume"])
 
     is_hyp, vol = verify_hyperbolic_basic_with_volume(manifold, tries = tries, verbose = verbose)
         
     if is_hyp:
-        verbose_print(verbose, 12, [])
-        if verbose > 12:
-            print(manifold, "verify_hyperbolic_basic_with_volume worked.")
+        verbose_print(verbose, 12, [manifold, "verify_hyperbolic_basic_with_volume worked."])
         return (is_hyp, vol)
     else:
         for d in range(2, min(tries, 8)):
             for C in manifold.covers(d):
-                verbose_print(verbose, 12, [])
-                if verbose > 12:
-                    print("trying cover of degree", d)
+                verbose_print(verbose, 12, ["trying cover of degree", d])
                 is_hyp, vol = verify_hyperbolic_basic_with_volume(C, tries = tries, verbose = verbose)
                 if is_hyp:
                     verbose_print(verbose, 12, [manifold, "covers plus verify_hyperbolic_basic_with_volume worked."])

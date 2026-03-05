@@ -195,6 +195,9 @@ def is_closed_sfs_from_name(name, verbose=3):
         
     verbose_print(verbose, 12, ["Entering is_closed_sfs_from_name"])
 
+    if name == None:
+        return (None, None, None, None)
+
     # First, test for S2 x R structures.
     if name == "S2 x S1":
         return (True, "S2 x R", "S2", [])

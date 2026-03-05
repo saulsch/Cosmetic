@@ -406,7 +406,7 @@ def fetch_exceptional_data(M, s, field, tries = 3, verbose = 2):
     if field == "atoroidal_sfs":
         name = fetch_exceptional_data(M, s, "name", tries, verbose)
         if name == None:
-            return (None, None)
+            return (None, None, None, None)
 
         out = rt.is_closed_sfs_from_name(name)
         is_sfs, geom, base, coeffs = out
