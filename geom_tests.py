@@ -310,101 +310,99 @@ def find_short_slopes(M, len_cutoff=None, normalized=False, tries=10, verbose=3)
 
 # unverified systole
 
-# The next set of functions should get ripped out.
-
-def systole_with_covers(M, tries=10, verbose=3):
-    """
-    Given a snappy Manifold M,
-    try to compute a lower bound for the systole.
-    If direct computation fails, then try taking covers.
-    The idea is that the systole of M is at least (1/n) times
-    the systole of an n-fold cover.
-    We only care about systoles that are shorter than 0.15.
-    """    
-    verbose_print(verbose, 12, [M, "entering systole_with_covers"])
-
-    retriang_attempts = 2*tries
-    # This is a hack. In our context, tries is at most 8. But here, we want 
-    # to retriangulate many times, until we succeed.
-
-
-    for deg in range(1, 6):
-        cov = M.covers(deg)
-        for N in cov: 
-            for i in range(retriang_attempts): # that looks like a magic number... 
-                for j in range(i):
-                    N.randomize() # This should probably be done with isosigs.
-                try:
-                    sys = systole(N, verbose = verbose)
-                    verbose_print(verbose, 10, ['systole of', deg, 'fold cover', N, 'is at least', sys])
-                    return (sys/deg)
-                except:
-                    sys = None
-                    verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
-
-    if sys == None:
-        verbose_print(verbose, 6, [M, 'systole fail'])
-        return None
-
-
-def systole_with_tries(M, tries=10, verbose=3):
-    """
-    Given a snappy Manifold M, tries and tries again to compute a lower
-    bound for the systole. Builds in randomization.
-    """
-    verbose_print(verbose, 12, [M, 'entering systole_with_tries'])
-
-    # Before trying hard things, see if we get lucky.
-    try:
-        sys = systole(M, verbose=verbose)
-        verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
-        return sys
-    except:
-        sys = None
-        verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
-    
-    # Build a database of isosigs
-    N = snappy.Manifold(M)
-    retriang_attempts = 10*tries # Magic constant
-    isosigs = set()
-    for i in range(retriang_attempts):
-        N.randomize()
-        isosigs.add(N.triangulation_isosig())
-    verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
-    verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
-        
-    for sig in isosigs:
-        N = snappy.Manifold(sig)
-        try:
-            sys = systole(N, verbose=verbose)
-            verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
-            return sys
-        except:
-            sys = None
-            verbose_print(verbose, 10, [M, 'systole failed on', sig])
-
-    if sys == None:
-        verbose_print(verbose, 2, [M, 'systole fail'])
-        return None
-
-
-
-def systole(M, verbose = 3):
-    """
-    Given a snappy Manifold M,
-    tries to compute the systole of M, non-rigorously (for now).
-    We only care about systoles that are shorter than 0.15.
-    
-    N.length_spectrum() might cause this routine to crash, so usage should be wrapped in a 'try'.
-    """
-    N = M.high_precision()
-    verbose_print(verbose, 12, [M, "entering systole"])
-    spec = N.length_spectrum(0.15, full_rigor = True) # Not actually rigorous
-    verbose_print(verbose, 12, [M, "computed length spectrum"])
-    if spec == []:
-        return 0.15 # any systole larger than this gets ignored. 
-    else:
-        return spec[0].length.real()
+# 	def systole_with_covers(M, tries=10, verbose=3):
+# 	   """
+# 	   Given a snappy Manifold M,
+# 	   try to compute a lower bound for the systole.
+# 	   If direct computation fails, then try taking covers.
+# 	   The idea is that the systole of M is at least (1/n) times
+# 	   the systole of an n-fold cover.
+# 	   We only care about systoles that are shorter than 0.15.
+# 	   """    
+# 	   verbose_print(verbose, 12, [M, "entering systole_with_covers"])
+# 	
+# 	   retriang_attempts = 2*tries
+# 	   # This is a hack. In our context, tries is at most 8. But here, we want 
+# 	   # to retriangulate many times, until we succeed.
+# 	
+# 	
+# 	   for deg in range(1, 6):
+# 		   cov = M.covers(deg)
+# 		   for N in cov: 
+# 			   for i in range(retriang_attempts): # that looks like a magic number... 
+# 				   for j in range(i):
+# 					   N.randomize() # This should probably be done with isosigs.
+# 				   try:
+# 					   sys = systole(N, verbose = verbose)
+# 					   verbose_print(verbose, 10, ['systole of', deg, 'fold cover', N, 'is at least', sys])
+# 					   return (sys/deg)
+# 				   except:
+# 					   sys = None
+# 					   verbose_print(verbose, 10, [N, 'systole failed on attempt', i])
+# 	
+# 	   if sys == None:
+# 		   verbose_print(verbose, 6, [M, 'systole fail'])
+# 		   return None
+# 	
+# 	
+# 	def systole_with_tries(M, tries=10, verbose=3):
+# 	   """
+# 	   Given a snappy Manifold M, tries and tries again to compute a lower
+# 	   bound for the systole. Builds in randomization.
+# 	   """
+# 	   verbose_print(verbose, 12, [M, 'entering systole_with_tries'])
+# 	
+# 	   # Before trying hard things, see if we get lucky.
+# 	   try:
+# 		   sys = systole(M, verbose=verbose)
+# 		   verbose_print(verbose, 10, [M, sys, 'systole computed on first attempt'])
+# 		   return sys
+# 	   except:
+# 		   sys = None
+# 		   verbose_print(verbose, 10, [M, 'systole failed on first attempt'])
+# 	   
+# 	   # Build a database of isosigs
+# 	   N = snappy.Manifold(M)
+# 	   retriang_attempts = 10*tries # Magic constant
+# 	   isosigs = set()
+# 	   for i in range(retriang_attempts):
+# 		   N.randomize()
+# 		   isosigs.add(N.triangulation_isosig())
+# 	   verbose_print(verbose, 15, [M, 'isosigs:', isosigs])
+# 	   verbose_print(verbose, 10, [M, len(isosigs), 'isosigs found'])
+# 		   
+# 	   for sig in isosigs:
+# 		   N = snappy.Manifold(sig)
+# 		   try:
+# 			   sys = systole(N, verbose=verbose)
+# 			   verbose_print(verbose, 10, [M, sys, 'systole computed from', sig])
+# 			   return sys
+# 		   except:
+# 			   sys = None
+# 			   verbose_print(verbose, 10, [M, 'systole failed on', sig])
+# 	
+# 	   if sys == None:
+# 		   verbose_print(verbose, 2, [M, 'systole fail'])
+# 		   return None
+# 	
+# 	
+# 	
+# 	def systole(M, verbose = 3):
+# 	   """
+# 	   Given a snappy Manifold M,
+# 	   tries to compute the systole of M, non-rigorously (for now).
+# 	   We only care about systoles that are shorter than 0.15.
+# 	   
+# 	   N.length_spectrum() might cause this routine to crash, so usage should be wrapped in a 'try'.
+# 	   """
+# 	   N = M.high_precision()
+# 	   verbose_print(verbose, 12, [M, "entering systole"])
+# 	   spec = N.length_spectrum(0.15, full_rigor = True) # Not actually rigorous
+# 	   verbose_print(verbose, 12, [M, "computed length spectrum"])
+# 	   if spec == []:
+# 		   return 0.15 # any systole larger than this gets ignored. 
+# 	   else:
+# 		   return spec[0].length.real()
 
 
 ### Verified systole
@@ -424,16 +422,22 @@ def surgery_description(M, drilling_length=0.4, tries=10, verbose=3):
     real_len, g = min((real_len, g) for g in G.generators() if (real_len := G.complex_length(g).real()) > 1e-6)
     verbose_print(verbose, 12, [M, real_len, g])
     if real_len < drilling_length:
-        try:
-            verbose_print(verbose, 12, [M, "drilling generator", g])
-            N = M.drill_word(g, verified=True, bits_prec=1500)
-        except:
-            return M
-        N.dehn_fill((1,0),-1)
-        N = dunfield.find_positive_triangulation(N, tries, verbose)
-        if N.solution_type() == 'all tetrahedra positively oriented':
-            return N
+        prec = 800
+        for i in range(tries):
+            try:
+                verbose_print(verbose, 12, [M, "drilling generator", g, "at precision", prec])
+                N = M.drill_word(g, verified=True, bits_prec=prec)
+                break
+            except:
+                prec = prec + 400
+                continue
+        if N != None:
+            N.dehn_fill((1,0),-1)
+            N = dunfield.find_positive_triangulation(N, tries, verbose)
+            if N.solution_type() == 'all tetrahedra positively oriented':
+                return N
     return M
+    
 
 def verified_systole(M, cutoff=None, bits_prec=200, verbose = 3):
     """
@@ -710,7 +714,7 @@ def is_hyperbolic_filling(M, s, m, l, tries, verbose):
             if rt.is_toroidal_wrapper(N, verbose)[0]:
                 return False 
             name = dunfield.regina_name(N)
-            if name != None and name[:3] == 'SFS': # We trust the regina_name.
+            if name != None and (name[:3] == 'SFS' or name[:3] == 'S3/'): # We trust the regina_name.
                 return False
     return None
 
