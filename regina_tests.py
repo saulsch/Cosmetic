@@ -359,7 +359,10 @@ def are_distinguished_lens_spaces(name0, name1, verbose = 3):
     Given two Regina names, checks whether the two manifolds are lens spaces.
     If yes, and the two are not homeomorphic, return True. If one is not
     a lens space, or they are homeomorphic, return False.
-    This only tests for _un_oriented homeomorphism.
+
+    This only tests for _un_oriented homeomorphism. Indeed, the regina_name 
+    function in dunfield.py uses unoriented isosigs, so the Regina name has 
+    already forgotten the orientation.
     """
     
     verbose_print(verbose, 12, ["Entering are_distinguished_lens_spaces"])
@@ -388,7 +391,10 @@ def are_distinguished_closed_sfs(name_0, name_1, verbose = 3):
     If yes, and the two are not homeomorphic, return True. 
     Lens spaces are allowed, and are handled separately from others over S2.
     The tests applied here are not exhaustive, but a True answer is trustworthy.
-    This routine only tests for _un_oriented homeomorphism.
+
+    This only tests for _un_oriented homeomorphism. Indeed, the regina_name 
+    function in dunfield.py uses unoriented isosigs, so the Regina name has 
+    already forgotten the orientation.
     """
 
     verbose_print(verbose, 12, ["Entering are_distinguished_closed_sfs"])
@@ -434,11 +440,15 @@ def are_distinguished_closed_sfs(name_0, name_1, verbose = 3):
         verbose_print(verbose, 10, [name_0, name_1, "Euler numbers are different"])
         return True
 
-    # normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0].sort()
-    # normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1].sort()
-    # if normed_coeffs_0 != normed_coeffs_1: 
-    #    verbose_print(verbose, 12, [name_0, name_1, "distinguished by singular fibers"])
-    #    return True
+    normed_coeffs_0 = [(p, q % p) for p, q in coeffs_0]
+    normed_coeffs_1 = [(p, q % p) for p, q in coeffs_1]
+    normed_coeffs_1_neg = [(p, -q % p) for p, q in coeffs_1] # Negatives of coeffs, for other orientation
+    normed_coeffs_0.sort()
+    normed_coeffs_1.sort()
+    normed_coeffs_1_neg.sort()
+    if normed_coeffs_0 != normed_coeffs_1 and normed_coeffs_0 != normed_coeffs_1_neg: 
+       verbose_print(verbose, 10, [name_0, name_1, "distinguished by singular fibers"])
+       return True
 
     verbose_print(verbose, 10, [name_0, name_1, "could not distinguish."])
     return False
@@ -449,7 +459,10 @@ def are_distinguished_sfs_over_disk(name_0, name_1, verbose = 3):
     Given two Regina names, checks whether the two manifolds are SFS over disk.
     If yes, and the two are not homeomorphic, return True. 
     The tests applied here are not exhaustive, but a True answer is trustworthy.
-    This routine only tests for _un_oriented homeomorphism.
+
+    This only tests for _un_oriented homeomorphism. Indeed, the regina_name 
+    function in dunfield.py uses unoriented isosigs, so the Regina name has 
+    already forgotten the orientation.
     """
 
     bool_0, coeffs_0 = is_sfs_over_disk_from_name(name_0)
@@ -495,7 +508,10 @@ def are_distinguished_graph_pairs(name_0, name_1, verbose = 3):
     The tests applied here are not exhaustive, but a True answer is trustworthy.
     According to Regina documentation, a graph pair is guaranteed to not be a SFS, so the list
     of pieces is an invariant.
-    This routine only tests for _un_oriented homeomorphism.
+
+    This only tests for _un_oriented homeomorphism. Indeed, the regina_name 
+    function in dunfield.py uses unoriented isosigs, so the Regina name has 
+    already forgotten the orientation.
     """
 
     bool_0, pieces_0 = is_graph_pair_from_name(name_0)
@@ -533,6 +549,7 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
     Given the Regina name of a graph manifold M assembled from Seifert fibered pieces,
     try a few tests to determine whether M is chiral. If chiral, return True.
     If the simple tests do not succeed, return None.
+    
     The tests applied here are not exhaustive, but a True answer is trustworthy.
     """
 
@@ -607,3 +624,33 @@ def is_chiral_graph_mfd_from_name(name, verbose = 3):
                 return (is_chiral_graph_mfd_from_name(name0) or is_chiral_graph_mfd_from_name(name1))
 
     return None   
+    
+    
+def admit_reversing_homeo(M, N, s, t, tries=100, verbose=3):
+    """
+    Given a snappy manifolds M, N and slopes s,t, try by brute force to find an
+    orientation-reversing simplicial isomorphism from M(s) to N(t).
+    
+    Return True if such an isomorphism is found and None otherwise.
+    
+	It makes sense to run this function when we already happen to know that M(s)
+	is homeomorphic to N(t) and that this manifold is chiral. In this case,
+	a "True" answer ensures that the Dehn filling is chirally cosmetic.
+    """
+
+    Ms = snappy.Manifold(M)
+    Ms.dehn_fill(s)
+    Nt = snappy.Manifold(N) 
+    Nt.dehn_fill(t)
+    
+    Ts = Ms.filled_triangulation([0])
+    Tt = Nt.filled_triangulation([0])
+    Tt.reverse_orientation()
+    
+    for i in range(tries):
+        Ts.randomize()
+        Tt.randomize()
+        if Ts.triangulation_isosig(ignore_orientation=False)==Tt.triangulation_isosig(ignore_orientation=False):
+            return True
+            
+    return None
