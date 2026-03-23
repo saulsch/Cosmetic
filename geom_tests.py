@@ -423,6 +423,7 @@ def surgery_description(M, drilling_length=0.4, tries=10, verbose=3):
     verbose_print(verbose, 12, [M, real_len, g])
     if real_len < drilling_length:
         prec = 800
+        N = None
         for i in range(tries):
             try:
                 verbose_print(verbose, 12, [M, "drilling generator", g, "at precision", prec])
