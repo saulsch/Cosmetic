@@ -20,6 +20,8 @@ import geom_tests as gt
 import regina_tests as rt
 import fundamental as ft
 
+from matthias_systole import matthias_systole
+
 from verbose import verbose_print
 
 # from sage.rings.rational_field import QQ
@@ -126,7 +128,11 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     computation fails. 
     """
 
-    M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+    if True:
+        M.sys = matthias_systole(M, cutoff=RIF("0.15"))
+    else:
+        M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
         return None
