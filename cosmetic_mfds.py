@@ -249,9 +249,9 @@ def HK_vol_bound(L):
     Reference: Hodgson-Kerckhoff 'Shape of DS space', Thm 5.12.
     Reference: Our Theorem 3.14, which is a secant line approx to the above.
     """
-    assert L > RIF(9.93)
-    z = 1 - (RIF(14.77))/L**2
-    return RIF(3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
+    assert L > RIF("9.93")
+    z = 1 - (RIF("14.77"))/L**2
+    return RIF("3.3957")/RIF("4.0") * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
 # use bisection to invert. This appears to be fast enough.
@@ -269,7 +269,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
     if not diff_vol > 0:
         raise ArithmeticError("HK_vol_bound_inv error: need positive difference in volumes")
     
-    L = RIF(9.95)  # the lowest length we can return
+    L = RIF("9.95")  # the lowest length we can return
     
     if HK_vol_bound(L) <= diff_vol:
         return L
@@ -277,7 +277,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
         L = 2 * L
     L_up = L
     L_down = L/2
-    while L_up - L_down > RIF(0.1)**(digits):
+    while L_up - L_down > RIF("0.1")**(digits):
         L_mid = (L_up + L_down)/2
         if HK_vol_bound(L_mid) > diff_vol:
             L_down = L_mid
