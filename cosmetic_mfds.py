@@ -32,6 +32,8 @@ from sage.rings.real_mpfi import RIF
 from sage.rings.real_mpfi import RealIntervalField
 from sage.misc.functional import det
 from sage.modules.free_module_element import vector
+
+from snappy.math_basics import correct_max
 # from sage.interfaces.gap import gap
 
 
@@ -132,7 +134,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
         return None
     verbose_print(verbose, 3, [M.name(), 'systole is at least', M.sys])
     
-    norm_len_cutoff = max(RIF(9.97), RIF(sqrt((2*pi/M.sys) + 56.0))) 
+    norm_len_cutoff = correct_max([RIF("9.97"), RIF(sqrt((2*pi/M.sys) + RIF("56.0")))])
     short_slopes = gt.find_short_slopes(M, norm_len_cutoff, normalized=True, verbose=verbose)
     verbose_print(verbose, 4, [M.name(), 'norm_len_cutoff', norm_len_cutoff])
     verbose_print(verbose, 3, [M.name(), len(short_slopes), 'short slopes found'])
@@ -917,9 +919,10 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
     # M.slopes_hyp[hom_hash] and use this to compute the larger set of
     # "comparison slopes".
 
-    max_volumes = {}
-    for hom_hash in M.slopes_hyp:
-        max_volumes[hom_hash] = max(fetch_volume(M, s, tries, verbose) for s in M.slopes_hyp[hom_hash])
+    max_volumes = {
+        hom_hash : correct_max([fetch_volume(M, s, tries, verbose) for s in slopes])
+        for hom_hash, slopes in M.slopes_hyp.items()
+    }
 
     verbose_print(verbose, 5, [M.name(), 'max volumes by homology', max_volumes])
 
