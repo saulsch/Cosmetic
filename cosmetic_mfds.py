@@ -20,8 +20,6 @@ import geom_tests as gt
 import regina_tests as rt
 import fundamental as ft
 
-from new_systole import new_verified_systole
-
 from verbose import verbose_print
 
 # from sage.rings.rational_field import QQ
@@ -131,7 +129,7 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     """
 
 
-    M.sys = new_verified_systole(M, cutoff=RIF("0.15"))
+    M.sys = gt.new_verified_systole(M, cutoff=RIF("0.15"))
 
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
