@@ -9,6 +9,7 @@ from sage.interfaces.gap import gap
 from verbose import verbose_print
 from dunfield import closed_isosigs
 
+from typing import Optional
 
 # arithmetic
 
@@ -437,8 +438,7 @@ def are_distinguished_by_normcore_homology(M, N, tries, verbose):
     # We have failed
     return False
 
-
-def are_distinguished_by_cover_homology(M, N, tries, verbose):
+def are_distinguished_by_cover_homology(M, N, tries, verbose, max_degree : Optional[int] = None):
     """
     Given snappy manifolds M and N, tries to distinguish their
     fundamental groups using the first homology groups of finite-degree covers
@@ -449,6 +449,8 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
 
     degree_bound = min(tries, 8) # Covers up to degree 8 should be acceptable
+    if max_degree is not None:
+        degree_bound = max_degree
 
     for deg in range(1, degree_bound + 1):
         M_data = [Q.homology() for Q in M.covers(deg)]
@@ -467,7 +469,7 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose):
     return False
 
 
-def are_distinguished_by_covers(M, s, N, t, tries, verbose):
+def are_distinguished_by_covers(M, s, N, t, tries, verbose, max_degree=None):
     """
     Given snappy manifolds M and N, and a pair of slopes s and t, tries to
     distinguish the fundamental groups of M(s) and N(t) using the abelianizations
@@ -484,7 +486,7 @@ def are_distinguished_by_covers(M, s, N, t, tries, verbose):
     Nt = snappy.Manifold(N)
     Ms.dehn_fill(s)
     Nt.dehn_fill(t)
-    if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose):
+    if are_distinguished_by_cover_homology(Ms, Nt, tries, verbose, max_degree=max_degree):
         return True
     # elif are_distinguished_by_normcore_homology(Ms, Nt, tries, verbose):
     #     return True

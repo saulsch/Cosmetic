@@ -128,7 +128,9 @@ def find_systole_short_slopes(M, tries=8, verbose=4):
     computation fails. 
     """
 
-    M.sys = gt.verified_systole_with_drilling(M, cutoff=0.15, tries=tries, verbose=verbose)
+
+    M.sys = gt.new_verified_systole(M, cutoff=RIF("0.15"))
+
     if M.sys == None:
         verbose_print(verbose, 0, [M.name(), 'systole fail!'])
         return None
@@ -249,9 +251,9 @@ def HK_vol_bound(L):
     Reference: Hodgson-Kerckhoff 'Shape of DS space', Thm 5.12.
     Reference: Our Theorem 3.14, which is a secant line approx to the above.
     """
-    assert L > RIF(9.93)
-    z = 1 - (RIF(14.77))/L**2
-    return RIF(3.3957/4.0) * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
+    assert L > RIF("9.93")
+    z = 1 - (RIF("14.77"))/L**2
+    return RIF("3.3957")/RIF("4.0") * ( (-2*z**5 + z**4 - z**3 + 2*z**2 - z + 1)/(z**2 + 1)**2 + arctan(z) - arctan(RIF(1)) )
 
 # Recall that HK_vol_bound is decreasing (for L > 5.6 or so).  So we may
 # use bisection to invert. This appears to be fast enough.
@@ -269,7 +271,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
     if not diff_vol > 0:
         raise ArithmeticError("HK_vol_bound_inv error: need positive difference in volumes")
     
-    L = RIF(9.95)  # the lowest length we can return
+    L = RIF("9.95")  # the lowest length we can return
     
     if HK_vol_bound(L) <= diff_vol:
         return L
@@ -277,7 +279,7 @@ def HK_vol_bound_inv(diff_vol, digits = 2):
         L = 2 * L
     L_up = L
     L_down = L/2
-    while L_up - L_down > RIF(0.1)**(digits):
+    while L_up - L_down > RIF("0.1")**(digits):
         L_mid = (L_up + L_down)/2
         if HK_vol_bound(L_mid) > diff_vol:
             L_down = L_mid
@@ -472,7 +474,7 @@ def fetch_volume(M, s, tries=8, verbose=4):
 # dealing with a pair of slopes
 
 
-def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
+def are_distinguished_exceptionals(M, s, N, t, check_chiral=False, tries=8, verbose=5):
     """
     Given a one-cusped SnapPy manifolds M and N, equipped with slopes
     s and t, (where we think that both M(s), N(t) are non-hyperbolic),
@@ -497,9 +499,20 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
 
     # Rapid tests that require only s_name and t_name     
     if s_name == t_name:
-        # We have no hope of distinguishing this pair.
+        if check_chiral:
+            # We have no hope to distinguish this pair as
+            # unoriented manifolds but want to report
+            # chiral surgeries.
+            return False
+        # Only hope left: prove chirality and that the two manifolds
+        # are mirrors of each other.
+        if not rt.is_chiral_graph_mfd_from_name(s_name):
+            return False
+        if rt.admit_reversing_homeo(M, N, s, t):
+            verbose_print(verbose, 2, [s_name, t_name, "Admits orientation reversing homeo"])
+            return True
         return False
-    
+
     if rt.are_distinguished_closed_sfs(s_name, t_name, verbose):
         return True
     if rt.are_distinguished_graph_pairs(s_name, t_name, verbose):
@@ -540,7 +553,7 @@ def are_distinguished_exceptionals(M, s, N, t, tries=8, verbose=5):
     # Tests that search for covers are pretty slow, but effective.                    
     if ft.are_distinguished_by_covers(M, s, N, t, tries, verbose):
         return True
-    
+
     return False        
 
 
@@ -880,7 +893,7 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
 
             verbose_print(verbose, 7, [M.name(), "comparing filling", s, "to", t])
 
-            if are_distinguished_exceptionals(M, s, M, t, tries=tries, verbose=verbose):
+            if are_distinguished_exceptionals(M, s, M, t, check_chiral=check_chiral, tries=tries, verbose=verbose):
                 continue
 
             s_name = fetch_exceptional_data(M, s, "name", tries, verbose)
@@ -902,7 +915,14 @@ def check_cosmetic(M, use_BoyerLines=True, check_chiral=False, tries=8, verbose=
                     # Cyclic surgery theorem
                     verbose_print(verbose, 2, [s_name, t_name, "distinguished by cyclic surgery theorem"])
                     continue
-            
+
+            if s_name != t_name:
+                # Compute expensive covers as last attempt to distinguish
+                # the manifolds.
+                if ft.are_distinguished_by_covers(
+                        M, s, M, t, tries, verbose, max_degree=13):
+                    continue
+
             verbose_print(verbose, 2, [reason])
             bad_uns.append(reason)    
 
