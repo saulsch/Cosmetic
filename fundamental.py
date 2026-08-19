@@ -9,6 +9,7 @@ from sage.interfaces.gap import gap
 from verbose import verbose_print
 from dunfield import closed_isosigs
 
+from typing import Optional
 
 # arithmetic
 
@@ -437,8 +438,7 @@ def are_distinguished_by_normcore_homology(M, N, tries, verbose):
     # We have failed
     return False
 
-
-def are_distinguished_by_cover_homology(M, N, tries, verbose, max_degree=None):
+def are_distinguished_by_cover_homology(M, N, tries, verbose, max_degree : Optional[int] = None):
     """
     Given snappy manifolds M and N, tries to distinguish their
     fundamental groups using the first homology groups of finite-degree covers
@@ -449,7 +449,7 @@ def are_distinguished_by_cover_homology(M, N, tries, verbose, max_degree=None):
     verbose_print(verbose, 12, [M, N, "entering are_distinguished_by_cover_homology"])
 
     degree_bound = min(tries, 8) # Covers up to degree 8 should be acceptable
-    if max_degree:
+    if max_degree is not None:
         degree_bound = max_degree
 
     for deg in range(1, degree_bound + 1):
